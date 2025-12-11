@@ -17,7 +17,7 @@ CREATE TABLE `cod_settlements` (
   PRIMARY KEY (`id`),
   KEY `fk_cod_order` (`order_id`),
   CONSTRAINT `fk_cod_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `customers`;
 CREATE TABLE `customers` (
@@ -35,7 +35,7 @@ CREATE TABLE `customers` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `order_status_logs`;
 CREATE TABLE `order_status_logs` (
@@ -52,7 +52,7 @@ CREATE TABLE `order_status_logs` (
   KEY `fk_logs_user` (`action_by`),
   CONSTRAINT `fk_logs_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
   CONSTRAINT `fk_logs_user` FOREIGN KEY (`action_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
@@ -81,7 +81,7 @@ CREATE TABLE `orders` (
   KEY `fk_orders_receiver` (`receiver_id`),
   CONSTRAINT `fk_orders_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `fk_orders_sender` FOREIGN KEY (`sender_id`) REFERENCES `customers` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `payments`;
 CREATE TABLE `payments` (
@@ -98,7 +98,7 @@ CREATE TABLE `payments` (
   PRIMARY KEY (`id`),
   KEY `fk_payments_order` (`order_id`),
   CONSTRAINT `fk_payments_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `shipping_rates`;
 CREATE TABLE `shipping_rates` (
@@ -111,7 +111,7 @@ CREATE TABLE `shipping_rates` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `shipping_rates` VALUES (1,'A','1.00',30,'30.00',1,'2025-12-08 12:44:35',NULL),
 (2,'A+','2.00',40,'40.00',1,'2025-12-08 13:32:31',NULL);
@@ -129,7 +129,7 @@ CREATE TABLE `trip_orders` (
   KEY `fk_trip_orders_order` (`order_id`),
   CONSTRAINT `fk_trip_orders_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
   CONSTRAINT `fk_trip_orders_trip` FOREIGN KEY (`trip_id`) REFERENCES `trips` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `trips`;
 CREATE TABLE `trips` (
@@ -145,7 +145,7 @@ CREATE TABLE `trips` (
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `trip_no` (`trip_no`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 
@@ -162,7 +162,7 @@ CREATE TABLE `users` (
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 

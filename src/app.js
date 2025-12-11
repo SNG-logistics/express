@@ -104,6 +104,11 @@ app.use(settingsRoutes);
 
 app.get('/', (req, res) => res.redirect('/dashboard'));
 
+// Global 404 Handler - Redirect to Dashboard (which forces login if needed)
+app.use('*', (req, res) => {
+  res.redirect('/dashboard');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`sng logistics listening on ${PORT}`);
