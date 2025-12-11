@@ -1,0 +1,122 @@
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-white">WhatsApp Manager</h1>
+            <p class="text-slate-400 mt-1">Connect your WhatsApp to send automated notifications</p>
+        </div>
+        <button onclick="restartClient()"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all flex items-center gap-2">
+            <i class="fa-solid fa-rotate"></i> Restart Client
+        </button>
+    </div>
+
+    <!-- Status Panel -->
+    <div
+        class="glass-panel-dark rounded-xl p-8 border border-white/5 flex flex-col items-center justify-center min-h-[400px]">
+
+        <!-- Status Indicator -->
+        <div id="statusContainer" class="mb-6 flex items-center gap-3">
+            <div id="statusDot" class="w-3 h-3 rounded-full bg-slate-500 animate-pulse"></div>
+            <span id="statusText" class="text-xl font-bold text-slate-300">Connecting...</span>
+        </div>
+
+        <!-- QR Display -->
+        <div id="qrContainer" class="hidden flex flex-col items-center slide-up-fade">
+            <div class="bg-white p-4 rounded-xl shadow-2xl mb-4">
+                <div id="qrcode"></div>
+            </div>
+            <p class="text-slate-400 text-sm">Scan with your WhatsApp (Linked Devices)</p>
+        </div>
+
+        <!-- Connected State -->
+        <div id="connectedContainer" class="hidden flex flex-col items-center slide-up-fade">
+            <div
+                class="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border border-emerald-500/20">
+                <i class="fa-brands fa-whatsapp text-4xl text-emerald-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-emerald-400">WhatsApp Connected</h2>
+            <p class="text-slate-400 mt-2">Ready to send notifications</p>
+        </div>
+
+    </div>
+</div>
+
+<!-- QR Code Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    let currentQr = null;
+    let pollInterval = null;
+
+    function updateUI(data) {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        const qrContainer = document.getElementById('qrContainer');
+        const connectedContainer = document.getElementById('connectedContainer');
+
+        // Update Text
+        text.textContent = data.status.replace('_', ' ');
+
+        // Reset Styles
+        dot.className = 'w-3 h-3 rounded-full';
+        qrContainer.classList.add('hidden');
+        connectedContainer.classList.add('hidden');
+
+        switch (data.status) {
+            case 'CONNECTED':
+            case 'AUTHENTICATED':
+                dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
+                connectedContainer.classList.remove('hidden');
+                break;
+            case 'QR_READY':
+                dot.classList.add('bg-amber-500', 'animate-pulse');
+                qrContainer.classList.remove('hidden');
+                // Render QR if changed
+                if (data.qr && data.qr !== currentQr) {
+                    currentQr = data.qr;
+                    document.getElementById('qrcode').innerHTML = '';
+                    new QRCode(document.getElementById('qrcode'), {
+                        text: data.qr,
+                        width: 256,
+                        height: 256
+                    });
+                }
+                break;
+            case 'DISCONNECTED':
+                dot.classList.add('bg-red-500');
+                break;
+            default:
+                dot.classList.add('bg-slate-500');
+        }
+    }
+
+    async function checkStatus() {
+        try {
+            const res = await fetch('/whatsapp/api/status');
+            const data = await res.json();
+            updateUI(data);
+        } catch (e) {
+            console.error('Status check failed', e);
+        }
+    }
+
+    async function restartClient() {
+        if (!confirm('Are you sure you want to restart the WhatsApp client?')) return;
+        try {
+            await fetch('/whatsapp/api/restart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ _csrf: '<%= csrfToken %>' })
+            });
+            alert('Restarting... please wait.');
+            location.reload();
+        } catch (e) {
+            alert('Error restarting');
+        }
+    }
+
+    // Start polling
+    checkStatus();
+    pollInterval = setInterval(checkStatus, 3000);
+
+</script>

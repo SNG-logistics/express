@@ -1,0 +1,153 @@
+<div class="max-w-7xl mx-auto animate-fade-in">
+  <div class="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
+    <div>
+      <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+        <span class="bg-blue-500 w-1.5 h-8 rounded-full inline-block"></span>
+        ใบขนสินค้า (Declaration)
+      </h1>
+      <p class="text-slate-400 mt-2 ml-6 text-sm">สร้างใบขนสินค้าสำหรับออเดอร์ข้ามแดน</p>
+    </div>
+    <a href="/customs"
+      class="text-slate-400 hover:text-white text-sm font-bold flex items-center gap-2 transition-colors">
+      <i class="fa-solid fa-arrow-left"></i> กลับไปรายการ
+    </a>
+  </div>
+
+  <% if (error) { %>
+    <div
+      class="mb-6 p-4 rounded-xl bg-red-500/10 text-red-200 border border-red-500/20 flex items-center gap-3 animate-pulse-once">
+      <i class="fa-solid fa-circle-exclamation text-xl"></i>
+      <%= error %>
+    </div>
+    <% } %>
+
+      <div class="grid lg:grid-cols-3 gap-8">
+        <!-- Form Section -->
+        <div class="lg:col-span-1">
+          <div class="glass-panel-dark card-elevated rounded-3xl p-6 border border-white/5 sticky top-24">
+            <h3 class="font-bold text-white mb-6 flex items-center gap-3">
+              <span
+                class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 shadow-inner">
+                <i class="fa-solid fa-file-contract"></i>
+              </span>
+              ข้อมูลใบขน
+            </h3>
+
+            <form method="post" action="/customs" class="space-y-5">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เลขที่ใบขน</label>
+                <input name="declaration_no" required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-blue-500 focus:border-blue-500 placeholder-slate-600 transition-colors font-mono"
+                  placeholder="A001-xxxxxxxx">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">วันที่ใบขน</label>
+                <input name="declaration_date" type="date" required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-blue-500 focus:border-blue-500 transition-colors">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ประเภท</label>
+                <select name="type"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none">
+                  <option value="IMPORT">ขาเข้า (Import)</option>
+                  <option value="EXPORT">ขาออก (Export)</option>
+                </select>
+              </div>
+
+              <div class="pt-4 border-t border-white/5">
+                <button type="submit"
+                  class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-save"></i> บันทึกใบขน
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Order Selection -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="glass-panel-dark card-elevated rounded-3xl overflow-hidden shadow-2xl border border-white/5">
+            <div class="p-6 border-b border-white/5 bg-black/20">
+              <h3 class="font-bold text-white flex items-center gap-2">
+                <span
+                  class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                  <i class="fa-solid fa-boxes-stacked"></i>
+                </span>
+                รายการออเดอร์ที่ต้องทำใบขน
+              </h3>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm table-premium text-left">
+                <thead class="text-xs text-slate-400 uppercase bg-black/20 border-b border-white/5">
+                  <tr>
+                    <th class="px-6 py-4 font-semibold tracking-wider w-16 text-center">เลือก</th>
+                    <th class="px-6 py-4 font-semibold tracking-wider">Job No</th>
+                    <th class="px-6 py-4 font-semibold tracking-wider">Sender</th>
+                    <th class="px-6 py-4 font-semibold tracking-wider">Receiver</th>
+                    <th class="px-6 py-4 font-semibold tracking-wider text-right">Value</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5 text-slate-300">
+                  <% if (orders.length===0) { %>
+                    <tr>
+                      <td colspan="5" class="py-12 text-center text-slate-500">
+                        <div class="flex flex-col items-center justify-center">
+                          <i class="fa-solid fa-clipboard-check text-4xl mb-4 opacity-20"></i>
+                          <p>ไม่มีออเดอร์ที่รอใบขน</p>
+                        </div>
+                      </td>
+                    </tr>
+                    <% } %>
+                      <% orders.forEach(o=> { %>
+                        <tr class="hover:bg-white/5 transition-colors group cursor-pointer"
+                          onclick="document.getElementById('chk_<%= o.id %>').click()">
+                          <td class="px-6 py-4 text-center">
+                            <input type="checkbox" name="order_ids" value="<%= o.id %>" form="createDeclarationForm"
+                              id="chk_<%= o.id %>"
+                              class="w-5 h-5 rounded border-slate-600 text-blue-500 focus:ring-blue-500 bg-slate-800 transition-all cursor-pointer"
+                              onclick="event.stopPropagation()">
+                          </td>
+                          <td class="px-6 py-4">
+                            <div class="font-mono font-bold text-white group-hover:text-blue-400 transition-colors">
+                              <%= o.job_no %>
+                            </div>
+                            <div class="text-[10px] text-slate-500 mt-0.5 font-bold uppercase tracking-wider">
+                              <%= o.direction %>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-slate-300">
+                              <%= o.sender_name %>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-slate-300">
+                              <%= o.receiver_name %>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4 text-right">
+                            <div class="font-mono font-bold text-slate-200">
+                              <%= Number(o.declared_value).toLocaleString() %>
+                            </div>
+                            <div class="text-[10px] text-slate-500">THB</div>
+                          </td>
+                        </tr>
+                        <% }) %>
+                </tbody>
+              </table>
+            </div>
+
+            <% if (orders.length> 0) { %>
+              <div class="p-4 bg-black/20 border-t border-white/5 text-right text-xs text-slate-500">
+                เลือกออเดอร์ที่ต้องการรวมในใบขนใบนี้
+              </div>
+              <% } %>
+          </div>
+        </div>
+      </div>
+</div>

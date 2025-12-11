@@ -1,0 +1,148 @@
+<div class="max-w-2xl mx-auto animate-fade-in min-h-[70vh] flex flex-col justify-center">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-black text-white tracking-tight flex items-center justify-center gap-3">
+            <span
+                class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-900/20">
+                <i class="fa-solid fa-barcode"></i>
+            </span>
+            Scanner Mode
+        </h1>
+        <p class="text-slate-400 mt-2">ยิงบาร์โค้ดเพื่ออัปเดตสถานะทันที</p>
+    </div>
+
+    <% if (flash) { %>
+        <div
+            class="p-4 rounded-xl mb-6 border <%= flash.type === 'error' ? 'bg-red-500/10 text-red-200 border-red-500/20' : 
+                                            flash.type === 'success' ? 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' :
+                                            'bg-blue-500/10 text-blue-200 border-blue-500/20' %> flex items-center gap-3 shadow-sm animate-pulse-once">
+            <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check' %> text-xl"></i>
+            <span class="text-lg font-bold">
+                <%= flash.message %>
+            </span>
+        </div>
+        <% } %>
+
+            <div class="glass-panel-dark rounded-3xl shadow-2xl border border-white/5 p-8 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none">
+                </div>
+
+                <form action="/orders/scan" method="post" id="scanForm" class="relative z-10">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                    <!-- Action Mode Selector -->
+                    <div class="mb-8">
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เลือกการทำงาน
+                            (Action)</label>
+                        <div class="relative">
+                            <select name="action_mode" id="actionMode"
+                                class="block w-full bg-slate-900 border border-slate-700 rounded-xl text-lg py-4 pl-5 pr-12 text-white focus:ring-amber-500 focus:border-amber-500 shadow-lg appearance-none cursor-pointer transition-all hover:border-slate-600">
+                                <option value="none">🔍 เช็คสถานะเฉยๆ (Check Status)</option>
+                                <option value="receive">📥 รับของเข้าโกดัง (Receive Order)</option>
+                                <option value="crossing">🚛 ขึ้นรถข้ามแดน (Start Crossing)</option>
+                                <option value="arrived_border">🏁 ถึงด่านลาว (Arrived Border)</option>
+                                <option value="at_dest">🏠 ถึงโกดังปลายทาง (At Destination)</option>
+                                <option value="delivery">🛵 ออกส่งพัสดุ (Out for Delivery)</option>
+                                <option value="delivered">✅ ส่งถึงมือลูกค้า (Delivered)</option>
+                            </select>
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barcode Input -->
+                    <div class="mb-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">สแกนเลขพัสดุ
+                            (Scan Job No)</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                <i
+                                    class="fa-solid fa-qrcode text-slate-500 text-2xl group-focus-within:text-amber-500 transition-colors"></i>
+                            </div>
+                            <input type="text" name="job_no" id="jobNoInput"
+                                class="block w-full bg-slate-800 border-2 border-slate-700 rounded-xl text-2xl font-mono text-white py-5 pl-14 focus:ring-0 focus:border-amber-500 shadow-inner transition-all placeholder-slate-600"
+                                placeholder="SNG-XXXX-XXXX" autocomplete="off" autofocus required>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2 text-right font-mono opacity-60">Press Enter or Scan
+                            to Submit</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Recent Scan Info -->
+            <% if (lastScan) { %>
+                <div class="mt-8 glass-panel-dark rounded-2xl p-6 shadow-xl border border-white/5 animate-fade-in-up">
+                    <h3
+                        class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-4 border-b border-white/5 pb-2">
+                        รายการล่าสุด (Recent Scan)</h3>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-3xl font-black font-mono text-amber-500 tracking-tight">
+                                <%= lastScan.job_no %>
+                            </div>
+                            <div class="text-slate-400 mt-1 text-sm font-medium">
+                                <i class="fa-regular fa-clock mr-1"></i>
+                                <%= new Date(lastScan.time).toLocaleTimeString('th-TH') %>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span
+                                class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white font-bold shadow-lg">
+                                <%= lastScan.status %>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <% } %>
+</div>
+
+<script>
+    // Auto focus input on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('jobNoInput');
+        if (input) input.focus();
+
+        // Maintain action selection from local storage
+        const select = document.getElementById('actionMode');
+        const savedMode = localStorage.getItem('sng_scan_mode');
+        if (savedMode && select) {
+            select.value = savedMode;
+        }
+
+        if (select) {
+            select.addEventListener('change', (e) => {
+                localStorage.setItem('sng_scan_mode', e.target.value);
+                if (input) input.focus();
+            });
+        }
+
+        // Play sound based on result (if flash exists)
+        const flashDataPayload = <% - JSON.stringify(flash || null) %>;
+
+        if (flashDataPayload) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            function playTone(freq, type, duration) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                osc.stop(audioCtx.currentTime + duration);
+            }
+
+            // Unlock audio context interactively if needed, but here we try auto
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(e => console.log(e));
+
+            if (flashDataPayload.type === 'success') {
+                setTimeout(() => playTone(800, 'sine', 0.1), 100);
+            } else if (flashDataPayload.type === 'error') {
+                setTimeout(() => playTone(200, 'sawtooth', 0.3), 100);
+            }
+        }
+    });
+</script>

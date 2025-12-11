@@ -1,0 +1,223 @@
+<div class="max-w-4xl mx-auto">
+  <div class="flex items-center justify-between mb-8 animate-fade-in">
+    <div>
+      <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+        <span class="bg-amber-500 w-1.5 h-8 rounded-full inline-block"></span>
+        สร้างออเดอร์ใหม่
+      </h1>
+      <p class="text-slate-400 mt-1 ml-5">
+        <a href="/orders" class="hover:text-amber-400 transition-colors">รายการออเดอร์</a>
+        <i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-600"></i>
+        New Order
+      </p>
+    </div>
+  </div>
+
+  <% if (flash) { %>
+    <div
+      class="mb-6 p-4 rounded-xl bg-red-500/10 text-red-200 border border-red-500/20 flex items-center gap-3 animate-pulse-once">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <%= flash.message %>
+    </div>
+    <% } %>
+
+      <div class="glass-panel-dark rounded-3xl overflow-hidden shadow-2xl border border-white/5 animate-fade-in"
+        style="animation-delay: 0.1s;">
+        <div class="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between">
+          <h3 class="font-bold text-white flex items-center gap-3">
+            <span
+              class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
+              <i class="fa-solid fa-box-open"></i>
+            </span>
+            ข้อมูลการจัดส่ง
+          </h3>
+          <span class="text-xs text-slate-500 font-mono">Job No. Auto-Generated</span>
+        </div>
+
+        <form method="post" action="/orders" class="p-8 space-y-8">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+          <!-- Section 1: Route & Customers -->
+          <div class="grid md:grid-cols-2 gap-8">
+            <div class="space-y-6">
+              <div class="pb-2 border-b border-white/5">
+                <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">ข้อมูลเบื้องต้น</h4>
+                <div class="space-y-5">
+                  <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">เลขงาน (Job No)</label>
+                    <input name="job_no"
+                      class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-slate-400 font-mono focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                      placeholder="Auto Generate" readonly>
+                  </div>
+                  <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">ทิศทางขนส่ง <span
+                        class="text-amber-500">*</span></label>
+                    <div class="relative">
+                      <select name="direction"
+                        class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white appearance-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all cursor-pointer">
+                        <option value="TH_TO_LA" class="bg-slate-900 text-white">🇹🇭 ไทย ไป ลาว (TH → LA)</option>
+                        <option value="LA_TO_TH" class="bg-slate-900 text-white">🇱🇦 ลาว ไป ไทย (LA → TH)</option>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-6">
+              <div class="pb-2">
+                <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">คู่ค้า (Partners)</h4>
+                <div class="space-y-5">
+                  <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">ผู้ส่ง (Sender)</label>
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-dolly text-slate-500"></i>
+                      </div>
+                      <select name="sender_id"
+                        class="w-full bg-slate-900/50 border border-white/10 rounded-xl pl-11 pr-10 py-3 text-white appearance-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all cursor-pointer">
+                        <option value="" class="bg-slate-900">-- เลือกผู้ส่ง --</option>
+                        <% customers.forEach(c=> { %>
+                          <option value="<%= c.id %>" class="bg-slate-900">
+                            <%= c.name %> (<%= c.type %>)
+                          </option>
+                          <% }) %>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">ผู้รับ (Receiver)</label>
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-box text-slate-500"></i>
+                      </div>
+                      <select name="receiver_id"
+                        class="w-full bg-slate-900/50 border border-white/10 rounded-xl pl-11 pr-10 py-3 text-white appearance-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all cursor-pointer">
+                        <option value="" class="bg-slate-900">-- เลือกผู้รับ --</option>
+                        <% customers.forEach(c=> { %>
+                          <option value="<%= c.id %>" class="bg-slate-900">
+                            <%= c.name %> (<%= c.type %>)
+                          </option>
+                          <% }) %>
+                      </select>
+                      <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Parcel Details -->
+          <div class="p-6 rounded-2xl border border-white/5 bg-white/5">
+            <h4 class="text-sm font-bold text-slate-300 mb-5 flex items-center gap-2">
+              <i class="fa-solid fa-ruler-combined text-indigo-400"></i> รายละเอียดพัสดุ
+            </h4>
+            <div class="grid md:grid-cols-3 gap-6">
+              <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">ประเภทบริการ</label>
+                <div class="relative">
+                  <select name="service_type"
+                    class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white appearance-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all cursor-pointer">
+                    <option value="general" class="bg-slate-900">ทั่วไป (General)</option>
+                    <option value="express" class="bg-slate-900">ด่วน (Express)</option>
+                    <option value="frozen" class="bg-slate-900">แช่เย็น/แช่แข็ง (Frozen)</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-500">
+                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">น้ำหนัก (กก.)</label>
+                <input name="declared_weight" type="number" step="0.01" placeholder="0.00"
+                  class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all">
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">ขนาด (cm)</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <input name="width" id="input_width" type="number" placeholder="W"
+                    class="bg-slate-900/50 border border-white/10 rounded-xl px-2 py-3 text-white text-center text-sm focus:border-indigo-500 outline-none">
+                  <input name="length" id="input_length" type="number" placeholder="L"
+                    class="bg-slate-900/50 border border-white/10 rounded-xl px-2 py-3 text-white text-center text-sm focus:border-indigo-500 outline-none">
+                  <input name="height" id="input_height" type="number" placeholder="H"
+                    class="bg-slate-900/50 border border-white/10 rounded-xl px-2 py-3 text-white text-center text-sm focus:border-indigo-500 outline-none">
+                </div>
+                <!-- Hidden legacy field for backward compatibility if needed, or we construct it -->
+                <input type="hidden" name="declared_size" id="declared_size">
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Value & Costs -->
+          <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl border border-white/10">
+            <div class="grid md:grid-cols-3 gap-6">
+              <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">มูลค่าสินค้า (Declared)</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-3 text-slate-500">฿</span>
+                  <input name="declared_value" type="number" step="0.01"
+                    class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                    placeholder="0.00">
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">ค่าขนส่ง (Cost)</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-3 text-slate-500">฿</span>
+                  <input name="price_amount" id="price_amount" type="number" step="0.01"
+                    class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white font-bold tracking-wide focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                    placeholder="0.00">
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                  <input type="checkbox" id="fix_price"
+                    class="w-4 h-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 bg-slate-800 cursor-pointer">
+                  <label for="fix_price" class="text-xs text-slate-400 cursor-pointer select-none">Fix Price
+                    (วัดจากขนาด/น้ำหนัก)</label>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">เก็บเงินปลายทาง (COD)</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-3 text-emerald-500/50">฿</span>
+                  <input name="cod_amount" type="number" step="0.01"
+                    class="w-full bg-emerald-500/10 border border-emerald-500/20 rounded-xl pl-8 pr-4 py-3 text-emerald-400 font-bold tracking-wide focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                    placeholder="0.00">
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/5">
+              <div class="flex items-center h-5">
+                <input id="requires_customs" name="requires_customs" type="checkbox" value="1"
+                  class="w-5 h-5 rounded border-slate-600 text-amber-500 focus:ring-amber-500 bg-slate-800 cursor-pointer">
+              </div>
+              <div class="ml-2">
+                <label for="requires_customs"
+                  class="font-bold text-sm text-slate-200 cursor-pointer">สินค้าต้องเคลียร์ภาษี /
+                  ผ่านพิธีการศุลกากร</label>
+                <p class="text-slate-500 text-xs mt-0.5">เลือกหากต้องการให้ระบบติดตามสถานะ Customs Clearance เป็นพิเศษ
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+            <a href="/orders"
+              class="px-6 py-3 rounded-xl text-slate-400 font-bold hover:bg-white/5 hover:text-white transition-all">ยกเลิก</a>
+            <button type="submit" class="cta-primary px-8 py-3 flex items-center gap-2">
+              <i class="fa-solid fa-plus-circle"></i> สร้างออเดอร์
+            </button>
+          </div>
+        </form>
+      </div>
+</div>

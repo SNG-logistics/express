@@ -1,0 +1,247 @@
+<% const statusMeta={ CROSSING_BORDER: { label: 'กำลังข้ามด่าน' , tone: 'amber' }, ARRIVED_BORDER_WH: {
+  label: 'ถึงคลังด่าน' , tone: 'indigo' }, CUSTOMS_CLEARANCE: { label: 'ดำเนินพิธีศุลกากร' , tone: 'blue' }, CLEARED: {
+  label: 'ปล่อยเรียบร้อย' , tone: 'emerald' }, DELIVERED: { label: 'จัดส่งแล้ว' , tone: 'emerald' }, CANCELLED: {
+  label: 'ยกเลิก' , tone: 'red' } }[order.status] || { label: order.status, tone: 'slate' }; const formatMoney=(val)=>
+  Number(val || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+  const formatDateTime = (val) => new Date(val).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short',
+  hour12: false });
+  %>
+
+  <section class="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div class="glass-panel-dark rounded-3xl p-8 relative overflow-hidden border border-white/5 shadow-2xl">
+      <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6 z-10">
+        <div class="space-y-4">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-1">Customs Control</p>
+            <h1 class="text-4xl font-black text-white tracking-tight">ออเดอร์ <span
+                class="bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent">
+                <%= order.job_no %>
+              </span></h1>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold"><i
+                class="fa-solid fa-arrow-right-arrow-left text-amber-500 mr-1"></i> ทิศทาง: <%= order.direction %>
+                </span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold"><i
+                class="fa-solid fa-coins text-emerald-500 mr-1"></i> ค่าขนส่ง ฿<%= formatMoney(order.price_amount) %>
+                </span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold"><i
+                class="fa-solid fa-money-bill-transfer text-indigo-500 mr-1"></i> COD ฿<%= formatMoney(order.cod_amount)
+                %></span>
+            <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold">
+              <i
+                class="fa-solid <%= order.requires_customs ? 'fa-shield-halved text-emerald-500' : 'fa-circle-check text-slate-500' %> mr-1"></i>
+              <%= order.requires_customs ? 'ต้องดำเนินพิธีศุลกากร' : 'ไม่ต้องทำศุลกากร' %>
+            </span>
+          </div>
+        </div>
+        <div class="flex flex-col items-start md:items-end gap-2">
+          <span
+            class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-lg shadow-lg backdrop-blur-md">
+            <%= statusMeta.label %>
+          </span>
+          <p class="text-xs text-slate-400">สถานะปัจจุบัน (Current Status)</p>
+        </div>
+      </div>
+    </div>
+
+    <% if (error) { %>
+      <div class="p-4 rounded-xl bg-red-500/10 text-red-200 border border-red-500/20 flex items-center gap-3 shadow-lg">
+        <i class="fa-solid fa-circle-exclamation text-xl"></i>
+        <%= error %>
+      </div>
+      <% } %>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            class="glass-panel-dark p-6 rounded-2xl border border-white/5 shadow-lg group hover:border-white/10 transition-colors">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">ค่าขนส่ง (Freight)</p>
+            <div class="flex items-baseline gap-1">
+              <p class="text-3xl font-black text-white">฿<%= formatMoney(order.price_amount) %>
+              </p>
+            </div>
+          </div>
+          <div
+            class="glass-panel-dark p-6 rounded-2xl border border-white/5 shadow-lg group hover:border-white/10 transition-colors">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">COD Amount</p>
+            <div class="flex items-baseline gap-1">
+              <p class="text-3xl font-black text-emerald-400">฿<%= formatMoney(order.cod_amount) %>
+              </p>
+            </div>
+          </div>
+          <div
+            class="glass-panel-dark p-6 rounded-2xl border border-white/5 shadow-lg group hover:border-white/10 transition-colors">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">ค่าศุลกากรสะสม</p>
+            <div class="flex items-baseline gap-1">
+              <p class="text-3xl font-black text-indigo-400">
+                ฿<%= payments.reduce((sum, p)=> sum + Number(p.amount || 0), 0).toLocaleString('th-TH', {
+                  minimumFractionDigits: 2 }) %>
+              </p>
+            </div>
+          </div>
+          <div
+            class="glass-panel-dark p-6 rounded-2xl border border-white/5 shadow-lg group hover:border-white/10 transition-colors">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">สถานะงาน</p>
+            <div class="flex items-center gap-2 mt-1">
+              <div
+                class="w-2 h-2 rounded-full <%= statusMeta.tone === 'emerald' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' %>">
+              </div>
+              <p class="text-lg font-bold text-white">
+                <%= statusMeta.label %>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Expenses List -->
+            <div class="glass-panel-dark rounded-3xl overflow-hidden border border-white/5 shadow-xl">
+              <div class="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice-dollar text-indigo-400"></i> รายละเอียดศุลกากร
+                  </h2>
+                </div>
+                <span
+                  class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold">
+                  <%= payments.length %> รายการ
+                </span>
+              </div>
+
+              <div class="p-6">
+                <% if (payments.length===0) { %>
+                  <div
+                    class="rounded-xl border border-dashed border-slate-700 bg-slate-900/30 p-8 text-center text-slate-500">
+                    <i class="fa-solid fa-receipt text-3xl mb-2 opacity-20"></i>
+                    <p class="text-sm">ยังไม่มีการบันทึกค่าใช้จ่ายศุลกากร</p>
+                  </div>
+                  <% } else { %>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                      <% payments.forEach(p=> { %>
+                        <div
+                          class="border border-white/5 rounded-2xl p-4 bg-white/5 hover:bg-white/10 transition-colors">
+                          <div class="flex items-center justify-between mb-2">
+                            <p class="font-black text-xl text-white">฿<%= formatMoney(p.amount) %>
+                            </p>
+                            <span
+                              class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider <%= p.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' %>">
+                              <%= p.status %>
+                            </span>
+                          </div>
+                          <% if (p.note) { %>
+                            <p class="text-xs text-slate-400 border-t border-white/5 pt-2 mt-2">
+                              <%= p.note %>
+                            </p>
+                            <% } %>
+                        </div>
+                        <% }) %>
+                    </div>
+                    <% } %>
+              </div>
+            </div>
+
+            <!-- Action Forms -->
+            <div class="grid md:grid-cols-2 gap-6">
+              <% if (['CROSSING_BORDER','ARRIVED_BORDER_WH','CUSTOMS_CLEARANCE'].includes(order.status)) { %>
+                <form method="post" action="/customs/<%= order.id %>/start"
+                  class="glass-panel-dark rounded-3xl p-6 border border-white/5 shadow-xl flex flex-col h-full">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <div class="mb-6 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2"><i
+                        class="fa-solid fa-flag-checkered text-amber-400"></i> เริ่มพิธีศุลกากร</h3>
+                  </div>
+                  <div class="space-y-4 flex-1">
+                    <div>
+                      <label
+                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">ค่าดำเนินการ/ศุลกากร
+                        (ถ้ามี)</label>
+                      <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">฿</span>
+                        <input name="fee_amount" type="number" step="0.01"
+                          class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 pl-8 text-white focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                          placeholder="0.00">
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">บันทึกเพิ่มเติม</label>
+                      <textarea name="note"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                        rows="2" placeholder="ข้อมูลสำหรับทีมศุลกากร"></textarea>
+                    </div>
+                  </div>
+                  <button class="cta-primary-dark w-full mt-6 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> เริ่มดำเนินงาน
+                  </button>
+                </form>
+                <% } %>
+
+                  <% if (order.status==='CUSTOMS_CLEARANCE' ) { %>
+                    <form method="post" action="/customs/<%= order.id %>/clear"
+                      class="glass-panel-dark rounded-3xl p-6 border border-white/5 shadow-xl flex flex-col h-full ring-1 ring-emerald-500/20">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <div class="mb-6 flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2"><i
+                            class="fa-solid fa-shield-cat text-emerald-400"></i> ปล่อยศุลกากร</h3>
+                        <span
+                          class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">STEP
+                          CLEARED</span>
+                      </div>
+                      <div class="space-y-4 flex-1">
+                        <div>
+                          <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">หมายเหตุการปล่อยสินค้า</label>
+                          <textarea name="note"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                            rows="3" placeholder="แจ้งทีม/ลูกค้า..."></textarea>
+                        </div>
+                      </div>
+                      <button
+                        class="w-full mt-6 text-sm font-bold rounded-xl px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/40 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check-circle"></i> ตั้งสถานะเป็น CLEARED
+                      </button>
+                    </form>
+                    <% } %>
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="space-y-4">
+            <div class="glass-panel-dark p-6 rounded-3xl border border-white/5 shadow-xl h-full">
+              <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                <h3 class="text-lg font-bold text-white">เส้นทางสถานะ</h3>
+                <span
+                  class="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700 font-mono">
+                  <%= logs.length %> Logs
+                </span>
+              </div>
+
+              <div
+                class="relative pl-4 space-y-8 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+                <% logs.forEach(l=> { %>
+                  <div class="relative">
+                    <div
+                      class="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full bg-slate-700 border-2 border-slate-900 ring-2 ring-slate-800">
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-sm font-bold text-indigo-300">
+                        <%= l.to_status %>
+                      </span>
+                      <span class="text-[10px] text-slate-500 font-mono mb-1">
+                        <%= formatDateTime(l.action_at) %>
+                      </span>
+                      <span class="text-[10px] text-slate-400">by <%= l.username || 'system' %></span>
+                      <% if (l.note) { %>
+                        <div class="mt-2 text-xs bg-white/5 p-2 rounded border border-white/5 text-slate-300 italic">
+                          "<%= l.note %>"
+                        </div>
+                        <% } %>
+                    </div>
+                  </div>
+                  <% }) %>
+              </div>
+            </div>
+          </div>
+        </div>
+  </section>

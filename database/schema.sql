@@ -1,0 +1,119 @@
+-- MySQL schema for sng logistics (TH-LA)
+-- Core tables: users, customers, orders, order_status_logs, trips, trip_orders, payments, cod_settlements
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin','staff','manager') NOT NULL DEFAULT 'staff',
+  name VARCHAR(120),
+  phone VARCHAR(30),
+  status ENUM('active','disabled') NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS customers (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  type ENUM('person','shop') NOT NULL DEFAULT 'shop',
+  name VARCHAR(180) NOT NULL,
+  phone VARCHAR(30),
+  email VARCHAR(120),
+  country VARCHAR(60),
+  province VARCHAR(120),
+  city VARCHAR(120),
+  address TEXT,
+  tax_id VARCHAR(60),
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS orders (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  job_no VARCHAR(50) NOT NULL UNIQUE,
+  direction ENUM('TH_TO_LA','LA_TO_TH') NOT NULL,
+  sender_id BIGINT UNSIGNED,
+  receiver_id BIGINT UNSIGNED,
+  service_type VARCHAR(60),
+  declared_weight DECIMAL(10,2),
+  declared_size VARCHAR(60),
+  declared_value DECIMAL(12,2),
+  actual_weight DECIMAL(10,2),
+  actual_size VARCHAR(60),
+  price_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  price_currency CHAR(3) NOT NULL DEFAULT 'THB',
+  cod_amount DECIMAL(12,2) DEFAULT 0,
+  requires_customs TINYINT(1) NOT NULL DEFAULT 0,
+  status VARCHAR(40) NOT NULL DEFAULT 'NEW',
+  trip_id BIGINT UNSIGNED NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_orders_sender FOREIGN KEY (sender_id) REFERENCES customers(id),
+  CONSTRAINT fk_orders_receiver FOREIGN KEY (receiver_id) REFERENCES customers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS order_status_logs (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT UNSIGNED NOT NULL,
+  from_status VARCHAR(40),
+  to_status VARCHAR(40) NOT NULL,
+  note TEXT,
+  action_by BIGINT UNSIGNED NULL,
+  action_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  location VARCHAR(120),
+  CONSTRAINT fk_logs_order FOREIGN KEY (order_id) REFERENCES orders(id),
+  CONSTRAINT fk_logs_user FOREIGN KEY (action_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS trips (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  trip_no VARCHAR(50) NOT NULL UNIQUE,
+  trip_date DATE NOT NULL,
+  vehicle VARCHAR(80),
+  driver_name VARCHAR(120),
+  origin_border VARCHAR(120),
+  dest_border VARCHAR(120),
+  status ENUM('PLANNED','ON_ROUTE','CROSSING','ARRIVED','CLOSED') NOT NULL DEFAULT 'PLANNED',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS trip_orders (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  trip_id BIGINT UNSIGNED NOT NULL,
+  order_id BIGINT UNSIGNED NOT NULL,
+  loaded_at TIMESTAMP NULL,
+  unloaded_at TIMESTAMP NULL,
+  sequence_no INT NULL,
+  CONSTRAINT fk_trip_orders_trip FOREIGN KEY (trip_id) REFERENCES trips(id),
+  CONSTRAINT fk_trip_orders_order FOREIGN KEY (order_id) REFERENCES orders(id),
+  UNIQUE KEY uq_trip_order (trip_id, order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS payments (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT UNSIGNED NOT NULL,
+  type ENUM('freight','customs','fee') NOT NULL DEFAULT 'freight',
+  method ENUM('cash','transfer','other') NOT NULL DEFAULT 'transfer',
+  amount DECIMAL(12,2) NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'THB',
+  paid_at TIMESTAMP NULL,
+  ref_no VARCHAR(120),
+  status ENUM('PENDING','PAID','FAILED') NOT NULL DEFAULT 'PENDING',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cod_settlements (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT UNSIGNED NOT NULL,
+  cod_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  collected_at TIMESTAMP NULL,
+  remitted_at TIMESTAMP NULL,
+  remitted_to VARCHAR(180),
+  status ENUM('PENDING','COLLECTED','REMITTED') NOT NULL DEFAULT 'PENDING',
+  note TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_cod_order FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
