@@ -19,7 +19,15 @@ export async function login(req, res) {
     if (!ok) return res.render('auth/login', { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', title: 'เข้าสู่ระบบ' });
 
     req.session.user = { id: user.id, username: user.username, role: user.role, name: user.name };
-    res.redirect('/dashboard');
+
+    // Force save session before redirect to prevent race conditions
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.render('auth/login', { error: 'เกิดข้อผิดพลาดในการบันทึกเซสชัน', title: 'เข้าสู่ระบบ' });
+      }
+      res.redirect('/dashboard');
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.render('auth/login', { error: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่ภายหลัง', title: 'เข้าสู่ระบบ' });

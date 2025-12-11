@@ -57,11 +57,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+app.set('trust proxy', 1); // Trust first proxy (Plesk/Nginx)
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Allow HTTP (Fix for "Silent" login loop on non-SSL)
+      maxAge: 1000 * 60 * 60 * 24 // 1 day
+    }
   })
 );
 
