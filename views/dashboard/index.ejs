@@ -1,0 +1,340 @@
+<div class="relative min-h-screen overflow-hidden -m-6 md:-m-8">
+  <!-- Background Blobs (Matches Login Page) -->
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-amber-500/15 rounded-full blur-[140px]"></div>
+    <div class="absolute bottom-[-20%] right-[-10%] w-[55%] h-[55%] bg-indigo-500/15 rounded-full blur-[140px]"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/60 to-slate-950/80"></div>
+  </div>
+
+  <section class="relative z-10 text-slate-50 p-6 md:p-8">
+    <div class="max-w-6xl mx-auto space-y-8">
+
+      <!-- Top Header -->
+      <div
+        class="glass-panel-dark rounded-3xl p-6 md:p-8 relative overflow-hidden backdrop-blur-md border border-white/10 shadow-2xl">
+        <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-amber-500 font-semibold mb-2">System Control by SNG </p>
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight text-white">แดชบอร์ดขนส่งไทย-ลาว</h1>
+            <p class="text-slate-400 mt-2 max-w-2xl">ภาพรวมสถานะ การเงิน และปริมาณงานแบบเรียลไทม์</p>
+            <div class="flex flex-wrap gap-3 mt-6">
+              <a href="/orders/new"
+                class="cta-primary text-sm inline-flex items-center gap-2 px-4 py-3 shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-plus"></i> สร้างออเดอร์
+              </a>
+              <a href="/orders/scan" class="cta-ghost text-sm inline-flex items-center gap-2 px-4 py-3">
+                <i class="fa-solid fa-qrcode"></i> สแกนบาร์โค้ด
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Card 1: Today Orders -->
+        <div
+          class="glass-panel-dark rounded-xl p-2 hover:-translate-y-1 transition-all duration-300 border-l-2 border-indigo-250 flex flex-col items-center justify-center text-center gap-1 shadow-lg backdrop-blur-sm">
+          <div class="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-200">
+            <i class="fa-solid fa-box text-lg"></i>
+          </div>
+          <div>
+            <p class="text-[4.5px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">ออเดอร์วันนี้</p>
+            <h3 class="text-xl font-black text-white font-['Prompt'] leading-none">
+              <%= kpi.todayOrders %>
+            </h3>
+            <span class="text-[9px] font-bold bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full">New</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Today Revenue -->
+        <div
+          class="glass-panel-dark rounded-xl p-2 hover:-translate-y-1 transition-all duration-300 border-l-2 border-emerald-500 flex flex-col items-center justify-center text-center gap-1 shadow-lg backdrop-blur-sm">
+          <div class="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
+            <i class="fa-solid fa-coins text-lg"></i>
+          </div>
+          <div>
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">รายได้วันนี้</p>
+            <h3 class="text-xl font-black text-white font-['Prompt'] leading-none">
+              ฿<%= Number(kpi.todayRevenue).toLocaleString() %>
+            </h3>
+            <p class="text-[9px] text-emerald-400 font-bold mt-0.5">
+              +฿<%= Number(kpi.todayProfit).toLocaleString() %>
+            </p>
+          </div>
+        </div>
+
+        <!-- Card 3: Month Orders -->
+        <div
+          class="glass-panel-dark rounded-xl p-2 hover:-translate-y-1 transition-all duration-300 border-l-2 border-slate-500 flex items-center gap-2 shadow-lg backdrop-blur-sm">
+          <div class="p-1.5 bg-slate-700/30 rounded-lg text-slate-400">
+            <i class="fa-solid fa-truck-fast text-lg"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">ออเดอร์เดือนนี้</p>
+            <div class="flex justify-between items-baseline">
+              <h3 class="text-xl font-black text-white font-['Prompt'] leading-none">
+                <%= kpi.monthOrders %>
+              </h3>
+              <span class="text-[9px] text-slate-500">85% queue</span>
+            </div>
+            <div class="w-full bg-slate-700 h-1 rounded-full overflow-hidden mt-1">
+              <div class="bg-indigo-500 h-full rounded-full" style="width: 75%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Month Revenue -->
+        <div
+          class="glass-panel-dark rounded-xl p-2 hover:-translate-y-1 transition-all duration-300 border-l-2 border-amber-500 flex items-center gap-2 shadow-lg backdrop-blur-sm">
+          <div class="p-1.5 bg-amber-500/10 rounded-lg text-amber-400">
+            <i class="fa-solid fa-trophy text-lg"></i>
+          </div>
+          <div>
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">รายได้เดือนนี้</p>
+            <h3 class="text-xl font-black text-white font-['Prompt'] leading-none">
+              ฿<%= Number(kpi.monthRevenue).toLocaleString() %>
+            </h3>
+            <p class="text-[9px] text-amber-400 font-bold mt-0.5">
+              +฿<%= Number(kpi.monthProfit).toLocaleString() %>
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Chart + Direction -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="glass-panel-dark rounded-xl p-1.5 shadow-xl lg:col-span-2 border border-white/5 backdrop-blur-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                สถิติรายได้ 30 วัน
+              </h2>
+              <p class="text-sm text-slate-400">แนวโน้มรายได้และกำไรแบบรายวัน</p>
+            </div>
+          </div>
+          <div class="h-64">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel-dark rounded-xl p-1.5 shadow-xl border border-white/5 backdrop-blur-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-arrows-turn-right text-indigo-400"></i>
+                สัดส่วนทิศทางขนส่ง
+              </h2>
+              <p class="text-sm text-slate-400">เทียบ TH → LA และ LA → TH</p>
+            </div>
+          </div>
+          <div class="h-56 flex items-center justify-center">
+            <canvas id="directionChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Latest Orders -->
+      <div class="glass-panel-dark rounded-xl shadow-xl overflow-hidden border border-white/5 backdrop-blur-sm">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-indigo-400"></i>
+            ออเดอร์ล่าสุด
+          </h2>
+          <a href="/orders" class="text-sm text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+            ดูทั้งหมด
+            <i class="fa-solid fa-arrow-right"></i>
+          </a>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm table-dark">
+            <thead>
+              <tr class="bg-black/20 text-slate-300">
+                <th class="text-left py-3 px-6 font-semibold uppercase tracking-wider text-xs">เลขงาน</th>
+                <th class="text-left py-3 px-6 font-semibold uppercase tracking-wider text-xs">ทิศทาง</th>
+                <th class="text-left py-3 px-6 font-semibold uppercase tracking-wider text-xs">สถานะ</th>
+                <th class="text-right py-3 px-6 font-semibold uppercase tracking-wider text-xs">COD</th>
+                <th class="text-right py-3 px-6 font-semibold uppercase tracking-wider text-xs">สร้างเมื่อ</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <% latest.forEach(o=> { %>
+                <tr class="hover:bg-white/5 transition-colors">
+                  <td class="py-3 px-6 font-semibold text-white">
+                    <%= o.job_no %>
+                  </td>
+                  <td class="py-3 px-6">
+                    <% if (o.direction==='TH_TO_LA' ) { %>
+                      <span
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        TH → LA
+                      </span>
+                      <% } else { %>
+                        <span
+                          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          LA → TH
+                        </span>
+                        <% } %>
+                  </td>
+                  <td class="py-3 px-6">
+                    <span
+                      class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                      <%= o.status %>
+                    </span>
+                  </td>
+                  <td class="py-3 px-6 text-right font-semibold text-emerald-400">
+                    <% if (o.cod_amount> 0) { %>
+                      ฿<%= Number(o.cod_amount).toLocaleString() %>
+                        <% } else { %>
+                          <span class="text-slate-600">-</span>
+                          <% } %>
+                  </td>
+                  <td class="py-3 px-6 text-right text-slate-500">
+                    <%= o.created_at.toISOString().slice(0,10) %>
+                      <small class="text-slate-600 ml-1">
+                        <%= o.created_at.toISOString().slice(11,16) %>
+                      </small>
+                  </td>
+                </tr>
+                <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  Chart.defaults.font.family = "'Prompt', sans-serif";
+  Chart.defaults.color = '#94a3b8'; // Slate-400 for text
+  Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)'; // Light borders
+
+  const ordersData = <% - JSON.stringify(charts.orders30 || []) %>;
+  const revenueData = <% - JSON.stringify(charts.revenue30 || []) %>;
+  const directionData = <% - JSON.stringify(charts.directionMonthly || []) %>;
+
+  // Revenue Chart
+  const revenueCtx = document.getElementById('revenueChart');
+  const gradientRevenue = revenueCtx.getContext('2d').createLinearGradient(0, 0, 0, 300);
+  gradientRevenue.addColorStop(0, 'rgba(245, 158, 11, 0.5)'); // Amber
+  gradientRevenue.addColorStop(1, 'rgba(245, 158, 11, 0)');
+
+  new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+      labels: revenueData.map(i => i.d),
+      datasets: [{
+        label: 'Revenue',
+        data: revenueData.map(i => i.rev),
+        borderColor: '#fcd34d', // Lighter Amber
+        backgroundColor: gradientRevenue,
+        borderWidth: 4,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#1e293b', // Dark bg
+        pointBorderColor: '#fcd34d',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 8,
+        pointHoverBackgroundColor: '#fcd34d',
+        pointHoverBorderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#f8fafc',
+          bodyColor: '#e2e8f0',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false,
+          callbacks: {
+            label: function (context) {
+              return '฿' + context.parsed.y.toLocaleString();
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            borderDash: [4, 4],
+            color: 'rgba(255, 255, 255, 0.05)'
+          },
+          ticks: {
+            color: '#64748b',
+            callback: function (value) {
+              if (value >= 1000) return '฿' + (value / 1000).toFixed(0) + 'k';
+              return '฿' + value;
+            }
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748b', maxTicksLimit: 10 }
+        }
+      }
+    }
+  });
+
+  // Direction Chart
+  const directionCtx = document.getElementById('directionChart');
+  const ymLabels = [...new Set(directionData.map(i => i.ym))];
+  const thToLa = ymLabels.map(l => {
+    const row = directionData.find(i => i.ym === l && i.direction === 'TH_TO_LA');
+    return row ? row.cnt : 0;
+  });
+  const laToTh = ymLabels.map(l => {
+    const row = directionData.find(i => i.ym === l && i.direction === 'LA_TO_TH');
+    return row ? row.cnt : 0;
+  });
+
+  new Chart(directionCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['TH → LA', 'LA → TH'],
+      datasets: [{
+        data: [
+          thToLa.reduce((a, b) => a + b, 0),
+          laToTh.reduce((a, b) => a + b, 0)
+        ],
+        backgroundColor: [
+          '#818cf8', // Indigo 400
+          '#fbbf24'  // Amber 400
+        ],
+        borderColor: 'rgba(15, 23, 42, 0.5)', // Match card bg
+        borderWidth: 4,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25, color: '#e2e8f0', font: { size: 12 } } },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          bodyFont: { size: 14 }
+        }
+      },
+      cutout: '75%',
+      animation: {
+        animateScale: true,
+        animateRotate: true
+      }
+    }
+  });
+</script>

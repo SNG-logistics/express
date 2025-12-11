@@ -1,0 +1,180 @@
+<div class="max-w-3xl mx-auto animate-fade-in">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                <span class="bg-amber-500 w-1.5 h-8 rounded-full inline-block"></span>
+                <%= mode==='create' ? 'เพิ่มลูกค้าใหม่' : 'แก้ไขข้อมูลลูกค้า' %>
+            </h1>
+            <p class="text-slate-400 mt-2 ml-5 text-sm">
+                <a href="/customers" class="hover:text-amber-400 transition-colors">จัดการลูกค้า</a>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-600"></i>
+                <%= mode==='create' ? 'Create' : 'Edit' %>
+            </p>
+        </div>
+    </div>
+
+    <% if(error) { %>
+        <div
+            class="p-4 mb-6 bg-red-500/10 text-red-200 border border-red-500/20 rounded-xl flex items-center gap-3 animate-pulse-once">
+            <i class="fa-solid fa-circle-exclamation text-xl"></i>
+            <%= error %>
+        </div>
+        <% } %>
+
+            <div class="glass-panel-dark rounded-3xl shadow-2xl border border-white/5 overflow-hidden">
+                <div class="p-6 border-b border-white/5 bg-black/20">
+                    <h3 class="font-bold text-white flex items-center gap-2">
+                        <span
+                            class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </span>
+                        ข้อมูลลูกค้า
+                    </h3>
+                </div>
+
+                <form action="/customers/<%= mode === 'edit' ? customer.id : '' %>" method="post" class="p-8 space-y-8">
+                    <% if (mode==='create' ) { %>
+                        <!-- Create Mode -->
+                        <% } else { %>
+                            <!-- Edit Mode -->
+                            <input type="hidden" name="id" value="<%= customer.id %>">
+                            <% } %>
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div class="group">
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-amber-500 transition-colors">ประเภทลูกค้า
+                                            <span class="text-amber-500">*</span></label>
+                                        <div class="relative">
+                                            <select name="type"
+                                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white appearance-none focus:ring-amber-500 focus:border-amber-500 cursor-pointer hover:border-slate-600 transition-colors">
+                                                <option value="shop" <%=customer.type==='shop' ? 'selected' : '' %>
+                                                    >ร้านค้า (Shop)</option>
+                                                <option value="person" <%=customer.type==='person' ? 'selected' : '' %>
+                                                    >บุคคลธรรมดา (Person)</option>
+                                            </select>
+                                            <div
+                                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="group">
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-amber-500 transition-colors">ชื่อลูกค้า
+                                            / ร้านค้า <span class="text-amber-500">*</span></label>
+                                        <input type="text" name="name" value="<%= customer.name || '' %>" required
+                                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600 transition-colors"
+                                            placeholder="เช่น ร้าน เจ๊แดง การค้า">
+                                    </div>
+
+                                    <div class="group">
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-amber-500 transition-colors">เลขผู้เสียภาษี
+                                            (Tax ID)</label>
+                                        <input type="text" name="tax_id" value="<%= customer.tax_id || '' %>"
+                                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600 transition-colors"
+                                            placeholder="13 หลัก (ถ้ามี)">
+                                    </div>
+
+                                    <div class="group">
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-amber-500 transition-colors">เบอร์โทรศัพท์</label>
+                                        <input type="text" name="phone" value="<%= customer.phone || '' %>"
+                                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600 transition-colors"
+                                            placeholder="08x-xxx-xxxx">
+                                    </div>
+
+                                    <div class="md:col-span-2 group">
+                                        <label
+                                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-amber-500 transition-colors">Email</label>
+                                        <input type="email" name="email" value="<%= customer.email || '' %>"
+                                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600 transition-colors"
+                                            placeholder="example@email.com">
+                                    </div>
+                                </div>
+
+                                <div class="border-t border-white/5 pt-8 mt-4">
+                                    <h3 class="font-bold text-white mb-6 flex items-center gap-2">
+                                        <span
+                                            class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                                            <i class="fa-solid fa-location-dot"></i>
+                                        </span>
+                                        ที่อยู่จัดส่ง
+                                    </h3>
+                                    <div class="grid md:grid-cols-2 gap-6">
+                                        <div class="group">
+                                            <label
+                                                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-400 transition-colors">ประเทศ</label>
+                                            <div class="relative">
+                                                <select name="country"
+                                                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white appearance-none focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer hover:border-slate-600 transition-colors">
+                                                    <option value="Thailand" <%=(!customer.country ||
+                                                        customer.country==='Thailand' ) ? 'selected' : '' %>>Thailand
+                                                    </option>
+                                                    <option value="Laos" <%=customer.country==='Laos' ? 'selected' : ''
+                                                        %>>Laos</option>
+                                                </select>
+                                                <div
+                                                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="group">
+                                            <label
+                                                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-400 transition-colors">จังหวัด
+                                                / แขวง</label>
+                                            <input type="text" name="province" value="<%= customer.province || '' %>"
+                                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors">
+                                        </div>
+                                        <div class="group">
+                                            <label
+                                                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-400 transition-colors">เขต
+                                                / อำเภอ / เมือง</label>
+                                            <input type="text" name="city" value="<%= customer.city || '' %>"
+                                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors">
+                                        </div>
+                                        <div class="md:col-span-2 group">
+                                            <label
+                                                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-400 transition-colors">ที่อยู่ละเอียด</label>
+                                            <textarea name="address" rows="3"
+                                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors"
+                                                placeholder="บ้านเลขที่, ถนน, ซอย..."><%= customer.address || '' %></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-3 pt-8 border-t border-white/5">
+                                    <a href="/customers"
+                                        class="px-6 py-3 rounded-xl text-slate-400 font-bold hover:bg-white/5 hover:text-white transition-all">ยกเลิก</a>
+                                    <% if (mode==='edit' ) { %>
+                                        <div class="flex-1"></div>
+                                        <button type="button" onclick="confirmDelete('<%= customer.id %>')"
+                                            class="px-6 py-3 rounded-xl text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all mr-auto font-medium">
+                                            <i class="fa-solid fa-trash mr-2"></i> ลบลูกค้า
+                                        </button>
+                                        <% } %>
+                                            <button type="submit" class="cta-primary px-8 py-3 flex items-center gap-2">
+                                                <i class="fa-solid fa-save"></i> บันทึกข้อมูล
+                                            </button>
+                                </div>
+                </form>
+            </div>
+
+            <% if (mode==='edit' ) { %>
+                <form id="deleteForm-<%= customer.id %>" action="/customers/<%= customer.id %>/delete" method="post"
+                    class="hidden">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                </form>
+                <script>
+                    function confirmDelete(id) {
+                        if (confirm('คุณแน่ใจหรือไม่ที่จะลบลูกค้ารายนี้?')) {
+                            document.getElementById('deleteForm-' + id).submit();
+                        }
+                    }
+                </script>
+                <% } %>
+</div>

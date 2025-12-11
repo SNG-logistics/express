@@ -1,0 +1,97 @@
+<div class="max-w-7xl mx-auto">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 animate-fade-in">
+    <div>
+      <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+        <span class="bg-indigo-500 w-1.5 h-8 rounded-full inline-block"></span>
+        รอบรถข้ามแดน
+      </h1>
+      <p class="text-slate-400 mt-2 ml-6 text-sm">จัดการรอบการขนส่งและติดตามสถานะรถ</p>
+    </div>
+    <a href="/trips/new"
+      class="cta-primary-dark text-sm inline-flex items-center gap-2 group px-6 py-3 rounded-full font-semibold shadow-lg shadow-indigo-500/20 transition-transform hover:scale-105 active:scale-95">
+      <i class="fa-solid fa-plus group-hover:rotate-90 transition-transform"></i> สร้างรอบรถ
+    </a>
+  </div>
+
+  <div
+    class="glass-panel-dark card-elevated rounded-3xl overflow-hidden shadow-2xl border border-white/5 animate-fade-in-up">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left table-premium">
+        <thead class="text-xs text-slate-400 uppercase bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="py-4 px-6 font-semibold tracking-wider">Trip No</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Date</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Route</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Status</th>
+            <th class="py-4 px-6 font-semibold tracking-wider text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% trips.forEach(t=> { %>
+            <tr class="hover:bg-white/5 transition-colors group">
+              <td class="py-4 px-6">
+                <div class="flex items-center gap-4">
+                  <div
+                    class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform shadow-inner">
+                    <i class="fa-solid fa-truck-fast"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-white font-mono group-hover:text-indigo-300 transition-colors">
+                      <%= t.trip_no %>
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                      <%= t.vehicle || 'No Vehicle' %>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-6 font-medium">
+                <div class="flex items-center gap-2 text-slate-400">
+                  <i class="fa-regular fa-calendar-alt text-slate-600"></i>
+                  <%= t.trip_date.toISOString().slice(0,10) %>
+                </div>
+              </td>
+              <td class="py-4 px-6">
+                <div
+                  class="inline-flex items-center gap-2 bg-slate-900/50 rounded-lg px-3 py-1.5 border border-white/5">
+                  <span class="text-xs font-bold text-slate-300">
+                    <%= t.origin_border %>
+                  </span>
+                  <i class="fa-solid fa-arrow-right text-slate-600 text-[10px]"></i>
+                  <span class="text-xs font-bold text-slate-300">
+                    <%= t.dest_border %>
+                  </span>
+                </div>
+              </td>
+              <td class="py-4 px-6">
+                <span
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide <%= t.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : t.status === 'PLANNED' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20' %>">
+                  <span
+                    class="w-1.5 h-1.5 rounded-full mr-1.5 <%= t.status === 'COMPLETED' ? 'bg-emerald-400' : t.status === 'PLANNED' ? 'bg-indigo-400' : 'bg-amber-400' %>"></span>
+                  <%= t.status %>
+                </span>
+              </td>
+              <td class="py-4 px-6 text-right">
+                <a href="/trips/<%= t.id %>"
+                  class="btn-icon-glass text-indigo-400 hover:text-white transition-colors p-2" title="ดูรายละเอียด">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            <% }) %>
+              <% if (trips.length===0) { %>
+                <tr>
+                  <td colspan="5" class="py-16 text-center text-slate-500">
+                    <div class="flex flex-col items-center justify-center">
+                      <i class="fa-solid fa-truck-moving text-5xl mb-4 opacity-20"></i>
+                      <p class="font-medium">ยังไม่มีข้อมูลรอบรถ</p>
+                      <p class="text-xs mt-1 opacity-60">สร้างรอบรถใหม่เพื่อเริ่มจัดการขนส่ง</p>
+                    </div>
+                  </td>
+                </tr>
+                <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

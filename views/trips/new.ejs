@@ -1,0 +1,146 @@
+<div class="max-w-4xl mx-auto animate-fade-in">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+        <span class="bg-indigo-500 w-1.5 h-8 rounded-full inline-block"></span>
+        สร้างรอบรถ (Create Trip)
+      </h1>
+      <p class="text-slate-400 mt-2 ml-5 text-sm">
+        <a href="/trips" class="hover:text-indigo-400 transition-colors">รอบรถ</a>
+        <i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-600"></i>
+        New Trip
+      </p>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div
+      class="p-4 mb-6 bg-red-500/10 text-red-200 border border-red-500/20 rounded-xl flex items-center gap-3 animate-pulse-once">
+      <i class="fa-solid fa-circle-exclamation text-xl"></i>
+      <%= error %>
+    </div>
+    <% } %>
+
+      <div class="glass-panel-dark rounded-3xl shadow-2xl border border-white/5 overflow-hidden">
+        <div class="p-6 border-b border-white/5 bg-black/20">
+          <h3 class="font-bold text-white flex items-center gap-2">
+            <span
+              class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+              <i class="fa-solid fa-calendar-alt"></i>
+            </span>
+            ข้อมูลการเดินทาง
+          </h3>
+        </div>
+
+        <form method="post" action="/trips" class="p-8 space-y-8">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+          <div class="grid md:grid-cols-2 gap-8">
+            <!-- Trip Info -->
+            <div class="space-y-6">
+              <div class="group">
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-white transition-colors">Trip
+                  No <span class="text-red-500">*</span></label>
+                <input name="trip_no" required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-mono focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors"
+                  placeholder="เช่น TR-2023-001">
+              </div>
+
+              <div class="group">
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-white transition-colors">วันที่ออกเดินทาง
+                  <span class="text-red-500">*</span></label>
+                <input name="trip_date" type="date" required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="group">
+                  <label
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-white transition-colors">ด่านต้นทาง</label>
+                  <input name="origin_border"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors"
+                    placeholder="ด่านหนองคาย (TH)">
+                </div>
+                <div class="group">
+                  <label
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-white transition-colors">ด่านปลายทาง</label>
+                  <input name="dest_border"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors"
+                    placeholder="ด่านท่านาแล้ง (LA)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Vehicle & Selection -->
+            <div class="space-y-6">
+              <div class="group">
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-white transition-colors">ทะเบียน/รถ</label>
+                <input name="vehicle"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors"
+                  placeholder="70-xxxx">
+              </div>
+              <div class="group">
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-white transition-colors">ชื่อคนขับ</label>
+                <input name="driver_name"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 transition-colors"
+                  placeholder="นายสมชาย ใจดี">
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Selection -->
+          <div class="border-t border-white/5 pt-8">
+            <h3 class="font-bold text-white mb-6 flex items-center gap-2">
+              <span
+                class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                <i class="fa-solid fa-box-open"></i>
+              </span>
+              เลือกออเดอร์ผูกกับรอบรถ
+            </h3>
+
+            <div class="bg-slate-900/50 rounded-2xl border border-white/5 p-4 max-h-[300px] overflow-y-auto">
+              <% if (availableOrders.length===0) { %>
+                <div class="text-center py-8 text-slate-500 flex flex-col items-center">
+                  <i class="fa-solid fa-clipboard-check text-3xl mb-3 opacity-20"></i>
+                  <p class="text-sm">ยังไม่มีออเดอร์สำหรับจัดรอบรถ (ที่สถานะพร้อมขนส่ง)</p>
+                </div>
+                <% } %>
+                  <div class="space-y-2">
+                    <% availableOrders.forEach(o=> { %>
+                      <label
+                        class="flex items-center gap-4 p-3 rounded-xl border border-white/5 hover:bg-white/5 transition-colors cursor-pointer group">
+                        <input type="checkbox" name="order_ids" value="<%= o.id %>"
+                          class="w-5 h-5 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 bg-slate-800 transition-all">
+                        <div class="flex-1 flex items-center justify-between">
+                          <div class="flex items-center gap-3">
+                            <span class="font-mono text-white font-bold group-hover:text-indigo-300 transition-colors">
+                              <%= o.job_no %>
+                            </span>
+                            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                              <%= o.direction %>
+                            </span>
+                          </div>
+                          <span class="text-xs text-slate-500 font-mono">
+                            <%= o.status %>
+                          </span>
+                        </div>
+                      </label>
+                      <% }) %>
+                  </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-6 border-t border-white/5">
+            <a href="/trips"
+              class="px-6 py-3 rounded-xl text-slate-400 font-bold hover:bg-white/5 hover:text-white transition-all">ยกเลิก</a>
+            <button class="cta-primary-dark px-8 py-3 flex items-center gap-2">
+              <i class="fa-solid fa-save"></i> บันทึกรอบรถ
+            </button>
+          </div>
+        </form>
+      </div>
+</div>
