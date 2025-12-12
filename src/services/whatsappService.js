@@ -8,7 +8,15 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-acceleration',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ]
     }
 });
 
@@ -58,17 +66,26 @@ export const getQr = () => qrCodeData;
 export const getStatus = () => connectionStatus;
 
 export const restartClient = async () => {
+    console.log('[WhatsApp] Restarting client...');
     try {
         await client.destroy();
+        console.log('[WhatsApp] Client destroyed');
     } catch (e) { console.error('Error destroying client', e); }
 
     isClientReady = false;
     connectionStatus = 'DISCONNECTED';
     qrCodeData = null;
 
+    // Wait a bit to ensure resources are freed
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
     try {
+        console.log('[WhatsApp] Re-initializing client...');
         await client.initialize();
-    } catch (e) { console.error('Error re-initializing client', e); }
+    } catch (e) {
+        console.error('Error re-initializing client', e);
+        connectionStatus = 'ERROR';
+    }
 };
 
 /**
