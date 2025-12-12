@@ -57,15 +57,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-app.set('trust proxy', 1); // Trust first proxy (Plesk/Nginx)
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Trust proxy for secure cookies behind Nginx/Plesk
+app.set('trust proxy', 1);
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'dev_secret',
+    secret: process.env.SESSION_SECRET || 'sng_logistics_secret_key_9999',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Allow HTTP (Fix for "Silent" login loop on non-SSL)
+      secure: isProduction, // true on Production (HTTPS), false on Local
+      httpOnly: true,
+      sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24 // 1 day
     }
   })
