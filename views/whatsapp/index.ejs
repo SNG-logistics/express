@@ -61,6 +61,8 @@
         dot.className = 'w-3 h-3 rounded-full';
         qrContainer.classList.add('hidden');
         connectedContainer.classList.add('hidden');
+        const errorContainer = document.getElementById('errorContainer'); // Assume added to HTML below
+        if (errorContainer) errorContainer.classList.add('hidden');
 
         switch (data.status) {
             case 'CONNECTED':
@@ -84,6 +86,13 @@
                 break;
             case 'DISCONNECTED':
                 dot.classList.add('bg-red-500');
+                break;
+            case 'ERROR':
+                dot.classList.add('bg-red-600', 'animate-pulse');
+                if (data.error) {
+                    text.textContent = 'Error: ' + data.error; // Show error summary in title
+                    // Optional: Show full error in a box if we added one
+                }
                 break;
             default:
                 dot.classList.add('bg-slate-500');

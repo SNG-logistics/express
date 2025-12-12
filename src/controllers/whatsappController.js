@@ -1,4 +1,4 @@
-import { getQr, getStatus, restartClient } from '../services/whatsappService.js';
+import { getQr, getStatus, getLastError, restartClient } from '../services/whatsappService.js';
 
 export function showStatus(req, res) {
     res.render('whatsapp/index', {
@@ -10,7 +10,8 @@ export function showStatus(req, res) {
 export function getStatusApi(req, res) {
     res.json({
         status: getStatus(),
-        qr: getQr()
+        qr: getQr(),
+        error: getLastError()
     });
 }
 

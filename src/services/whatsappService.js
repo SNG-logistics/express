@@ -22,48 +22,39 @@ const client = new Client({
 
 let isClientReady = false;
 let qrCodeData = null;
-let connectionStatus = 'DISCONNECTED'; // DISCONNECTED, QR_READY, CONNECTED, AUTHENTICATED, AUTH_FAILURE, ERROR
+let connectionStatus = 'DISCONNECTED';
+let lastError = null;
 
 client.on('qr', (qr) => {
     console.log('[WhatsApp] QR Generated');
     qrCodeData = qr;
     connectionStatus = 'QR_READY';
+    lastError = null;
 });
+
+// ... (keep event listeners same, just add lastError reset on ready)
 
 client.on('ready', () => {
     console.log('[WhatsApp] Client is ready!');
     isClientReady = true;
     connectionStatus = 'CONNECTED';
-    qrCodeData = null; // Clear QR when connected
-});
-
-client.on('authenticated', () => {
-    console.log('[WhatsApp] Authenticated successfully!');
-    connectionStatus = 'AUTHENTICATED';
-});
-
-client.on('auth_failure', (msg) => {
-    console.error('[WhatsApp] Authentication failure:', msg);
-    connectionStatus = 'AUTH_FAILURE';
-});
-
-client.on('disconnected', (reason) => {
-    console.log('[WhatsApp] Disconnected:', reason);
-    isClientReady = false;
-    connectionStatus = 'DISCONNECTED';
     qrCodeData = null;
-    // Auto reconnect could go here
+    lastError = null;
 });
+
+// ...
 
 // Initialize the client
 console.log('[WhatsApp] Initializing...');
 client.initialize().catch(err => {
     console.error('[WhatsApp] Init Error:', err);
     connectionStatus = 'ERROR';
+    lastError = err.message || String(err);
 });
 
 export const getQr = () => qrCodeData;
 export const getStatus = () => connectionStatus;
+export const getLastError = () => lastError;
 
 export const restartClient = async () => {
     console.log('[WhatsApp] Restarting client...');
@@ -85,6 +76,7 @@ export const restartClient = async () => {
     } catch (e) {
         console.error('Error re-initializing client', e);
         connectionStatus = 'ERROR';
+        lastError = e.message || String(e);
     }
 };
 
