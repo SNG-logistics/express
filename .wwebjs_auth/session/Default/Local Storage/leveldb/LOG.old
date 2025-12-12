@@ -1,0 +1,15 @@
+2025/12/11-09:18:12.876 11290 Reusing MANIFEST C:\Users\acer\OneDrive\เดสก์ท็อป\ขนส่งไทยลาว\sng-logistics\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2025/12/11-09:18:12.876 11290 Recovering log #22
+2025/12/11-09:18:12.877 11290 Reusing old log C:\Users\acer\OneDrive\เดสก์ท็อป\ขนส่งไทยลาว\sng-logistics\.wwebjs_auth\session\Default\Local Storage\leveldb/000022.log 
+2025/12/11-10:48:28.873 142c0 Level-0 table #26: started
+2025/12/11-10:48:28.899 142c0 Level-0 table #26: 17165 bytes OK
+2025/12/11-10:48:28.902 142c0 Delete type=0 #22
+2025/12/11-10:48:28.903 142c0 Compacting 4@0 + 1@1 files
+2025/12/11-10:48:28.912 142c0 Generated table #27@0: 75 keys, 6928 bytes
+2025/12/11-10:48:28.912 142c0 Compacted 4@0 + 1@1 files => 6928 bytes
+2025/12/11-10:48:28.913 142c0 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/12/11-10:48:28.914 142c0 Delete type=2 #14
+2025/12/11-10:48:28.914 142c0 Delete type=2 #17
+2025/12/11-10:48:28.914 142c0 Delete type=2 #20
+2025/12/11-10:48:28.915 142c0 Delete type=2 #23
+2025/12/11-10:48:28.915 142c0 Delete type=2 #26

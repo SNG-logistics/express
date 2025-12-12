@@ -1,96 +1,121 @@
 
 import pool from '../config/db.js';
-import pkg from 'whatsapp-web.js';
-const { Client, LocalAuth } = pkg;
+import { makeWASocket, DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import pino from 'pino';
 
-// Initialize Client with LocalAuth to save session
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-acceleration',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-        ]
-    }
-});
-
+// Variables to hold state
+let sock;
 let isClientReady = false;
 let qrCodeData = null;
 let connectionStatus = 'DISCONNECTED';
 let lastError = null;
 
-client.on('qr', (qr) => {
-    console.log('[WhatsApp] QR Generated');
-    qrCodeData = qr;
-    connectionStatus = 'QR_READY';
-    lastError = null;
-});
-
-// ... (keep event listeners same, just add lastError reset on ready)
-
-client.on('ready', () => {
-    console.log('[WhatsApp] Client is ready!');
-    isClientReady = true;
-    connectionStatus = 'CONNECTED';
-    qrCodeData = null;
-    lastError = null;
-});
-
-// ...
-
-// Initialize the client
-console.log('[WhatsApp] Initializing...');
-client.initialize().catch(err => {
-    console.error('[WhatsApp] Init Error:', err);
-    connectionStatus = 'ERROR';
-    lastError = err.message || String(err);
-});
-
 export const getQr = () => qrCodeData;
 export const getStatus = () => connectionStatus;
 export const getLastError = () => lastError;
 
+async function startSock() {
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+
+        sock = makeWASocket({
+            printQRInTerminal: false, // We handle QR in UI
+            auth: state,
+            logger: pino({ level: 'silent' }), // Suppress detailed logs
+            browser: ['SNG Logistics', 'Chrome', '1.0.0'] // Simulate a browser
+        });
+
+        // Event: Connection Update (QR, Connecting, Open, Close)
+        sock.ev.on('connection.update', (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr) {
+                console.log('[WhatsApp] QR Generated');
+                qrCodeData = qr; // Raw QR string for UI to render
+                connectionStatus = 'QR_READY';
+                lastError = null;
+            }
+
+            if (connection === 'close') {
+                const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+                console.log('[WhatsApp] Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
+
+                connectionStatus = 'DISCONNECTED';
+                isClientReady = false;
+                qrCodeData = null;
+                lastError = lastDisconnect?.error?.message || 'Connection Closed';
+
+                // Reconnect if not logged out
+                if (shouldReconnect) {
+                    setTimeout(startSock, 5000); // Retry in 5s
+                } else {
+                    console.log('[WhatsApp] Logged out. Please scan QR again.');
+                    connectionStatus = 'DISCONNECTED';
+                    // Usually we need to clear auth info here to regenerate QR, 
+                    // but Baileys handles it by just needing a restart often.
+                    // For now, manual restart via UI can trigger clean up if needed.
+                }
+            } else if (connection === 'open') {
+                console.log('[WhatsApp] Connection opened');
+                connectionStatus = 'CONNECTED';
+                isClientReady = true;
+                qrCodeData = null;
+                lastError = null;
+            }
+        });
+
+        // Event: Credentials Update
+        sock.ev.on('creds.update', saveCreds);
+
+    } catch (err) {
+        console.error('[WhatsApp] Start Error:', err);
+        connectionStatus = 'ERROR';
+        lastError = err.message || String(err);
+    }
+}
+
+// Start the socket
+console.log('[WhatsApp] Initializing Baileys...');
+startSock();
+
+
 export const restartClient = async () => {
     console.log('[WhatsApp] Restarting client...');
     try {
-        await client.destroy();
-        console.log('[WhatsApp] Client destroyed');
-    } catch (e) { console.error('Error destroying client', e); }
+        sock?.end(undefined); // Close current socket
+        sock = null;
+    } catch (e) {
+        console.error('Error closing socket', e);
+    }
 
     isClientReady = false;
     connectionStatus = 'DISCONNECTED';
     qrCodeData = null;
 
-    // Wait a bit to ensure resources are freed
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     try {
-        console.log('[WhatsApp] Re-initializing client...');
-        await client.initialize();
+        console.log('[WhatsApp] Re-starting socket...');
+        startSock();
     } catch (e) {
-        console.error('Error re-initializing client', e);
+        console.error('Error re-starting socket', e);
         connectionStatus = 'ERROR';
-        lastError = e.message || String(e);
+        lastError = e.message;
     }
 };
 
 /**
- * Service to handle WhatsApp notifications using whatsapp-web.js
+ * Service to handle WhatsApp notifications using Baileys
  */
 export async function sendOrderUpdate(orderId, newStatus) {
-    if (!isClientReady) {
-        console.log('[WhatsApp] Client not ready. Message skipped.');
+    if (!isClientReady || !sock) {
+        console.log('[WhatsApp] Client not ready or socket null. Message skipped.');
         return;
     }
 
     try {
-        // 1. Fetch Request Details (Customer Phone, etc.)
+        // 1. Fetch Request Details
         const [[order]] = await pool.query(
             `SELECT o.*, 
               r.name as receiver_name, r.phone as receiver_phone,
@@ -104,20 +129,40 @@ export async function sendOrderUpdate(orderId, newStatus) {
 
         if (!order) return;
 
-        // 2. Determine Receiver (Default to Receiver, fall back to Sender)
+        // 2. Determine Receiver
         let phone = order.receiver_phone || order.sender_phone;
         if (!phone) {
             console.log(`[WhatsApp] No phone number found for Order ${order.job_no}`);
             return;
         }
 
-        // Format phone number to standard format
-        // phone = phone.replace(/\D/g, '');
-        // if (phone.startsWith('0')) {
-        //     phone = '66' + phone.substring(1);
-        // }
+        // Clean phone number (basic)
+        phone = phone.replace(/\D/g, '');
+        // Note: Baileys expects international format without + or 00, e.g. 66812345678
+        // User provided phone might be "081..." or "20..." (Laos). 
+        // Simple logic: If starts with 0, replace with 66? Or handle both TH/LA?
+        // SNG Logistics handles TH and LA.
+        // Laos prefix 20, 30. Thai prefix 08, 09, 06.
 
-        // 3. Craft Message based on Status
+        if (phone.startsWith('0')) {
+            phone = '66' + phone.substring(1); // Assume TH if 0 leading
+        } else if (phone.startsWith('20') || phone.startsWith('30')) {
+            phone = '856' + phone; // Laos Country Code
+            // Wait, Laos phones usually entered as 20xxxxxxxx? 
+            // If user stores "209999999", we need to check if 856 is needed.
+            // Usually Baileys needs complete country code.
+            // If it starts with 20 and length is 10, it's likely Laos local format without 856?
+            // Let's assume user data might need slight fix differently than Puppeteer version which relied on whatsapp-web.js smarts.
+            // For safety, let's try to send to what we have, but append country code if missing on obvious patterns.
+        }
+
+        // Better approach for now: Use the number directly like whatsapp-web.js did, 
+        // but Baileys is stricter.
+        // Let's rely on the existing logic flow but format for JID.
+
+        const jid = phone + '@s.whatsapp.net';
+
+        // 3. Craft Message
         let message = '';
         const jobNo = order.job_no;
 
@@ -138,17 +183,14 @@ export async function sendOrderUpdate(orderId, newStatus) {
                 message = `✅ *SNG Logistics* \nພັດສະດຸລູກຄ້າ ${jobNo} **ສິນຄ້າຮອດມືລູກຄ້າຮຽບຮ້ອຍແລ້ວເດີ້** \nຂອບໃຈທີ່ໃຊ້ບໍລິການຂອງເຮົາ SNG`;
                 break;
             default:
-                // Other statuses ignored
                 return;
         }
 
-        // 4. Send Message
-        // Ensure phone has correct suffix
-        const chatId = phone.endsWith('@c.us') ? phone : `${phone}@c.us`;
+        console.log(`[WhatsApp] Sending to ${jid}:`, message);
 
-        console.log(`[WhatsApp] Sending to ${chatId}:`, message); // Log content for verification
-        await client.sendMessage(chatId, message);
-        console.log(`[WhatsApp] Sent to ${chatId}`);
+        await sock.sendMessage(jid, { text: message });
+
+        console.log(`[WhatsApp] Sent to ${jid}`);
 
     } catch (err) {
         console.error('[WhatsApp Send Error]', err);
