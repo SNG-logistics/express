@@ -10,9 +10,53 @@ let qrCodeData = null;
 let connectionStatus = 'DISCONNECTED';
 let lastError = null;
 
+const logs = [];
+function addLog(msg) {
+    const timestamp = new Date().toLocaleTimeString();
+    logs.unshift(`[${timestamp}] ${msg}`);
+    if (logs.length > 50) logs.pop();
+}
+
 export const getQr = () => qrCodeData;
 export const getStatus = () => connectionStatus;
 export const getLastError = () => lastError;
+export const getLogs = () => logs;
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export const deleteSession = async () => {
+    addLog('Deleting session and restarting...');
+    try {
+        if (sock) {
+            sock.end(undefined);
+            sock = null;
+        }
+    } catch (e) {
+        addLog('Error closing socket: ' + e.message);
+    }
+
+    isClientReady = false;
+    connectionStatus = 'DISCONNECTED';
+    qrCodeData = null;
+
+    // Remove auth folder
+    const authPath = path.join(__dirname, '../../auth_info_baileys');
+    try {
+        if (fs.existsSync(authPath)) {
+            fs.rmSync(authPath, { recursive: true, force: true });
+            addLog('Auth directory deleted.');
+        }
+    } catch (e) {
+        addLog('Error deleting auth dir: ' + e.message);
+    }
+
+    // Wait and restart
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    startSock();
+};
 
 async function startSock() {
     try {
@@ -31,6 +75,7 @@ async function startSock() {
 
             if (qr) {
                 console.log('[WhatsApp] QR Generated');
+                addLog('QR Generated');
                 qrCodeData = qr; // Raw QR string for UI to render
                 connectionStatus = 'QR_READY';
                 lastError = null;
@@ -39,6 +84,7 @@ async function startSock() {
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
                 console.log('[WhatsApp] Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
+                addLog(`Connection closed. Reconnecting: ${shouldReconnect}. Error: ${lastDisconnect?.error?.message}`);
 
                 connectionStatus = 'DISCONNECTED';
                 isClientReady = false;
@@ -50,6 +96,7 @@ async function startSock() {
                     setTimeout(startSock, 5000); // Retry in 5s
                 } else {
                     console.log('[WhatsApp] Logged out. Please scan QR again.');
+                    addLog('Logged out. Please scan QR again.');
                     connectionStatus = 'DISCONNECTED';
                     // Usually we need to clear auth info here to regenerate QR, 
                     // but Baileys handles it by just needing a restart often.
@@ -57,6 +104,7 @@ async function startSock() {
                 }
             } else if (connection === 'open') {
                 console.log('[WhatsApp] Connection opened');
+                addLog('Connection opened/Active');
                 connectionStatus = 'CONNECTED';
                 isClientReady = true;
                 qrCodeData = null;
@@ -69,6 +117,7 @@ async function startSock() {
 
     } catch (err) {
         console.error('[WhatsApp] Start Error:', err);
+        addLog('Start Error: ' + err.message);
         connectionStatus = 'ERROR';
         lastError = err.message || String(err);
     }
@@ -76,11 +125,13 @@ async function startSock() {
 
 // Start the socket
 console.log('[WhatsApp] Initializing Baileys...');
+addLog('Initializing Service...');
 startSock();
 
 
 export const restartClient = async () => {
     console.log('[WhatsApp] Restarting client...');
+    addLog('Manual Restart requested...');
     try {
         sock?.end(undefined); // Close current socket
         sock = null;
@@ -100,6 +151,7 @@ export const restartClient = async () => {
         startSock();
     } catch (e) {
         console.error('Error re-starting socket', e);
+        addLog('Error re-starting: ' + e.message);
         connectionStatus = 'ERROR';
         lastError = e.message;
     }
