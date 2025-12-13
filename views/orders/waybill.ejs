@@ -1,318 +1,375 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="lo">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SNG EXPRESS - ໃບຝາກພັດສະດຸ (4x6)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;700&display=swap" rel="stylesheet">
+    <meta charset="utf-8">
+    <title>Waybill <%= order.job_no %>
+    </title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        @media print {
-            @page {
-                size: 100mm 150mm;
-                margin: 0;
-            }
-
-            body {
-                margin: 0;
-            }
+        /* Base Reset & Font */
+        * {
+            box-sizing: border-box;
         }
 
-        html,
         body {
-            height: 100%;
+            font-family: 'Noto Sans Lao', sans-serif;
+            background: #e5e5e5;
             margin: 0;
-            padding: 0;
-            background: #eee;
-        }
-
-        body {
-            font-family: "Noto Sans Lao", Arial, sans-serif;
+            padding: 20px;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
-            padding-top: 20px;
         }
 
-        .card {
+        /* Label Container (4x6 roughly) */
+        .label-container {
             width: 100mm;
             min-height: 150mm;
             background: white;
-            border: 1px solid #111;
-            border-radius: 0;
             padding: 5mm;
-            box-sizing: border-box;
+            border-radius: 10px;
             position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
+        /* Styling matching the image */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2mm;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-style: italic;
+            font-size: 18px;
+            color: #d32f2f;
+            /* Red like image */
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .logo span {
+            color: #555;
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        .doc-title {
+            font-weight: bold;
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .barcode-section {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .tracking-number {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: -5px;
+            display: block;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        /* The main route box with dashes */
+        .route-box {
+            border-top: 1px dashed #ccc;
+            border-bottom: 1px dashed #ccc;
+            padding: 10px 0;
+            margin: 5px 0;
+        }
+
+        .big-route {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            font-weight: 800;
+            padding: 0 10px;
+        }
+
+        .sub-route {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #333;
+            padding: 0 10px;
+            margin-top: 4px;
+        }
+
+        /* Sender / Receiver Split */
+        .person-split {
+            display: flex;
+            border-bottom: 1px dashed #ccc;
+            padding: 10px 0;
+        }
+
+        .person-col {
+            flex: 1;
+            padding: 0 5px;
+            font-size: 12px;
+        }
+
+        .person-col:first-child {
+            border-right: 1px solid #eee;
+        }
+
+        .label {
+            color: #666;
+            font-size: 10px;
+        }
+
+        .val {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        /* Receiver wide box */
+        .receiver-full {
+            border-bottom: 1px dashed #ccc;
+            padding: 10px 0;
+            font-size: 12px;
+        }
+
+        /* Specs 3 columns */
+        .specs-row {
+            display: flex;
+            text-align: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #ccc;
+        }
+
+        .spec-col {
+            flex: 1;
+        }
+
+        .spec-title {
+            font-size: 11px;
+            color: #555;
+        }
+
+        .spec-val {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Payment Row */
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px dashed #ccc;
+            font-size: 12px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px dashed #ccc;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .red-text {
+            color: #d32f2f;
+        }
+
+        /* Footer */
+        .footer-note {
+            text-align: center;
+            color: #d32f2f;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .footer-thanks {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        /* Print settings */
         @media print {
             body {
                 background: none;
-                display: block;
                 padding: 0;
             }
 
-            .card {
+            .label-container {
+                border: none;
+                box-shadow: none;
                 width: 100%;
                 height: 100%;
-                border: none;
             }
 
             .no-print {
                 display: none;
             }
         }
-
-        .row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .space {
-            height: 8px;
-        }
-
-        .muted {
-            opacity: .8;
-            font-size: 11px;
-            color: #333;
-        }
-
-        .title {
-            font-weight: 800;
-            font-size: 18px;
-            line-height: 1.1;
-        }
-
-        .subtitle {
-            font-weight: 700;
-            font-size: 13px;
-        }
-
-        .tracking {
-            font-weight: 900;
-            font-size: 18px;
-            text-align: right;
-        }
-
-        .label {
-            font-weight: 800;
-            font-size: 12px;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 2px;
-        }
-
-        .field {
-            border-bottom: 1px dashed #999;
-            display: inline-block;
-            min-width: 20px;
-            padding: 0 4px;
-            font-weight: 600;
-        }
-
-        .pay {
-            color: #c40000;
-            font-weight: 900;
-            font-size: 16px;
-        }
-
-        .small {
-            font-size: 10px;
-        }
-
-        .header {
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-        }
-
-        .logo {
-            width: 62px;
-            height: 52px;
-            object-fit: contain;
-        }
-
-        .right {
-            margin-left: auto;
-            text-align: right;
-        }
-
-        .barcode-container {
-            width: 100%;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1px;
-        }
-
-        .qr-container {
-            width: 80px;
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .grid2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .section-box {
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 8px;
-            margin-bottom: 8px;
-        }
     </style>
 </head>
 
 <body>
 
-    <div class="fixed top-0 left-0 p-4 no-print">
-        <button onclick="window.print()"
-            style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">Print
-            Label</button>
+    <div class="fixed top-0 left-0 p-2 no-print">
+        <button onclick="window.print()" style="padding: 10px 20px; font-weight:bold;">PRINT</button>
     </div>
 
-    <div class="card">
-        <div class="row header">
-            <div class="row" style="align-items:center;">
-                <img class="logo" src="/images/logo.png" alt="SNG" onerror="this.style.display='none'">
-                <div>
-                    <div class="title">SNG EXPRESS</div>
-                    <div class="subtitle">ໃບຝາກພັດສະດຸ</div>
-                </div>
+    <div class="label-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <!-- Use uploaded logo if ready, else text fallback resembling image -->
+                <img src="/images/logo.png" alt="SNG EXPRESS" style="height: 30px; object-fit: contain;">
             </div>
-            <div class="right">
-                <div class="muted">ເລກຕິດຕາມ (Tracking No)</div>
-                <div class="tracking">
-                    <%= order.job_no %>
-                </div>
-                <div style="font-size: 10px;">
-                    <%= new Date(order.created_at).toLocaleString('lo-LA') %>
+            <div style="text-align: right;">
+                <div class="doc-title">ໃບຝາກພັດສະດຸ</div>
+                <div style="font-size: 10px; font-weight: normal;">ວັນທີຮັບຝາກ: <%= new
+                        Date(order.created_at).toISOString().split('T')[0] %>
                 </div>
             </div>
         </div>
 
-        <!-- Barcode and QR Row -->
-        <div class="row" style="align-items: center;">
-            <div style="flex:1;">
-                <svg id="barcode"></svg>
+        <!-- Barcode -->
+        <div class="barcode-section">
+            <svg id="barcode"></svg>
+            <div class="tracking-number">ເລກບິນ <%= order.job_no %>
             </div>
-            <div id="qrcode" class="qr-container"></div>
         </div>
 
-        <div class="space"></div>
+        <!-- Item Name Row -->
+        <div class="info-row" style="padding: 0 5px;">
+            <div>ຊື່ພັດສະດຸ: <%= order.service_type || 'General' %>
+            </div>
+        </div>
 
-        <div class="section-box">
-            <div class="label">ເສັ້ນທາງ (Route)</div>
-            <div class="muted">
-                ຈາກ (From): <span class="field" style="width: 100px;">
-                    <%= order.direction==='TH_TO_LA' ? 'Thailand (SNG)' : 'Laos (SNG)' %>
+        <!-- Route -->
+        <div class="route-box">
+            <div class="big-route">
+                <span>
+                    <%= order.direction==='TH_TO_LA' ? 'Thailand' : 'Laos' %>
                 </span>
-                →
-                ໄປ (To): <span class="field" style="width: 100px;">
-                    <%= order.direction==='TH_TO_LA' ? 'Laos (SNG)' : 'Thailand (SNG)' %>
+                <span>➜</span>
+                <span>
+                    <%= order.direction==='TH_TO_LA' ? 'Laos' : 'Thailand' %>
                 </span>
             </div>
-        </div>
-
-        <div class="section-box">
-            <div class="label">ຜູ້ສົ່ງ / ຜູ້ຮັບ (Sender / Receiver)</div>
-            <div class="muted"><b>ຜູ້ສົ່ງ (Sender):</b> <span class="field">
-                    <%= order.sender_name || '-' %>
-                </span> ເບີ: <span class="field">
-                    <%= order.sender_phone || '-' %>
-                </span></div>
-            <div class="muted" style="margin-bottom: 4px;">ທີ່ຢູ່: <span class="field"
-                    style="display:inline; border:none; text-decoration: underline;">
-                    <%= order.sender_address || '-' %>
-                </span></div>
-
-            <div style="border-top: 1px dotted #ccc; margin: 4px 0;"></div>
-
-            <div class="muted" style="font-size: 12px;"><b>ຜູ້ຮັບ (Receiver):</b> <span class="field"
-                    style="font-size: 13px; font-weight:700;">
-                    <%= order.receiver_name || '-' %>
-                </span></div>
-            <div class="muted"><b>WhatsApp:</b> <span class="field" style="font-size: 13px; font-weight:700;">
-                    <%= order.receiver_phone || '-' %>
-                </span></div>
-            <div class="muted">ທີ່ຢູ່: <span class="field"
-                    style="display:inline; border:none; text-decoration: underline;">
-                    <%= order.receiver_address || '-' %>
-                </span></div>
-        </div>
-
-        <div class="section-box">
-            <div class="label">ລາຍລະອຽດພັດສະດຸ (Detail) / ຄ່າບໍລິການ (Fee)</div>
-            <div class="grid2">
-                <div class="muted">ປະເພດ: <span class="field">
-                        <%= order.service_type || 'General' %>
-                    </span></div>
-                <div class="muted">ນ້ຳໜັກ: <span class="field">
-                        <%= order.actual_weight || order.declared_weight || '0' %>
-                    </span> kg</div>
-                <div class="muted">ຂະໜາດ: <span class="field">
-                        <%= order.actual_size || order.declared_size || '-' %>
-                    </span></div>
-                <div class="muted">ຈຳນວນ: <span class="field">1</span></div>
+            <div class="sub-route">
+                <span>ສາຂາ: SNG <%= order.direction==='TH_TO_LA' ? 'TH' : 'LA' %></span>
+                <span>➜</span>
+                <span>ສາຂາ: SNG <%= order.direction==='TH_TO_LA' ? 'LA' : 'TH' %></span>
             </div>
-            <div class="space"></div>
+        </div>
 
-            <% if (Number(order.cod_amount)> 0) { %>
-                <div class="pay">ຍອດເກັບປາຍທາງ (COD): <span class="field">
-                        <%= Number(order.cod_amount).toLocaleString() %>
-                    </span>
-                    <%= order.price_currency || 'THB' %>
+        <!-- Sender / Receiver Split -->
+        <div class="person-split">
+            <div class="person-col">
+                <div class="label">ຜູ້ສົ່ງ (From)</div>
+                <div class="val" style="font-size: 12px;">
+                    <%= order.sender_name %>
                 </div>
-                <% } else { %>
-                    <div class="pay" style="color: green;">ຈ່າຍແລ້ວ (PAID)</div>
-                    <% } %>
-
-                        <div class="muted small" style="margin-top: 5px;">
-                            ຄ່າຂົນສົ່ງ (Shipping Fee): <span class="field">
-                                <%= Number(order.price_amount).toLocaleString() %>
-                            </span>
-                            <%= order.price_currency || 'THB' %>
-                        </div>
+                <div style="font-size: 11px;">ໂທ: <%= order.sender_phone %>
+                </div>
+            </div>
+            <div class="person-col">
+                <div class="label">ຜູ້ຮັບ (To)</div>
+                <div class="val" style="font-size: 14px;">
+                    <%= order.receiver_name %>
+                </div>
+                <div style="font-size: 12px;">ໂທ: <%= order.receiver_phone %>
+                </div>
+                <div style="font-size: 10px; color: green; display:flex; align-items:center; gap:2px;">
+                    <!-- Simple chat icon -->
+                    <span
+                        style="background:green; color:white; border-radius:50%; width:12px; height:12px; display:inline-block; text-align:center; line-height:12px;">c</span>
+                    ແຊັດຫາ
+                </div>
+            </div>
         </div>
 
-        <div class="muted small text-center" style="text-align: center; margin-top: 10px;">
-            ໝາຍເຫດ: ກະລຸນາກວດສອບຂໍ້ມູນກ່ອນຝາກ. ຕິດຕໍ່ສອບຖາມໄດ້ຜ່ານ WhatsApp.
+        <!-- Address -->
+        <div class="receiver-full">
+            <span class="label">ຈຸດຮັບເຄື່ອງປາຍທາງ (Address):</span><br>
+            <span style="font-weight: 600;">
+                <%= order.receiver_address || '-' %>
+            </span>
         </div>
+
+        <!-- Specs -->
+        <div class="specs-row">
+            <div class="spec-col">
+                <div class="spec-title">ຂະໜາດ</div>
+                <div class="spec-val">
+                    <%= order.actual_size || order.declared_size || '-' %>
+                </div>
+            </div>
+            <div class="spec-col">
+                <div class="spec-title">ນ້ຳໜັກ</div>
+                <div class="spec-val">
+                    <%= order.actual_weight || order.declared_weight || '0' %> kg
+                </div>
+            </div>
+            <div class="spec-col">
+                <div class="spec-title">ຄ່າບໍລິການ</div>
+                <div class="spec-val">
+                    <%= Number(order.price_amount).toLocaleString() %> ກີບ
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment -->
+        <div class="payment-row">
+            <div>ຈ່າຍຄ່າບໍລິການ:</div>
+            <div class="red-text" style="font-weight: bold;">
+                <%= Number(order.cod_amount)> 0 ? 'ຈ່າຍປາຍທາງ' : 'ຈ່າຍແລ້ວ (PAID)' %>
+            </div>
+        </div>
+
+        <!-- Total -->
+        <div class="total-row">
+            <div>ລວມທັງໝົດ:</div>
+            <div>
+                <%= Number(order.cod_amount || order.price_amount).toLocaleString() %> KIP
+            </div>
+        </div>
+
+        <!-- Footer Warnings -->
+        <div class="footer-note">
+            ຮັບເຄື່ອງພາຍໃນ 7 ວັນ (ຫຼັງເຄື່ອງຮອດປາຍທາງ ຖ້າເກີນ 7 ວັນ ເຄື່ອງຈະຕີກັບຕົ້ນທາງ)
+        </div>
+        <div class="footer-thanks">
+            ຂອບໃຈທີ່ໃຊ້ບໍລິການ SNG EXPRESS
+        </div>
+
     </div>
 
     <script>
-        window.onload = function () {
-            // Generate Barcode
-            JsBarcode("#barcode", "<%= order.job_no %>", {
-                format: "CODE128",
-                width: 2,
-                height: 40,
-                displayValue: false,
-                margin: 0
-            });
-
-            // Generate QR Code
-            // Use job_no as content, or a full tracking URL if applicable
-            new QRCode(document.getElementById("qrcode"), {
-                text: "<%= order.job_no %>",
-                width: 70,
-                height: 70,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-        };
+        JsBarcode("#barcode", "<%= order.job_no %>", {
+            format: "CODE128",
+            width: 2.5,
+            height: 45,
+            displayValue: false,
+            margin: 0
+        });
     </script>
 </body>
 
