@@ -3,8 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Waybill <%= order.job_no %>
-    </title>
+    <title>Waybill TH-12345678</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
@@ -238,45 +237,36 @@
         <!-- Header -->
         <div class="header">
             <div class="logo">
-                <!-- Use uploaded logo if ready, else text fallback resembling image -->
-                <img src="/images/snglogo.png" alt="SNG EXPRESS" style="height: 30px; object-fit: contain;">
+                <img src="./images/snglogo.png" alt="SNG EXPRESS" style="height: 30px; object-fit: contain;">
             </div>
             <div style="text-align: right;">
                 <div class="doc-title">ໃບຝາກພັດສະດຸ</div>
-                <div style="font-size: 10px; font-weight: normal;">ວັນທີຮັບຝາກ: <%= new
-                        Date(order.created_at).toISOString().split('T')[0] %>
-                </div>
+                <div style="font-size: 10px; font-weight: normal;">ວັນທີຮັບຝາກ: 2025-10-28</div>
             </div>
         </div>
 
         <!-- Barcode -->
         <div class="barcode-section">
             <svg id="barcode"></svg>
-            <div class="tracking-number">ເລກບິນ <%= order.job_no %>
-            </div>
+            <div class="tracking-number">ເລກບິນ TH-12345678</div>
         </div>
 
         <!-- Item Name Row -->
         <div class="info-row" style="padding: 0 5px;">
-            <div>ຊື່ພັດສະດຸ: <%= order.service_type || 'General' %>
-            </div>
+            <div>ຊື່ພັດສະດຸ: General Items</div>
         </div>
 
         <!-- Route -->
         <div class="route-box">
             <div class="big-route">
-                <span>
-                    <%= order.direction==='TH_TO_LA' ? 'Thailand' : 'Laos' %>
-                </span>
+                <span>Thailand</span>
                 <span>➜</span>
-                <span>
-                    <%= order.direction==='TH_TO_LA' ? 'Laos' : 'Thailand' %>
-                </span>
+                <span>Laos</span>
             </div>
             <div class="sub-route">
-                <span>ສາຂາ: SNG <%= order.direction==='TH_TO_LA' ? 'TH' : 'LA' %></span>
+                <span>ສາຂາ: SNG TH</span>
                 <span>➜</span>
-                <span>ສາຂາ: SNG <%= order.direction==='TH_TO_LA' ? 'LA' : 'TH' %></span>
+                <span>ສາຂາ: SNG LA</span>
             </div>
         </div>
 
@@ -284,21 +274,14 @@
         <div class="person-split">
             <div class="person-col">
                 <div class="label">ຜູ້ສົ່ງ (From)</div>
-                <div class="val" style="font-size: 12px;">
-                    <%= order.sender_name %>
-                </div>
-                <div style="font-size: 11px;">ໂທ: <%= order.sender_phone %>
-                </div>
+                <div class="val" style="font-size: 12px;">John Doe Shop</div>
+                <div style="font-size: 11px;">ໂທ: 081-234-5678</div>
             </div>
             <div class="person-col">
                 <div class="label">ຜູ້ຮັບ (To)</div>
-                <div class="val" style="font-size: 14px;">
-                    <%= order.receiver_name %>
-                </div>
-                <div style="font-size: 12px;">ໂທ: <%= order.receiver_phone %>
-                </div>
+                <div class="val" style="font-size: 14px;">Miss Sivilai</div>
+                <div style="font-size: 12px;">ໂທ: 020-5555-9999</div>
                 <div style="font-size: 10px; color: green; display:flex; align-items:center; gap:2px;">
-                    <!-- Simple chat icon -->
                     <span
                         style="background:green; color:white; border-radius:50%; width:12px; height:12px; display:inline-block; text-align:center; line-height:12px;">c</span>
                     ແຊັດຫາ
@@ -309,30 +292,22 @@
         <!-- Address -->
         <div class="receiver-full">
             <span class="label">ຈຸດຮັບເຄື່ອງປາຍທາງ (Address):</span><br>
-            <span style="font-weight: 600;">
-                <%= order.receiver_address || '-' %>
-            </span>
+            <span style="font-weight: 600;">Ban Sivilai, Vientiane Capital</span>
         </div>
 
         <!-- Specs -->
         <div class="specs-row">
             <div class="spec-col">
                 <div class="spec-title">ຂະໜາດ</div>
-                <div class="spec-val">
-                    <%= order.actual_size || order.declared_size || '-' %>
-                </div>
+                <div class="spec-val">40 cm</div>
             </div>
             <div class="spec-col">
                 <div class="spec-title">ນ້ຳໜັກ</div>
-                <div class="spec-val">
-                    <%= order.actual_weight || order.declared_weight || '0' %> kg
-                </div>
+                <div class="spec-val">1 kg</div>
             </div>
             <div class="spec-col">
                 <div class="spec-title">ຄ່າບໍລິການ</div>
-                <div class="spec-val">
-                    <%= Number(order.price_amount).toLocaleString() %> ກີບ
-                </div>
+                <div class="spec-val">8,000 ກີບ</div>
             </div>
         </div>
 
@@ -340,21 +315,20 @@
         <div class="payment-row">
             <div>ຈ່າຍຄ່າບໍລິການ:</div>
             <div class="red-text" style="font-weight: bold;">
-                <%= Number(order.cod_amount)> 0 ? 'ຈ່າຍປາຍທາງ' : 'ຈ່າຍແລ້ວ (PAID)' %>
+                ຈ່າຍປາຍທາງ
             </div>
         </div>
 
         <!-- Total -->
         <div class="total-row">
             <div>ລວມທັງໝົດ:</div>
-            <div>
-                <%= Number(order.cod_amount || order.price_amount).toLocaleString() %> KIP
-            </div>
+            <div>8,000 KIP</div>
         </div>
 
         <!-- Footer Warnings -->
         <div class="footer-note">
-            ຮັບເຄື່ອງພາຍໃນ 7 ວັນ (ຫຼັງເຄື່ອງຮອດປາຍທາງ ຖ້າເກີນ 7 ວັນ ເຄື່ອງຈະຕີກັບຕົ້ນທາງ)
+            ຮັບເຄື່ອງພາຍໃນ 7 ວັນ (ຫຼັງເຄື່ອງຮອດປາຍທາງ ຖ້າເກີນ 7 ວັນ ເຄື່ອງຈະຕີກັບຕົ້ນທາງ)<br>
+            (ຖ້າເກີນ 7 ວັນ ເຄື່ອງຈະຖືກຕີກັບຕົ້ນທາງ)
         </div>
         <div class="footer-thanks">
             ຂອບໃຈທີ່ໃຊ້ບໍລິການ SNG EXPRESS
@@ -363,7 +337,7 @@
     </div>
 
     <script>
-        JsBarcode("#barcode", "<%= order.job_no %>", {
+        JsBarcode("#barcode", "TH-12345678", {
             format: "CODE128",
             width: 2.5,
             height: 45,
