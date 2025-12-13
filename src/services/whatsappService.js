@@ -1,6 +1,6 @@
 
 import pool from '../config/db.js';
-import { makeWASocket, DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import { makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import pino from 'pino';
 
 // Variables to hold state
@@ -9,6 +9,7 @@ let isClientReady = false;
 let qrCodeData = null;
 let connectionStatus = 'DISCONNECTED';
 let lastError = null;
+let reconnectAttempts = 0;
 
 const logs = [];
 function addLog(msg) {
@@ -59,14 +60,20 @@ export const deleteSession = async () => {
 };
 
 async function startSock() {
+    addLog('Connecting to WhatsApp...');
+    connectionStatus = 'CONNECTING';
+    lastError = null;
     try {
+        const { version } = await fetchLatestBaileysVersion();
+        addLog(`Using WA version ${version.join('.')}`);
         const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
         sock = makeWASocket({
             printQRInTerminal: false, // We handle QR in UI
             auth: state,
             logger: pino({ level: 'silent' }), // Suppress detailed logs
-            browser: ['SNG Logistics', 'Chrome', '1.0.0'] // Simulate a browser
+            browser: ['SNG Logistics', 'Chrome', '1.0.0'], // Simulate a browser
+            version
         });
 
         // Event: Connection Update (QR, Connecting, Open, Close)
@@ -75,32 +82,55 @@ async function startSock() {
 
             if (qr) {
                 console.log('[WhatsApp] QR Generated');
-                addLog('QR Generated');
+                addLog('QR Generated (showing on UI)');
                 qrCodeData = qr; // Raw QR string for UI to render
                 connectionStatus = 'QR_READY';
                 lastError = null;
+                reconnectAttempts = 0; // reset on fresh QR
             }
 
             if (connection === 'close') {
                 const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
                 console.log('[WhatsApp] Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
-                addLog(`Connection closed. Reconnecting: ${shouldReconnect}. Error: ${lastDisconnect?.error?.message}`);
+                const errMsg = lastDisconnect?.error?.message || lastDisconnect?.error?.description || lastDisconnect?.error?.toString() || 'Unknown';
+                addLog(`Connection closed. Reconnecting: ${shouldReconnect}. Error: ${errMsg}`);
 
                 connectionStatus = 'DISCONNECTED';
                 isClientReady = false;
                 qrCodeData = null;
-                lastError = lastDisconnect?.error?.message || 'Connection Closed';
+                lastError = errMsg || 'Connection Closed';
+                reconnectAttempts += 1;
 
                 // Reconnect if not logged out
                 if (shouldReconnect) {
+                    // After a few failed reconnects, clear auth to force a fresh QR
+                    if (reconnectAttempts >= 3) {
+                        try {
+                            const authPath = path.join(__dirname, '../../auth_info_baileys');
+                            if (fs.existsSync(authPath)) {
+                                fs.rmSync(authPath, { recursive: true, force: true });
+                                addLog('Cleared auth after repeated failures; will request new QR.');
+                            }
+                        } catch (err) {
+                            addLog('Error clearing auth dir: ' + err.message);
+                        }
+                        reconnectAttempts = 0;
+                    }
                     setTimeout(startSock, 5000); // Retry in 5s
                 } else {
                     console.log('[WhatsApp] Logged out. Please scan QR again.');
-                    addLog('Logged out. Please scan QR again.');
-                    connectionStatus = 'DISCONNECTED';
-                    // Usually we need to clear auth info here to regenerate QR, 
-                    // but Baileys handles it by just needing a restart often.
-                    // For now, manual restart via UI can trigger clean up if needed.
+                    addLog('Logged out. Clearing session and regenerating QR...');
+                    try {
+                        const authPath = path.join(__dirname, '../../auth_info_baileys');
+                        if (fs.existsSync(authPath)) {
+                            fs.rmSync(authPath, { recursive: true, force: true });
+                            addLog('Auth directory cleared after logout.');
+                        }
+                    } catch (err) {
+                        addLog('Error clearing auth dir: ' + err.message);
+                    }
+                    // Start fresh to emit a new QR
+                    setTimeout(startSock, 2000);
                 }
             } else if (connection === 'open') {
                 console.log('[WhatsApp] Connection opened');
@@ -109,6 +139,7 @@ async function startSock() {
                 isClientReady = true;
                 qrCodeData = null;
                 lastError = null;
+                reconnectAttempts = 0;
             }
         });
 

@@ -185,7 +185,7 @@
     <div class="card">
         <div class="row header">
             <div class="row" style="align-items:center;">
-                <img class="logo" src="/images/logo.png" alt="SNG" onerror="this.style.display='none'">
+                <img class="logo" src="./images/logo.png" alt="SNG" onerror="this.style.display='none'">
                 <div>
                     <div class="title">SNG EXPRESS</div>
                     <div class="subtitle">ໃບຝາກພັດສະດຸ</div>
@@ -193,12 +193,8 @@
             </div>
             <div class="right">
                 <div class="muted">ເລກຕິດຕາມ (Tracking No)</div>
-                <div class="tracking">
-                    <%= order.job_no %>
-                </div>
-                <div style="font-size: 10px;">
-                    <%= new Date(order.created_at).toLocaleString('lo-LA') %>
-                </div>
+                <div class="tracking">TH-12345678</div>
+                <div style="font-size: 10px;">12/12/2025 10:30</div>
             </div>
         </div>
 
@@ -215,75 +211,45 @@
         <div class="section-box">
             <div class="label">ເສັ້ນທາງ (Route)</div>
             <div class="muted">
-                ຈາກ (From): <span class="field" style="width: 100px;">
-                    <%= order.direction==='TH_TO_LA' ? 'Thailand (SNG)' : 'Laos (SNG)' %>
-                </span>
+                ຈາກ (From): <span class="field" style="width: 100px;">Thailand (SNG)</span>
                 →
-                ໄປ (To): <span class="field" style="width: 100px;">
-                    <%= order.direction==='TH_TO_LA' ? 'Laos (SNG)' : 'Thailand (SNG)' %>
-                </span>
+                ໄປ (To): <span class="field" style="width: 100px;">Laos (SNG)</span>
             </div>
         </div>
 
         <div class="section-box">
             <div class="label">ຜູ້ສົ່ງ / ຜູ້ຮັບ (Sender / Receiver)</div>
-            <div class="muted"><b>ຜູ້ສົ່ງ (Sender):</b> <span class="field">
-                    <%= order.sender_name || '-' %>
-                </span> ເບີ: <span class="field">
-                    <%= order.sender_phone || '-' %>
-                </span></div>
+            <div class="muted"><b>ຜູ້ສົ່ງ (Sender):</b> <span class="field">John Doe Shop</span> ເບີ: <span
+                    class="field">081-234-5678</span></div>
             <div class="muted" style="margin-bottom: 4px;">ທີ່ຢູ່: <span class="field"
-                    style="display:inline; border:none; text-decoration: underline;">
-                    <%= order.sender_address || '-' %>
-                </span></div>
+                    style="display:inline; border:none; text-decoration: underline;">123 Bangkok Road, Thailand</span>
+            </div>
 
             <div style="border-top: 1px dotted #ccc; margin: 4px 0;"></div>
 
             <div class="muted" style="font-size: 12px;"><b>ຜູ້ຮັບ (Receiver):</b> <span class="field"
-                    style="font-size: 13px; font-weight:700;">
-                    <%= order.receiver_name || '-' %>
-                </span></div>
-            <div class="muted"><b>WhatsApp:</b> <span class="field" style="font-size: 13px; font-weight:700;">
-                    <%= order.receiver_phone || '-' %>
-                </span></div>
+                    style="font-size: 13px; font-weight:700;">Customer Laos</span></div>
+            <div class="muted"><b>WhatsApp:</b> <span class="field"
+                    style="font-size: 13px; font-weight:700;">020-5555-9999</span></div>
             <div class="muted">ທີ່ຢູ່: <span class="field"
-                    style="display:inline; border:none; text-decoration: underline;">
-                    <%= order.receiver_address || '-' %>
-                </span></div>
+                    style="display:inline; border:none; text-decoration: underline;">456 Vientiane, Laos</span></div>
         </div>
 
         <div class="section-box">
             <div class="label">ລາຍລະອຽດພັດສະດຸ (Detail) / ຄ່າບໍລິການ (Fee)</div>
             <div class="grid2">
-                <div class="muted">ປະເພດ: <span class="field">
-                        <%= order.service_type || 'General' %>
-                    </span></div>
-                <div class="muted">ນ້ຳໜັກ: <span class="field">
-                        <%= order.actual_weight || order.declared_weight || '0' %>
-                    </span> kg</div>
-                <div class="muted">ຂະໜາດ: <span class="field">
-                        <%= order.actual_size || order.declared_size || '-' %>
-                    </span></div>
+                <div class="muted">ປະເພດ: <span class="field">General</span></div>
+                <div class="muted">ນ້ຳໜັກ: <span class="field">5.5</span> kg</div>
+                <div class="muted">ຂະໜາດ: <span class="field">30x30x30 cm</span></div>
                 <div class="muted">ຈຳນວນ: <span class="field">1</span></div>
             </div>
             <div class="space"></div>
 
-            <% if (Number(order.cod_amount)> 0) { %>
-                <div class="pay">ຍອດເກັບປາຍທາງ (COD): <span class="field">
-                        <%= Number(order.cod_amount).toLocaleString() %>
-                    </span>
-                    <%= order.price_currency || 'THB' %>
-                </div>
-                <% } else { %>
-                    <div class="pay" style="color: green;">ຈ່າຍແລ້ວ (PAID)</div>
-                    <% } %>
+            <div class="pay">ຍອດເກັບປາຍທາງ (COD): <span class="field">500,000</span> LAK</div>
 
-                        <div class="muted small" style="margin-top: 5px;">
-                            ຄ່າຂົນສົ່ງ (Shipping Fee): <span class="field">
-                                <%= Number(order.price_amount).toLocaleString() %>
-                            </span>
-                            <%= order.price_currency || 'THB' %>
-                        </div>
+            <div class="muted small" style="margin-top: 5px;">
+                ຄ່າຂົນສົ່ງ (Shipping Fee): <span class="field">100</span> THB
+            </div>
         </div>
 
         <div class="muted small text-center" style="text-align: center; margin-top: 10px;">
@@ -294,7 +260,7 @@
     <script>
         window.onload = function () {
             // Generate Barcode
-            JsBarcode("#barcode", "<%= order.job_no %>", {
+            JsBarcode("#barcode", "TH-12345678", {
                 format: "CODE128",
                 width: 2,
                 height: 40,
@@ -303,9 +269,8 @@
             });
 
             // Generate QR Code
-            // Use job_no as content, or a full tracking URL if applicable
             new QRCode(document.getElementById("qrcode"), {
-                text: "<%= order.job_no %>",
+                text: "TH-12345678",
                 width: 70,
                 height: 70,
                 colorDark: "#000000",
