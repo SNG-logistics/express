@@ -7,9 +7,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure upload directory exists
+// Ensure upload directory exists
 const uploadDir = path.join(__dirname, '../../public/uploads/orders');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+try {
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+} catch (err) {
+    console.error('Warning: Failed to create upload directory on startup:', err.message);
+    // Continue execution, do not crash. Uploads might fail later but the app will start.
 }
 
 const storage = multer.diskStorage({
