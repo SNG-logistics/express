@@ -8,6 +8,7 @@
     "start": "node src/app.js",
     "seed-admin": "node scripts/seed_admin.js",
     "diagnose": "node scripts/diagnose_system.js",
+    "migrate": "node scripts/migrate_image_upload.js",
     "lint": "eslint ."
   },
   "dependencies": {
