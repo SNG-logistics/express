@@ -24,15 +24,15 @@ async function migrate() {
     }
 
     // 2. Update Database
-    const connection = await mysql.createConnection({
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-        port: process.env.DB_PORT
-    });
+    // Import the existing pool from your project configuration
+    // Adjust the path if necessary to point to your actual db.js file
+    const dbModule = await import('../src/config/db.js');
+    const pool = dbModule.default || dbModule.pool;
 
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         // Check if column exists
         const [columns] = await connection.query(`SHOW COLUMNS FROM orders LIKE 'image_path'`);
 
@@ -47,7 +47,10 @@ async function migrate() {
     } catch (error) {
         console.error('❌ Database migration failed:', error.message);
     } finally {
-        await connection.end();
+        if (connection) connection.release();
+        // We don't need to end the pool here necessarily if using shared pool, 
+        // but for a standalone script, we can force exit or close pool.
+        process.exit(0);
     }
 
     console.log('\n✨ Migration Complete! You can now restart the server.');
