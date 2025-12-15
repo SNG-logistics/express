@@ -133,6 +133,20 @@
                         <i class="fa-solid fa-truck text-blue-400"></i> ประเภทบริการ
                     </div>
                 </div>
+
+                <!-- Card 5: Parcel Image (Conditional) -->
+                <% if (order.image_path) { %>
+                    <div
+                        class="glass-panel-dark card-elevated p-2 rounded-3xl border border-white/5 flex flex-col justify-between group hover:border-indigo-500/30 transition-colors overflow-hidden relative">
+                        <img src="<%= order.image_path %>" alt="Parcel Image"
+                            class="w-full h-40 object-cover rounded-2xl cursor-pointer hover:scale-105 transition-transform duration-500"
+                            onclick="window.open(this.src, '_blank')">
+                        <div
+                            class="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white backdrop-blur">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                    </div>
+                    <% } %>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">

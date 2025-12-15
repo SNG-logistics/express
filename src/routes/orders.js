@@ -3,11 +3,13 @@ import * as orders from '../controllers/ordersController.js';
 import * as payments from '../controllers/paymentsController.js';
 import { requireLogin } from '../middleware/auth.js';
 
+import upload from '../config/upload.js';
+
 const router = Router();
 
 router.get('/orders', requireLogin, orders.list);
 router.get('/orders/new', requireLogin, orders.showCreate);
-router.post('/orders', requireLogin, orders.create);
+router.post('/orders', requireLogin, upload.single('parcel_image'), orders.create);
 router.get('/orders/scan', requireLogin, orders.showScan);
 router.post('/orders/scan', requireLogin, orders.processScan);
 

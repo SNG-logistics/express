@@ -11,6 +11,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.0",
     "bcrypt": "^5.1.1",
     "chart.js": "^4.4.1",
     "csurf": "^1.11.0",
@@ -20,9 +21,9 @@
     "express-ejs-layouts": "^2.5.1",
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.17.3",
+    "multer": "^2.0.2",
     "mysql2": "^3.10.0",
-    "pino": "^9.0.0",
-    "@whiskeysockets/baileys": "^6.7.0"
+    "pino": "^9.0.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

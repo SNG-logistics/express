@@ -64,9 +64,12 @@ export async function list(req, res) {
 
 export async function showCreate(req, res) {
   const [customers] = await pool.query("SELECT id, name, type FROM customers WHERE active = 1 ORDER BY name ASC");
+  const [shippingRates] = await pool.query("SELECT * FROM shipping_rates WHERE active = 1 ORDER BY price ASC");
+
   res.render('orders/new', {
     user: req.session.user,
     customers,
+    shippingRates,
     error: null,
     title: 'สร้างออเดอร์ใหม่'
   });
@@ -91,6 +94,7 @@ export async function create(req, res) {
     declared_weight: declared_weight ? Number(declared_weight) : null,
     declared_size,
     declared_value: declared_value ? Number(declared_value) : null
+    image_path: req.file ? `/uploads/orders/${req.file.filename}` : null
   };
 
   if (!payload.job_no) {
@@ -112,9 +116,10 @@ export async function create(req, res) {
       `INSERT INTO orders (
         job_no, direction, sender_id, receiver_id, 
         price_amount, cod_amount, requires_customs,
-        service_type, declared_weight, declared_size, declared_value
+        service_type, declared_weight, declared_size, declared_value,
+        image_path
       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.job_no,
         payload.direction,
@@ -126,7 +131,8 @@ export async function create(req, res) {
         payload.service_type,
         payload.declared_weight,
         payload.declared_size,
-        payload.declared_value
+        payload.declared_value,
+        payload.image_path
       ]
     );
     res.redirect('/orders');
