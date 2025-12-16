@@ -127,8 +127,8 @@
       </select>
       <select id="routeFilter" class="filter-input w-full sm:w-auto">
         <option value="">เส้นทาง: ทั้งหมด</option>
-        <option value="เชียงราย-เวียงจันทน์">เชียงราย-เวียงจันทน์</option>
-        <option value="กรุงเทพ-หนองคาย">กรุงเทพ-หนองคาย</option>
+        <option value="ไทย → ลาว">ไทย → ลาว</option>
+        <option value="ลาว → ไทย">ลาว → ไทย</option>
       </select>
       <select id="statusFilter" class="filter-input w-full sm:w-auto">
         <option value="">สถานะ: ทั้งหมด</option>
@@ -227,7 +227,7 @@
                           <%= order.job_no %>
                         </div>
                         <div class="text-xs text-slate-500">
-                          <%= order.route || '-' %>
+                          <%= order.direction==='TH_TO_LA' ? 'ไทย → ลาว' : 'ลาว → ไทย' %>
                         </div>
                       </div>
                     </div>
@@ -438,11 +438,11 @@
       const jobNo = row.querySelector('td:nth-child(1)')?.textContent.toLowerCase() || '';
       const sender = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
       const statusText = row.querySelector('.status-badge')?.textContent.toLowerCase() || '';
-      const route = row.querySelector('td:nth-child(1) .text-xs')?.textContent || '';
+      const direction = row.querySelector('td:nth-child(1) .text-xs')?.textContent || '';
 
       const matchesSearch = jobNo.includes(searchTerm) || sender.includes(searchTerm);
       const matchesStatus = !selectedStatus || statusText.includes(selectedStatus);
-      const matchesRoute = !selectedRoute || route.includes(selectedRoute);
+      const matchesRoute = !selectedRoute || direction.includes(selectedRoute);
 
       if (matchesSearch && matchesStatus && matchesRoute) {
         row.style.display = '';

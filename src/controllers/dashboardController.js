@@ -43,7 +43,15 @@ export async function dashboard(req, res) {
     );
 
     const [latest] = await pool.query(
-      "SELECT id, job_no, sender_name, sender_phone, receiver_name, receiver_phone, route, direction, status, cod_amount, created_at FROM orders ORDER BY created_at DESC LIMIT 20"
+      `SELECT 
+        o.id, o.job_no, o.direction, o.status, o.cod_amount, o.created_at,
+        s.name AS sender_name, s.phone AS sender_phone,
+        r.name AS receiver_name, r.phone AS receiver_phone
+       FROM orders o
+       LEFT JOIN customers s ON o.sender_id = s.id
+       LEFT JOIN customers r ON o.receiver_id = r.id
+       ORDER BY o.created_at DESC 
+       LIMIT 20`
     );
     const [orders30] = await pool.query(
       `SELECT DATE(created_at) AS d, COUNT(*) AS cnt
