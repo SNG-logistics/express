@@ -157,7 +157,7 @@ async function startSock() {
 // Start the socket
 console.log('[WhatsApp] Initializing Baileys...');
 addLog('Initializing Service...');
-startSock();
+// startSock(); // Disabled auto-start to prevent OOM on low-memory server
 
 
 export const restartClient = async () => {
