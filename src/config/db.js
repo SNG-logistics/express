@@ -20,7 +20,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'sng-logistics',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 2,
   namedPlaceholders: true
 });
 
