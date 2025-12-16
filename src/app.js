@@ -121,6 +121,14 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`sng logistics listening on ${PORT}`);
-});
+
+// Export app for Passenger/Tests
+export default app;
+
+// Only listen if executed directly (not imported)
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(PORT, () => {
+    console.log(`sng logistics listening on ${PORT}`);
+  });
+}
