@@ -40,162 +40,140 @@
       </div>
     </div>
 
-    <!-- 2. KPI CARDS (2x2 Grid) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- Card: Today Orders -->
-      <div
-        class="glass-panel p-5 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300 border-l-4 border-blue-500">
-        <div class="flex justify-between items-start z-10 relative">
-          <div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Orders (Today)</p>
-            <h3 class="text-4xl font-black text-white font-display">
-              <%= kpi.todayOrders %>
-            </h3>
-          </div>
-          <div
-            class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 text-xl group-hover:bg-blue-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-            <i class="fa-solid fa-cube"></i>
-          </div>
-        </div>
-        <div
-          class="absolute -bottom-4 -right-4 text-9xl text-white/5 rotate-12 group-hover:rotate-0 transition-transform duration-500 pointer-events-none">
-          <i class="fa-solid fa-cube"></i>
-        </div>
-      </div>
+    <!-- BENTO GRID LAYOUT -->
+    <div class="grid grid-cols-1 md:grid-cols-6 md:grid-rows-2 gap-4 h-auto md:h-[600px]">
 
-      <!-- Card: Today Revenue -->
+      <!-- 1. MAIN STATS (Large Box - Top Left) -->
       <div
-        class="glass-panel p-5 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300 border-l-4 border-emerald-500">
-        <div class="flex justify-between items-start z-10 relative">
+        class="glass-panel col-span-1 md:col-span-4 md:row-span-1 p-6 relative group overflow-hidden flex flex-col justify-between">
+        <div class="bg-gradient-mesh"></div>
+        <div class="flex justify-between items-start z-10">
           <div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Revenue (Today)</p>
-            <h3 class="text-4xl font-black text-emerald-400 font-display">
-              <span class="text-lg align-top opacity-50">฿</span>
+            <p class="text-sm font-semibold text-slate-400 mb-1 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Total Revenue (Today)
+            </p>
+            <h2 class="text-5xl font-bold text-white tracking-tight text-value">
+              <span class="text-2xl text-slate-500 font-normal">฿</span>
               <%= Number(kpi.todayRevenue).toLocaleString() %>
-            </h3>
+            </h2>
+            <div class="mt-4 flex gap-3">
+              <span
+                class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-medium border border-emerald-500/10">
+                +฿<%= Number(kpi.todayProfit).toLocaleString() %> Profit
+              </span>
+              <span
+                class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-xs font-medium border border-blue-500/10">
+                <%= kpi.todayOrders %> Orders
+              </span>
+            </div>
           </div>
-          <div
-            class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-            <i class="fa-solid fa-bolt"></i>
+          <div class="p-3 bg-white/5 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-colors">
+            <i class="fa-solid fa-chart-pie text-2xl text-white"></i>
           </div>
         </div>
-        <p class="text-[10px] text-emerald-500/80 mt-2 font-mono flex items-center gap-1">
-          <i class="fa-solid fa-arrow-trend-up"></i> Profit: +฿<%= Number(kpi.todayProfit).toLocaleString() %>
-        </p>
-      </div>
 
-      <!-- Card: Monthly Orders -->
-      <div
-        class="glass-panel p-5 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300 border-l-4 border-purple-500">
-        <div class="flex justify-between items-start z-10 relative">
-          <div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Orders (Month)</p>
-            <h3 class="text-4xl font-black text-white font-display">
-              <%= kpi.monthOrders %>
-            </h3>
-          </div>
-          <div
-            class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 text-xl group-hover:bg-purple-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-            <i class="fa-solid fa-layer-group"></i>
-          </div>
-        </div>
-        <!-- Progress Bar -->
-        <div class="w-full h-1 bg-white/10 mt-4 rounded-full overflow-hidden">
-          <div class="h-full bg-purple-500 w-[70%]"></div>
-        </div>
-      </div>
-
-      <!-- Card: Monthly Revenue -->
-      <div
-        class="glass-panel p-5 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300 border-l-4 border-amber-500">
-        <div class="flex justify-between items-start z-10 relative">
-          <div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Revenue (Month)</p>
-            <h3 class="text-4xl font-black text-amber-400 font-display">
-              <span class="text-lg align-top opacity-50">฿</span>
-              <%= Number(kpi.monthRevenue).toLocaleString() %>
-            </h3>
-          </div>
-          <div
-            class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 text-xl group-hover:bg-amber-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-            <i class="fa-solid fa-trophy"></i>
-          </div>
-        </div>
-        <p class="text-[10px] text-amber-500/80 mt-2 font-mono flex items-center gap-1">
-          <i class="fa-solid fa-sack-dollar"></i> Profit: +฿<%= Number(kpi.monthProfit).toLocaleString() %>
-        </p>
-      </div>
-    </div>
-
-    <!-- 3. CHARTS & RECENT (Grid) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- Main Chart -->
-      <div class="lg:col-span-2 glass-panel p-6 border-t border-white/5">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="font-display font-bold text-lg text-white flex items-center gap-2">
-            <span class="w-2 h-6 bg-blue-500 rounded-sm"></span> Performance Logic
-          </h3>
-          <select
-            class="bg-black/50 border border-white/10 text-xs text-slate-300 rounded px-3 py-1 outline-none focus:border-blue-500">
-            <option>Last 30 Days</option>
-          </select>
-        </div>
-        <div class="h-[300px] w-full">
+        <!-- Mini Chart Area -->
+        <div class="h-24 w-full mt-4 mask-fade-bottom">
           <canvas id="revenueChart"></canvas>
         </div>
       </div>
 
-      <!-- Recent Activity -->
-      <div class="glass-panel p-0 border-t border-white/5 flex flex-col">
-        <div class="p-6 border-b border-white/5 flex justify-between items-center">
-          <h3 class="font-display font-bold text-lg text-white flex items-center gap-2">
-            <span class="w-2 h-6 bg-pink-500 rounded-sm"></span> Live Feed
+      <!-- 2. ACTION PANEL (Top Right) -->
+      <div
+        class="glass-panel col-span-1 md:col-span-2 md:row-span-1 p-6 flex flex-col justify-center gap-4 bg-gradient-to-br from-blue-600/20 to-indigo-600/20">
+        <div class="text-center mb-2">
+          <div
+            class="w-12 h-12 bg-blue-500 rounded-2xl mx-auto flex items-center justify-center text-white text-xl shadow-lg shadow-blue-500/30 mb-3">
+            <i class="fa-solid fa-rocket"></i>
+          </div>
+          <h3 class="text-white font-bold text-lg">Quick Actions</h3>
+          <p class="text-slate-400 text-xs">Manage your logistics instanty</p>
+        </div>
+        <a href="/orders/new"
+          class="w-full bg-white text-black font-bold py-3 rounded-xl text-center hover:bg-slate-200 transition-colors shadow-lg">
+          <i class="fa-solid fa-plus mr-2"></i> New Order
+        </a>
+        <a href="/orders/scan"
+          class="w-full bg-black/20 text-white font-semibold py-3 rounded-xl text-center border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md">
+          <i class="fa-solid fa-qrcode mr-2"></i> Scan Code
+        </a>
+      </div>
+
+      <!-- 3. MONTHLY SUMMARY (Bottom Left) -->
+      <div
+        class="glass-panel col-span-1 md:col-span-2 md:row-span-1 p-6 flex flex-col justify-between border-t-4 border-amber-500">
+        <div>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Monthly Overview</p>
+          <div class="space-y-4">
+            <div class="flex justify-between items-end">
+              <span class="text-slate-300">Revenue</span>
+              <span class="text-2xl font-bold text-white text-value">฿<%= Number(kpi.monthRevenue).toLocaleString() %>
+                  </span>
+            </div>
+            <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-500 w-[65%] shadow-[0_0_10px_#f59e0b]"></div>
+            </div>
+            <div class="flex justify-between items-end">
+              <span class="text-slate-300">Orders</span>
+              <span class="text-xl font-bold text-white text-value">
+                <%= kpi.monthOrders %>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. RECENT FEED (Bottom Middle/Right) -->
+      <div class="glass-panel col-span-1 md:col-span-4 md:row-span-1 p-0 overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-white/5 flex justify-between items-center bg-black/20">
+          <h3 class="text-white font-bold text-sm flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-pink-500 rounded-full"></span> Live Activity
           </h3>
-          <a href="/orders" class="text-xs text-pink-500 hover:text-pink-400 font-bold uppercase tracking-wider">View
+          <a href="/orders"
+            class="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-slate-300 transition-colors">View
             All</a>
         </div>
-
-        <div class="flex-1 overflow-y-auto max-h-[300px] custom-scrollbar">
+        <div class="flex-1 overflow-y-auto px-2 custom-scrollbar">
           <% latest.forEach(o=> { %>
             <div
-              class="p-4 border-b border-white/5 hover:bg-white/5 transition-colors flex items-center justify-between group">
+              class="p-3 border-b border-white/5 hover:bg-white/5 transition-colors flex items-center justify-between group rounded-lg my-1">
               <div class="flex items-center gap-3">
                 <div
-                  class="w-10 h-10 rounded bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white transition-colors font-mono text-xs">
-                  #<%= o.job_no.slice(-4) %>
+                  class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-mono text-[10px] border border-white/5">
+                  <%= o.job_no.slice(-3) %>
                 </div>
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold text-white">
+                    <span class="text-sm font-bold text-slate-200">
+                      <%= o.sender_name || 'Guest' %>
+                    </span>
+                    <span class="text-[10px] text-slate-500">
                       <%= o.job_no %>
                     </span>
-                    <% if (o.direction==='TH_TO_LA' ) { %>
-                      <span
-                        class="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded border border-blue-500/20">TH→LA</span>
-                      <% } else { %>
-                        <span
-                          class="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded border border-amber-500/20">LA→TH</span>
-                        <% } %>
                   </div>
-                  <p class="text-xs text-slate-500 mt-0.5">
-                    <%= o.created_at.toLocaleTimeString('th-TH', {hour: '2-digit' , minute:'2-digit'}) %> • <%= o.status
-                        %>
-                  </p>
+                  <div class="flex gap-2 text-[10px] text-slate-500">
+                    <span>
+                      <%= o.created_at.toLocaleTimeString('th-TH', {hour: '2-digit' , minute:'2-digit'}) %>
+                    </span>
+                    <span class="<%= o.status === 'Delivered' ? 'text-emerald-500' : 'text-amber-500' %>">
+                      <%= o.status %>
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div class="text-right">
-                <% if(o.cod_amount> 0) { %>
-                  <span class="block text-emerald-400 font-bold font-mono text-sm">฿<%=
-                      Number(o.cod_amount).toLocaleString() %></span>
-                  <% } else { %>
-                    <span class="block text-slate-600 font-mono text-sm">-</span>
-                    <% } %>
-              </div>
+              <% if(o.cod_amount> 0) { %>
+                <div class="text-right">
+                  <span
+                    class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/10">฿
+                    <%= Number(o.cod_amount).toLocaleString() %></span>
+                </div>
+                <% } %>
             </div>
             <% }) %>
         </div>
       </div>
+
     </div>
   </div>
 </div>
