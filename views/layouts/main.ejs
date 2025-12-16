@@ -15,105 +15,107 @@
 
   <!-- Custom Premium CSS -->
   <link rel="stylesheet" href="/css/luxury.css">
+  <style>
+    /* Prevent FOUC (Flash of Unstyled Content) */
+    html {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
 </head>
 
-<body class="page-surface text-slate-100 antialiased selection:bg-amber-100 selection:text-amber-900">
-  <!-- Navigation Bar -->
-  <!-- Navigation Bar -->
+<body class="antialiased selection:bg-amber-500 selection:text-white">
   <!-- Navigation Bar -->
   <% if (currentUser) { %>
-    <nav class="bg-slate-900/95 border-b border-white/5 text-white shadow-lg sticky top-0 z-50 backdrop-blur-sm">
+    <nav class="sticky top-0 z-50 backdrop-blur-md shadow-lg transition-all duration-300">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-4 gap-6">
+        <div class="flex justify-between items-center py-3 gap-6">
 
           <!-- Brand -->
           <a href="/dashboard" class="flex items-center gap-3 group">
-            <div
-              class="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-amber-900/20">
-              S
-            </div>
+            <img src="/images/snglogo.png" alt="SNG" class="object-contain transition-transform group-hover:scale-105"
+              style="width: 45px; height: 45px;">
             <div class="flex flex-col leading-tight">
-              <span class="font-bold text-lg tracking-tight text-white">
-                SNG <span class="text-amber-500">LOGISTICS</span>
+              <span class="font-bold text-lg tracking-tight text-main">
+                SNG <span class="text-gold">LOGISTICS</span>
               </span>
-              <span class="text-[10px] text-slate-400 uppercase tracking-widest font-medium">Thailand ▸ Laos
-                Border</span>
+              <span class="text-[10px] text-muted uppercase tracking-widest font-medium">Thailand ▸ Laos Border</span>
             </div>
           </a>
 
           <!-- Navigation Menu -->
-          <div class="hidden lg:flex items-center gap-1 bg-slate-800/50 p-1.5 rounded-xl border border-white/5">
+          <div class="hidden lg:flex items-center gap-1.5 p-1.5 rounded-xl border border-color bg-[var(--bg-glass)]">
             <a href="/dashboard"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ภาพรวม')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
+              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ภาพรวม')) ? 'active font-bold text-indigo' : '' %>">
               <i class="fa-solid fa-chart-pie mb-0.5"></i> ภาพรวม
             </a>
             <a href="/orders"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ออเดอร์')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
+              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ออเดอร์')) ? 'active font-bold text-indigo' : '' %>">
               <i class="fa-solid fa-box mb-0.5"></i> ออเดอร์
             </a>
             <a href="/trips"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('รอบรถ')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
+              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('รอบรถ')) ? 'active font-bold text-indigo' : '' %>">
               <i class="fa-solid fa-truck-fast mb-0.5"></i> รอบรถ
             </a>
             <a href="/customers"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ลูกค้า')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
+              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ลูกค้า')) ? 'active font-bold text-indigo' : '' %>">
               <i class="fa-solid fa-users mb-0.5"></i> ลูกค้า
             </a>
             <a href="/cod"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('การเงิน')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
+              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('การเงิน')) ? 'active font-bold text-indigo' : '' %>">
               <i class="fa-solid fa-wallet mb-0.5"></i> การเงิน
             </a>
-            <% if (currentUser && currentUser.role==='admin' ) { %>
-              <a href="/users"
-                class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ผู้ใช้งาน')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
-                <i class="fa-solid fa-users-gear mb-0.5"></i> ผู้ใช้งาน
-              </a>
-              <a href="/settings/rates"
-                class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ราคาขนส่ง')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
-                <i class="fa-solid fa-tags mb-0.5"></i> ราคาขนส่ง
-              </a>
-              <% } %>
-                <% if (currentUser && ['admin', 'manager' ].includes(currentUser.role)) { %>
+
+            <% if (currentUser && ['admin', 'manager' ].includes(currentUser.role)) { %>
+              <div class="w-px h-6 bg-slate-500/20 mx-1"></div>
+              <% if (currentUser.role==='admin' ) { %>
+                <a href="/users" class="nav-link text-xs flex items-center gap-1 opacity-80 hover:opacity-100">
+                  <i class="fa-solid fa-users-gear"></i> ทีมงาน
+                </a>
+                <a href="/settings/rates" class="nav-link text-xs flex items-center gap-1 opacity-80 hover:opacity-100">
+                  <i class="fa-solid fa-tags"></i> ราคา
+                </a>
+                <% } %>
                   <a href="/whatsapp"
-                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5 hover:text-white flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('WhatsApp')) ? 'bg-indigo-600 text-white shadow-md' : 'text-white' %>">
-                    <i class="fa-brands fa-whatsapp mb-0.5"></i> WhatsApp
+                    class="nav-link text-xs flex items-center gap-1 text-emerald-500/90 hover:text-emerald-500 font-bold">
+                    <i class="fa-brands fa-whatsapp"></i> WA
                   </a>
                   <% } %>
           </div>
 
-          <div class="flex items-center gap-3">
+          <!-- User & Actions -->
+          <div class="flex items-center gap-4">
             <!-- Theme Toggle -->
             <button id="theme-toggle"
-              class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 hover:text-amber-300 flex items-center justify-center transition-all shadow-lg shadow-amber-900/10">
+              class="w-10 h-10 rounded-xl border border-color flex items-center justify-center transition-all hover:bg-white/5 text-gold hover:scale-110">
               <i class="fa-solid fa-sun text-lg" id="theme-icon"></i>
             </button>
 
             <a href="/orders/new"
-              class="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all">
+              class="hidden md:inline-flex items-center gap-2 btn-gold text-sm shadow-lg shadow-amber-500/20">
               <i class="fa-solid fa-plus"></i> <span class="hidden lg:inline">สร้างออเดอร์</span>
             </a>
 
-            <div class="flex items-center gap-4 pl-4 border-l border-white/10">
+            <div class="flex items-center gap-4 pl-4 border-l border-color">
               <% if (currentUser) { %>
                 <div class="hidden md:flex flex-col items-end">
-                  <span class="text-sm font-bold text-white tracking-wide">
+                  <span class="text-sm font-bold text-main tracking-wide">
                     <%= currentUser.username %>
                   </span>
                   <span
-                    class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-white/10 uppercase font-bold tracking-wider">
+                    class="text-[10px] px-2 py-0.5 rounded border border-color bg-white/5 text-muted uppercase font-bold tracking-wider">
                     <%= currentUser.role %>
                   </span>
                 </div>
                 <form action="/logout" method="post">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button
-                    class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-500/50 text-slate-400 hover:text-red-400 flex items-center justify-center transition-all">
+                    class="w-9 h-9 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/30 text-muted hover:text-red-400 flex items-center justify-center transition-all">
                     <i class="fa-solid fa-power-off"></i>
                   </button>
                 </form>
                 <% } else { %>
-                  <a href="/login"
-                    class="px-6 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md transition-all">เข้าสู่ระบบ</a>
+                  <a href="/login" class="btn-gold text-sm shadow-md">เข้าสู่ระบบ</a>
                   <% } %>
             </div>
           </div>
@@ -123,20 +125,19 @@
     <% } %>
 
       <!-- Main Content -->
-      <main class="max-w-7xl mx-auto p-6 md:p-8 animate-fade-in min-h-[calc(100vh-200px)]">
+      <main class="max-w-7xl mx-auto p-4 md:p-8 animate-fade-in-up min-h-[calc(100vh-200px)]">
         <% if (flash) { %>
           <div
-            class="mb-8 p-5 rounded-3xl shadow-2xl flex items-center gap-4 border animate-fade-in <%= flash.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-100' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100' %>">
-            <div
-              class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 <%= flash.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400' %>">
+            class="mb-8 p-5 rounded-2xl shadow-2xl flex items-center gap-4 border animate-fade-in-up backdrop-blur-md <%= flash.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' %>">
+            <div class="text-2xl">
               <i
-                class="<%= flash.type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check' %> text-xl"></i>
+                class="<%= flash.type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check' %>"></i>
             </div>
             <div>
               <h4 class="font-bold text-xs uppercase tracking-[0.18em] mb-1 opacity-80">
                 <%= flash.type==='error' ? 'System Alert' : 'Success' %>
               </h4>
-              <p class="font-bold text-lg">
+              <p class="font-bold text-lg text-main">
                 <%= flash.message %>
               </p>
             </div>
@@ -148,61 +149,38 @@
 
       <!-- Footer -->
       <footer
-        class="mt-12 py-4 text-center text-slate-100/60 text-xs font-medium border-t border-white/5 bg-white/5 backdrop-blur-sm">
+        class="mt-12 py-6 text-center text-muted text-xs font-medium border-t border-color bg-[var(--bg-glass)] backdrop-blur-sm">
         <p class="mb-1">&copy; <%= new Date().getFullYear() %> SNG Logistics (Thailand-Laos).</p>
-        <p>ระบบขนส่งสำหรับทีมมืออาชีพ ภายใต้การดูแลของบริษัท SNG CO,prehensive Sevice Co.,Ltd.</p>
+        <p class="opacity-60">ระบบขนส่งสำหรับทีมมืออาชีพ ภายใต้การดูแลของบริษัท SNG Comprehensive Service Co.,Ltd.</p>
       </footer>
 
       <script>
-        // Theme Toggling Logic
+        // Theme Toggling Logic (Simplified)
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeIcon = document.getElementById('theme-icon');
-        const html = document.documentElement;
 
-        // Check Local Storage
-        const currentTheme = localStorage.getItem('theme');
-        if (currentTheme === 'light') {
+        // Check Local Storage on Load
+        if (localStorage.getItem('theme') === 'light') {
           document.body.classList.add('light-mode');
-          themeIcon.classList.replace('fa-sun', 'fa-moon');
-          themeIcon.parentElement.classList.replace('bg-slate-800', 'bg-white');
-          themeIcon.parentElement.classList.replace('text-amber-400', 'text-indigo-600');
+          if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
         }
 
-        themeToggleBtn.addEventListener('click', () => {
-          document.body.classList.toggle('light-mode');
+        if (themeToggleBtn) {
+          themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
 
-          if (document.body.classList.contains('light-mode')) {
-            localStorage.setItem('theme', 'light');
-            themeIcon.classList.replace('fa-sun', 'fa-moon');
-            // Button style for light mode
-            themeToggleBtn.classList.remove('bg-slate-800', 'text-amber-400', 'border-slate-700');
-            themeToggleBtn.classList.add('bg-white', 'text-indigo-600', 'border-slate-200');
-          }
-        });
+            // Update Icon
+            if (isLight) {
+              themeIcon.classList.replace('fa-sun', 'fa-moon');
+              localStorage.setItem('theme', 'light');
+            } else {
+              themeIcon.classList.replace('fa-moon', 'fa-sun');
+              localStorage.setItem('theme', 'dark');
+            }
+          });
+        }
       </script>
-
-      <style>
-        @keyframes pulse-once {
-          0% {
-            transform: scale(0.98);
-            opacity: 0.8;
-          }
-
-          50% {
-            transform: scale(1.01);
-            opacity: 1;
-          }
-
-          100% {
-            transform: scale(1);
-          }
-        }
-
-        .animate-pulse-once {
-          animation: pulse-once 0.4s ease-out;
-        }
-      </style>
-
 </body>
 
 </html>
