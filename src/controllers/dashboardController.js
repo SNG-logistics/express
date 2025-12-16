@@ -32,8 +32,18 @@ export async function dashboard(req, res) {
        WHERE cod_amount > 0 AND status IN ('DELIVERED','COD_COLLECTED')`
     );
 
+    // New KPI metrics for Thai-Lao dashboard
+    const [[inTransitCount]] = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM orders 
+       WHERE status IN ('RECEIVED','CROSS_BORDER','AT_DEST_WH','DEPARTED')`
+    );
+
+    const [[deliveredCount]] = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM orders WHERE status = 'DELIVERED'`
+    );
+
     const [latest] = await pool.query(
-      "SELECT job_no, direction, status, cod_amount, created_at FROM orders ORDER BY created_at DESC LIMIT 20"
+      "SELECT id, job_no, sender_name, sender_phone, receiver_name, receiver_phone, route, direction, status, cod_amount, created_at FROM orders ORDER BY created_at DESC LIMIT 20"
     );
     const [orders30] = await pool.query(
       `SELECT DATE(created_at) AS d, COUNT(*) AS cnt
@@ -67,7 +77,9 @@ export async function dashboard(req, res) {
         monthRevenue: monthRevenue.rev,
         todayProfit: todayRevenue.rev - todayCost.cost,
         monthProfit: monthRevenue.rev - monthCost.cost,
-        codPending: codPending.cod_pending
+        codPending: codPending.cod_pending,
+        inTransit: inTransitCount.cnt,
+        delivered: deliveredCount.cnt
       },
       charts: {
         orders30,
