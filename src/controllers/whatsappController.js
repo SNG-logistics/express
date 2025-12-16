@@ -1,4 +1,12 @@
-import { getQr, getStatus, getLastError, restartClient, getLogs, deleteSession } from '../services/whatsappService.js';
+// import { getQr, getStatus, getLastError, restartClient, getLogs, deleteSession } from '../services/whatsappService.js';
+
+// Mock functions to prevent loading the heavy WhatsApp service
+const getQr = () => null;
+const getStatus = () => 'DISABLED_OOM_FIX';
+const getLastError = () => null;
+const getLogs = () => [];
+const restartClient = async () => { };
+const deleteSession = async () => { };
 
 export function showStatus(req, res) {
     res.render('whatsapp/index', {
