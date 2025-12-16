@@ -40,7 +40,7 @@ async function initDb() {
 }
 
 // Run DB init
-initDb();
+
 
 dotenv.config();
 
@@ -126,7 +126,7 @@ const PORT = process.env.PORT || 3000;
 export default app;
 
 // Only listen if executed directly (not imported)
-import { fileURLToPath } from 'url';
+// Only listen if executed directly (not imported)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => {
     console.log(`sng logistics listening on ${PORT}`);
