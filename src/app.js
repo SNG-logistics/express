@@ -110,7 +110,7 @@ app.use(customsRoutes);
 app.use(codRoutes);
 
 app.use(usersRoutes);
-app.use(whatsappRoutes);
+// app.use(whatsappRoutes); // Temporarily disabled to debug OOM
 app.use(settingsRoutes);
 
 app.get('/', (req, res) => res.redirect('/dashboard'));

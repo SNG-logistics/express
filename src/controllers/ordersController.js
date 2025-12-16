@@ -1,5 +1,5 @@
 import pool from '../config/db.js';
-import { sendOrderUpdate } from '../services/whatsappService.js';
+// import { sendOrderUpdate } from '../services/whatsappService.js';
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
 
@@ -229,7 +229,7 @@ export async function receiveOrder(req, res) {
     await logStatus(id, order.status, toStatus, 'Received into warehouse', req.session.user?.id);
 
     // Notify WhatsApp
-    sendOrderUpdate(id, toStatus);
+    // sendOrderUpdate(id, toStatus);
 
     req.session.flash = { type: 'success', message: 'Order received into warehouse' };
     res.redirect(`/orders/${id}`);
@@ -331,7 +331,7 @@ export async function arriveDestinationWh(req, res) {
     await logStatus(id, order.status, 'AT_DEST_WH', 'Received destination warehouse', req.session.user?.id);
 
     // Notify WhatsApp
-    sendOrderUpdate(id, 'AT_DEST_WH');
+    // sendOrderUpdate(id, 'AT_DEST_WH');
 
     req.session.flash = { type: 'success', message: 'Order received at destination warehouse' };
     res.redirect(`/orders/${id}`);
@@ -367,7 +367,7 @@ export async function startDelivery(req, res) {
     await logStatus(id, order.status, 'OUT_FOR_DELIVERY', 'Out for delivery', req.session.user?.id);
 
     // Notify WhatsApp
-    sendOrderUpdate(id, 'OUT_FOR_DELIVERY');
+    // sendOrderUpdate(id, 'OUT_FOR_DELIVERY');
 
     req.session.flash = { type: 'success', message: 'Order out for delivery' };
     res.redirect(`/orders/${id}`);
@@ -403,7 +403,7 @@ export async function markDelivered(req, res) {
     await logStatus(id, order.status, 'DELIVERED', 'Delivered', req.session.user?.id);
 
     // Notify WhatsApp
-    sendOrderUpdate(id, 'DELIVERED');
+    // sendOrderUpdate(id, 'DELIVERED');
 
     req.session.flash = { type: 'success', message: 'Order marked as delivered' };
     res.redirect(`/orders/${id}`);
@@ -552,7 +552,7 @@ export async function processScan(req, res) {
       await logStatus(order.id, order.status, nextStatus, logNote, req.session.user?.id);
 
       // Notify WhatsApp
-      sendOrderUpdate(order.id, nextStatus);
+      // sendOrderUpdate(order.id, nextStatus);
       req.session.scanFlash = { type: 'success', message: `สำเร็จ! ${safeJobNo} -> ${nextStatus}` };
       req.session.lastScan = { job_no: safeJobNo, status: nextStatus, time: new Date() };
     } else {
