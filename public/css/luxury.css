@@ -145,8 +145,39 @@ body.light-mode .glass-panel-dark {
   border-color: var(--accent-primary);
 }
 
-.card-hoverable:hover::after {
-  box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.1);
+box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.1);
+}
+
+/* DASHBOARD SPECIFIC FIXES (ADDED POST-DEPLOYMENT) */
+/* Fix oversized icons in stats cards */
+.glass-panel-dark .fa-box,
+.glass-panel-dark .fa-coins,
+.glass-panel-dark .fa-calendar,
+.glass-panel-dark .fa-trophy {
+  font-size: 1.25rem !important;
+  /* Force manageable size (text-xl) */
+  line-height: 1;
+}
+
+/* Fix text overlap in stats */
+.glass-panel-dark h3 {
+  font-size: 1.875rem !important;
+  /* text-3xl */
+  line-height: 2.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Mobile responsive adjustments for header */
+@media (max-width: 640px) {
+  .glass-panel-dark h1 {
+    font-size: 1.5rem !important;
+    /* Smaller title on mobile */
+  }
+
+  .glass-panel-dark p.tracking-\[0\.3em\] {
+    letter-spacing: 0.1em !important;
+    /* Reduce tracking on mobile */
+  }
 }
 
 /* 3. BUTTONS (CYBER STYLE) */
