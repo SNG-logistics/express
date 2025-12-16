@@ -14,7 +14,7 @@ import customsRoutes from './routes/customs.js';
 import codRoutes from './routes/cod.js';
 import customersRoutes from './routes/customers.js';
 import usersRoutes from './routes/users.js';
-import whatsappRoutes from './routes/whatsapp.js';
+// import whatsappRoutes from './routes/whatsapp.js';
 import settingsRoutes from './routes/settings.js';
 import pool from './config/db.js';
 
