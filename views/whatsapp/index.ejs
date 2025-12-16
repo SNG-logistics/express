@@ -85,39 +85,43 @@
         const errorContainer = document.getElementById('errorContainer'); // Assume added to HTML below
         if (errorContainer) errorContainer.classList.add('hidden');
 
-        switch (data.status) {
             case 'CONNECTED':
             case 'AUTHENTICATED':
-                dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
-                connectedContainer.classList.remove('hidden');
-                break;
+        dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
+        connectedContainer.classList.remove('hidden');
+        break;
             case 'QR_READY':
-                dot.classList.add('bg-amber-500', 'animate-pulse');
-                qrContainer.classList.remove('hidden');
-                // Render QR if changed
-                if (data.qr && data.qr !== currentQr) {
-                    currentQr = data.qr;
-                    document.getElementById('qrcode').innerHTML = '';
-                    new QRCode(document.getElementById('qrcode'), {
-                        text: data.qr,
-                        width: 256,
-                        height: 256
-                    });
-                }
-                break;
-            case 'DISCONNECTED':
-                dot.classList.add('bg-red-500');
-                break;
-            case 'ERROR':
-                dot.classList.add('bg-red-600', 'animate-pulse');
-                if (data.error) {
-                    text.textContent = 'Error: ' + data.error; // Show error summary in title
-                    // Optional: Show full error in a box if we added one
-                }
-                break;
-            default:
-                dot.classList.add('bg-slate-500');
+        dot.classList.add('bg-amber-500', 'animate-pulse');
+        qrContainer.classList.remove('hidden');
+        // Render QR if changed
+        if (data.qr && data.qr !== currentQr) {
+            currentQr = data.qr;
+            document.getElementById('qrcode').innerHTML = '';
+            new QRCode(document.getElementById('qrcode'), {
+                text: data.qr,
+                width: 256,
+                height: 256
+            });
         }
+        break;
+            case 'DISCONNECTED':
+        dot.classList.add('bg-red-500');
+        break;
+            case 'DISABLED_OOM_FIX':
+        dot.classList.add('bg-slate-500');
+        text.textContent = 'ระบบถูกปิดชั่วคราว (เพื่อความเสถียรของ Server)';
+        text.classList.add('text-amber-500');
+        break;
+            case 'ERROR':
+        dot.classList.add('bg-red-600', 'animate-pulse');
+        if (data.error) {
+            text.textContent = 'Error: ' + data.error; // Show error summary in title
+            // Optional: Show full error in a box if we added one
+        }
+        break;
+            default:
+        dot.classList.add('bg-slate-500');
+    }
     }
 
     async function checkStatus() {
