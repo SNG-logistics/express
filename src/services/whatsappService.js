@@ -1,6 +1,6 @@
 
 import pool from '../config/db.js';
-import { makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import pool from '../config/db.js';
 import pino from 'pino';
 
 // Variables to hold state
@@ -64,6 +64,9 @@ async function startSock() {
     connectionStatus = 'CONNECTING';
     lastError = null;
     try {
+        // Dynamic Import to save memory on startup
+        const { makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = await import('@whiskeysockets/baileys');
+
         const { version } = await fetchLatestBaileysVersion();
         addLog(`Using WA version ${version.join('.')}`);
         const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
@@ -90,6 +93,12 @@ async function startSock() {
             }
 
             if (connection === 'close') {
+                // Dynamic import makes DisconnectReason available here? 
+                // Yes, it is in the same scope (try block of startSock).
+                // But wait, makeWASocket returns sock.
+                // sock.ev.on is called.
+                // DisconnectReason comes from the destructuring at the top of the try block.
+                // So it is available.
                 const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
                 console.log('[WhatsApp] Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
                 const errMsg = lastDisconnect?.error?.message || lastDisconnect?.error?.description || lastDisconnect?.error?.toString() || 'Unknown';
