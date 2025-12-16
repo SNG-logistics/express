@@ -93,7 +93,7 @@ export async function create(req, res) {
     service_type,
     declared_weight: declared_weight ? Number(declared_weight) : null,
     declared_size,
-    declared_value: declared_value ? Number(declared_value) : null
+    declared_value: declared_value ? Number(declared_value) : null,
     image_path: req.file ? `/uploads/orders/${req.file.filename}` : null
   };
 
