@@ -1,6 +1,6 @@
 
 import pool from '../config/db.js';
-import pool from '../config/db.js';
+
 import pino from 'pino';
 
 // Variables to hold state
