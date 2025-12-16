@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบปริ้นบิล - <%= order.job_no %>
+    </title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', 'Prompt', sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+            width: 80mm;
+            padding: 10mm;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed #333;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .company-info {
+            font-size: 10px;
+            color: #666;
+        }
+
+        .order-number {
+            text-align: center;
+            margin: 12px 0;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .order-number .label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .order-number .value {
+            font-size: 20px;
+            font-weight: bold;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+
+        .barcode {
+            text-align: center;
+            margin: 12px 0;
+        }
+
+        .barcode img {
+            max-width: 200px;
+            height: 50px;
+        }
+
+        .section {
+            margin: 12px 0;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-row {
+            display: flex;
+            margin: 4px 0;
+            font-size: 11px;
+        }
+
+        .info-label {
+            flex: 0 0 70px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .info-value {
+            flex: 1;
+            color: #000;
+        }
+
+        .address {
+            font-size: 10px;
+            line-height: 1.5;
+            color: #333;
+            margin-top: 4px;
+        }
+
+        .pricing-table {
+            width: 100%;
+            margin: 12px 0;
+            border-collapse: collapse;
+        }
+
+        .pricing-table td {
+            padding: 4px 0;
+            font-size: 11px;
+        }
+
+        .pricing-table .label {
+            text-align: left;
+            color: #666;
+        }
+
+        .pricing-table .amount {
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .pricing-table .total-row {
+            border-top: 2px solid #333;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .cod-section {
+            background: #fffbeb;
+            border: 2px solid #fbbf24;
+            padding: 8px;
+            margin: 12px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .cod-label {
+            font-size: 10px;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+
+        .cod-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #92400e;
+            font-family: monospace;
+        }
+
+        .qr-code {
+            text-align: center;
+            margin: 12px 0;
+        }
+
+        .qr-code img {
+            width: 120px;
+            height: 120px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 2px dashed #333;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .footer .tracking-url {
+            margin: 6px 0;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .cut-line {
+            text-align: center;
+            margin: 12px 0;
+            color: #999;
+            font-size: 10px;
+        }
+
+        .cut-line::before {
+            content: '✂️ ';
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 10mm;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="company-name">SNG Logistics</div>
+        <div class="company-info">ขนส่งไทย-ลาอส</div>
+        <div class="company-info">โทร: 099-999-9999</div>
+    </div>
+
+    <!-- Order Number -->
+    <div class="order-number">
+        <div class="label">เลขพัสดุ</div>
+        <div class="value">
+            <%= order.job_no %>
+        </div>
+    </div>
+
+    <!-- Barcode -->
+    <div class="barcode">
+        <svg id="barcode"></svg>
+    </div>
+
+    <!-- Date/Time -->
+    <div style="text-align: center; font-size: 10px; color: #666; margin-bottom: 12px;">
+        วันที่: <%= new Date().toLocaleDateString('th-TH', { year: 'numeric' , month: 'long' , day: 'numeric' }) %>
+            เวลา: <%= new Date().toLocaleTimeString('th-TH', { hour: '2-digit' , minute: '2-digit' }) %>
+    </div>
+
+    <!-- Sender Info -->
+    <div class="section">
+        <div class="section-title">ผู้ส่ง (SENDER)</div>
+        <div class="info-row">
+            <div class="info-label">ชื่อ:</div>
+            <div class="info-value">
+                <%= sender.name %>
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">เบอร์:</div>
+            <div class="info-value">
+                <%= sender.phone || '-' %>
+            </div>
+        </div>
+        <div class="address">
+            <strong>ที่อยู่:</strong><br>
+            <%= sender.address || '-' %><br>
+                <%= sender.city ? sender.city + ', ' : '' %>
+                    <%= sender.province || '' %>
+        </div>
+    </div>
+
+    <!-- Receiver Info -->
+    <div class="section">
+        <div class="section-title">ผู้รับ (RECEIVER)</div>
+        <div class="info-row">
+            <div class="info-label">ชื่อ:</div>
+            <div class="info-value">
+                <%= receiver.name %>
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">เบอร์:</div>
+            <div class="info-value">
+                <%= receiver.phone || '-' %>
+            </div>
+        </div>
+        <div class="address">
+            <strong>ที่อยู่:</strong><br>
+            <%= receiver.address || '-' %><br>
+                <%= receiver.city ? receiver.city + ', ' : '' %>
+                    <%= receiver.province || '' %>
+        </div>
+    </div>
+
+    <!-- Package Details -->
+    <div class="section">
+        <div class="section-title">รายละเอียดพัสดุ</div>
+        <div class="info-row">
+            <div class="info-label">น้ำหนัก:</div>
+            <div class="info-value">
+                <%= order.declared_weight || order.actual_weight || '-' %> กก.
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ขนาด:</div>
+            <div class="info-value">
+                <%= order.declared_size || order.actual_size || '-' %>
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ประเภท:</div>
+            <div class="info-value">
+                <%= order.service_type || 'พัสดุทั่วไป' %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing -->
+    <table class="pricing-table">
+        <tr>
+            <td class="label">ค่าขนส่ง:</td>
+            <td class="amount">
+                <%= Number(order.price_amount || 0).toFixed(2) %> บ.
+            </td>
+        </tr>
+        <% if (customs && customs.amount> 0) { %>
+            <tr>
+                <td class="label">ค่าศุลกากร:</td>
+                <td class="amount">
+                    <%= Number(customs.amount).toFixed(2) %> บ.
+                </td>
+            </tr>
+            <% } %>
+                <tr class="total-row">
+                    <td class="label">รวมทั้งสิ้น:</td>
+                    <td class="amount">
+                        <%= Number(order.price_amount + (customs?.amount || 0)).toFixed(2) %> บ.
+                    </td>
+                </tr>
+    </table>
+
+    <!-- COD (if applicable) -->
+    <% if (order.cod_amount && order.cod_amount> 0) { %>
+        <div class="cod-section">
+            <div class="cod-label">⚠️ เก็บเงินปลายทาง (COD)</div>
+            <div class="cod-amount">฿<%= Number(order.cod_amount).toLocaleString('th-TH') %>
+            </div>
+        </div>
+        <% } %>
+
+            <!-- QR Code for Tracking -->
+            <div class="qr-code">
+                <div id="qrcode"></div>
+                <div style="font-size: 9px; color: #999; margin-top: 4px;">Scan เพื่อติดตามพัสดุ</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="tracking-url">www.sng-logistics.com/track</div>
+                <div>ขอบคุณที่ใช้บริการ</div>
+            </div>
+
+            <!-- Cut Line -->
+            <div class="cut-line">ตัดตรงนี้</div>
+
+            <!-- Print Button (hide when printing) -->
+            <div class="no-print" style="text-align: center; margin-top: 20px;">
+                <button onclick="window.print()"
+                    style="padding: 12px 24px; background: #06b6d4; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                    🖨️ พิมพ์บิล
+                </button>
+                <button onclick="window.close()"
+                    style="padding: 12px 24px; background: #64748b; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-left: 8px;">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+
+            <!-- Scripts for Barcode and QR Code -->
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+            <script>
+                // Generate Barcode
+                JsBarcode("#barcode", "<%= order.job_no %>", {
+                    format: "CODE128",
+                    width: 2,
+                    height: 50,
+                    displayValue: false
+                });
+
+                // Generate QR Code
+                const trackingUrl = `${window.location.origin}/track/<%= order.job_no %>`;
+                new QRCode(document.getElementById("qrcode"), {
+                    text: trackingUrl,
+                    width: 120,
+                    height: 120
+                });
+
+                // Auto-print on load (optional)
+                // window.addEventListener('load', () => {
+                //   setTimeout(() => window.print(), 500);
+                // });
+            </script>
+</body>
+
+</html>

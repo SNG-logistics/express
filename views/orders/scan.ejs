@@ -1,148 +1,354 @@
-<div class="max-w-2xl mx-auto animate-fade-in min-h-[70vh] flex flex-col justify-center">
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-black text-white tracking-tight flex items-center justify-center gap-3">
-            <span
-                class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-900/20">
-                <i class="fa-solid fa-barcode"></i>
-            </span>
-            Scanner Mode
-        </h1>
-        <p class="text-slate-400 mt-2">ยิงบาร์โค้ดเพื่ออัปเดตสถานะทันที</p>
+<div class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black p-4 relative overflow-hidden">
+    <!-- Background Effects -->
+    <div class="fixed inset-0 pointer-events-none opacity-30">
+        <div class="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-[120px]"></div>
     </div>
 
-    <% if (flash) { %>
-        <div
-            class="p-4 rounded-xl mb-6 border <%= flash.type === 'error' ? 'bg-red-500/10 text-red-200 border-red-500/20' : 
-                                            flash.type === 'success' ? 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' :
-                                            'bg-blue-500/10 text-blue-200 border-blue-500/20' %> flex items-center gap-3 shadow-sm animate-pulse-once">
-            <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check' %> text-xl"></i>
-            <span class="text-lg font-bold">
-                <%= flash.message %>
-            </span>
+    <div class="relative z-10 max-w-2xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <a href="/orders"
+                    class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h1 class="text-3xl font-bold text-white">สแกนพัสดุ</h1>
+                    <p class="text-slate-400 text-sm">สแกนบาร์โค้ดหรือ QR Code</p>
+                </div>
+            </div>
+            <button
+                class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all">
+                <i class="fa-solid fa-question-circle"></i>
+            </button>
         </div>
-        <% } %>
 
-            <div class="glass-panel-dark rounded-3xl shadow-2xl border border-white/5 p-8 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none">
+        <!-- Camera Scanner -->
+        <div class="glass-panel p-6 mb-6">
+            <div class="relative aspect-square bg-black rounded-2xl overflow-hidden mb-4">
+                <video id="scanner-video" class="w-full h-full object-cover" autoplay playsinline></video>
+
+                <!-- Scanning Frame Overlay -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="relative w-64 h-64">
+                        <!-- Animated Corners -->
+                        <div
+                            class="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-cyan-400 rounded-tl-2xl scan-corner">
+                        </div>
+                        <div
+                            class="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-cyan-400 rounded-tr-2xl scan-corner">
+                        </div>
+                        <div
+                            class="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-cyan-400 rounded-bl-2xl scan-corner">
+                        </div>
+                        <div
+                            class="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-cyan-400 rounded-br-2xl scan-corner">
+                        </div>
+
+                        <!-- Scanning Line -->
+                        <div class="scan-line"></div>
+                    </div>
                 </div>
 
-                <form action="/orders/scan" method="post" id="scanForm" class="relative z-10">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-                    <!-- Action Mode Selector -->
-                    <div class="mb-8">
-                        <label
-                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เลือกการทำงาน
-                            (Action)</label>
-                        <div class="relative">
-                            <select name="action_mode" id="actionMode"
-                                class="block w-full bg-slate-900 border border-slate-700 rounded-xl text-lg py-4 pl-5 pr-12 text-white focus:ring-amber-500 focus:border-amber-500 shadow-lg appearance-none cursor-pointer transition-all hover:border-slate-600">
-                                <option value="none">🔍 เช็คสถานะเฉยๆ (Check Status)</option>
-                                <option value="receive">📥 รับของเข้าโกดัง (Receive Order)</option>
-                                <option value="crossing">🚛 ขึ้นรถข้ามแดน (Start Crossing)</option>
-                                <option value="arrived_border">🏁 ถึงด่านลาว (Arrived Border)</option>
-                                <option value="at_dest">🏠 ถึงโกดังปลายทาง (At Destination)</option>
-                                <option value="delivery">🛵 ออกส่งพัสดุ (Out for Delivery)</option>
-                                <option value="delivered">✅ ส่งถึงมือลูกค้า (Delivered)</option>
-                            </select>
-                            <div
-                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                                <i class="fa-solid fa-chevron-down"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Barcode Input -->
-                    <div class="mb-2">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">สแกนเลขพัสดุ
-                            (Scan Job No)</label>
-                        <div class="relative group">
-                            <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                                <i
-                                    class="fa-solid fa-qrcode text-slate-500 text-2xl group-focus-within:text-amber-500 transition-colors"></i>
-                            </div>
-                            <input type="text" name="job_no" id="jobNoInput"
-                                class="block w-full bg-slate-800 border-2 border-slate-700 rounded-xl text-2xl font-mono text-white py-5 pl-14 focus:ring-0 focus:border-amber-500 shadow-inner transition-all placeholder-slate-600"
-                                placeholder="SNG-XXXX-XXXX" autocomplete="off" autofocus required>
-                        </div>
-                        <p class="text-[10px] text-slate-500 mt-2 text-right font-mono opacity-60">Press Enter or Scan
-                            to Submit</p>
-                    </div>
-                </form>
+                <div class="absolute bottom-4 left-0 right-0 text-center">
+                    <p
+                        class="text-white text-sm font-medium bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 inline-block">
+                        วางบาร์โค้ดหรือ QR Code ในกรอบ
+                    </p>
+                </div>
             </div>
 
-            <!-- Recent Scan Info -->
-            <% if (lastScan) { %>
-                <div class="mt-8 glass-panel-dark rounded-2xl p-6 shadow-xl border border-white/5 animate-fade-in-up">
-                    <h3
-                        class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-4 border-b border-white/5 pb-2">
-                        รายการล่าสุด (Recent Scan)</h3>
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <div class="text-3xl font-black font-mono text-amber-500 tracking-tight">
-                                <%= lastScan.job_no %>
-                            </div>
-                            <div class="text-slate-400 mt-1 text-sm font-medium">
-                                <i class="fa-regular fa-clock mr-1"></i>
-                                <%= new Date(lastScan.time).toLocaleTimeString('th-TH') %>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span
-                                class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white font-bold shadow-lg">
-                                <%= lastScan.status %>
-                            </span>
-                        </div>
-                    </div>
+            <!-- Manual Input -->
+            <div class="flex gap-3">
+                <input type="text" id="manual-barcode" placeholder="หรือพิมพ์เลขพัสดุ..."
+                    class="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all">
+                <button id="manual-search-btn"
+                    class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-cyan-500/50 transition-all">
+                    <i class="fa-solid fa-search mr-2"></i> ค้นหา
+                </button>
+            </div>
+        </div>
+
+        <!-- Last Scanned Info -->
+        <div id="scanned-info" class="glass-panel p-6 mb-6 hidden">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <p class="text-slate-400 text-sm mb-1">เลขพัสดุ</p>
+                    <h3 class="text-2xl font-bold text-white font-mono" id="scanned-job-no">-</h3>
                 </div>
-                <% } %>
+                <span id="scanned-status-badge" class="status-badge badge-new">
+                    <i class="fa-solid fa-circle-dot"></i> ใหม่
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <p class="text-slate-400 text-xs mb-1">ผู้รับ</p>
+                    <p class="text-white font-medium" id="scanned-receiver">-</p>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs mb-1">เวลาสแกน</p>
+                    <p class="text-white font-medium" id="scanned-time">-</p>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <button id="btn-update-status" class="btn-large bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                    <i class="fa-solid fa-sync mr-2"></i>
+                    <span class="text-sm">อัพเดท<br>สถานะ</span>
+                </button>
+                <button id="btn-print"
+                    class="btn-large bg-white/10 text-white border border-white/20 hover:bg-white/20">
+                    <i class="fa-solid fa-print mr-2"></i>
+                    <span class="text-sm">พิมพ์<br>บิล</span>
+                </button>
+                <button id="btn-view-details"
+                    class="btn-large bg-white/10 text-white border border-white/20 hover:bg-white/20">
+                    <i class="fa-solid fa-eye mr-2"></i>
+                    <span class="text-sm">ดู<br>รายละเอียด</span>
+                </button>
+            </div>
+
+            <!-- Status Update Shortcuts -->
+            <div id="status-shortcuts" class="hidden">
+                <p class="text-slate-400 text-sm mb-3 font-semibold">อัพเดทสถานะเป็น:</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="status-badge badge-received" data-status="RECEIVED">
+                        <i class="fa-solid fa-box-open"></i> รับของ
+                    </button>
+                    <button class="status-badge badge-crossing" data-status="CROSS_BORDER">
+                        <i class="fa-solid fa-globe"></i> ข้ามแดน
+                    </button>
+                    <button class="status-badge badge-warehouse" data-status="AT_DEST_WH">
+                        <i class="fa-solid fa-warehouse"></i> ถึงคลัง
+                    </button>
+                    <button class="status-badge badge-delivery" data-status="DEPARTED">
+                        <i class="fa-solid fa-truck"></i> ออกส่ง
+                    </button>
+                    <button class="status-badge badge-completed" data-status="DELIVERED">
+                        <i class="fa-solid fa-check-circle"></i> สำเร็จ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan History -->
+        <div class="glass-panel p-6">
+            <h3 class="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-history"></i> ประวัติการสแกน
+            </h3>
+
+            <div class="space-y-2">
+                <% if (recentScans && recentScans.length> 0) { %>
+                    <% recentScans.forEach(scan=> { %>
+                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+                            onclick="loadOrder('<%= scan.job_no %>')">
+                            <div>
+                                <p class="text-white font-mono font-semibold">
+                                    <%= scan.job_no %>
+                                </p>
+                                <p class="text-xs text-slate-400">
+                                    <%= scan.receiver_name || '-' %>
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400">
+                                    <%= scan.updated_at.toLocaleTimeString('th-TH', {hour: '2-digit' , minute: '2-digit'
+                                        }) %>
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-slate-600 ml-2"></i>
+                            </div>
+                        </div>
+                        <% }) %>
+                            <% } else { %>
+                                <div class="text-center py-8 text-slate-500">
+                                    <i class="fa-solid fa-inbox text-4xl mb-2"></i>
+                                    <p>ยังไม่มีประวัติการสแกน</p>
+                                </div>
+                                <% } %>
+            </div>
+        </div>
+    </div>
 </div>
 
+<style>
+    @keyframes scan-line {
+        0% {
+            top: 0;
+        }
+
+        50% {
+            top: 100%;
+        }
+
+        100% {
+            top: 0;
+        }
+    }
+
+    .scan-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #06b6d4, transparent);
+        box-shadow: 0 0 10px #06b6d4;
+        animation: scan-line 2s ease-in-out infinite;
+    }
+
+    .scan-corner {
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+    }
+</style>
+
 <script>
-    // Auto focus input on load
-    document.addEventListener('DOMContentLoaded', () => {
-        const input = document.getElementById('jobNoInput');
-        if (input) input.focus();
+    let currentOrder = null;
+    let stream = null;
 
-        // Maintain action selection from local storage
-        const select = document.getElementById('actionMode');
-        const savedMode = localStorage.getItem('sng_scan_mode');
-        if (savedMode && select) {
-            select.value = savedMode;
-        }
-
-        if (select) {
-            select.addEventListener('change', (e) => {
-                localStorage.setItem('sng_scan_mode', e.target.value);
-                if (input) input.focus();
+    // Initialize camera
+    async function initCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
             });
+            document.getElementById('scanner-video').srcObject = stream;
+        } catch (error) {
+            console.error('Camera error:', error);
+            alert('ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้งานกล้อง');
         }
+    }
 
-        // Play sound based on result (if flash exists)
-        const flashDataPayload = <% - JSON.stringify(flash || null) %>;
+    // Manual search
+    document.getElementById('manual-search-btn').addEventListener('click', async () => {
+        const barcode = document.getElementById('manual-barcode').value.trim();
+        if (!barcode) return;
+        await loadOrder(barcode);
+    });
 
-        if (flashDataPayload) {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            function playTone(freq, type, duration) {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = type;
-                osc.frequency.value = freq;
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-                osc.stop(audioCtx.currentTime + duration);
+    // Enter key on manual input
+    document.getElementById('manual-barcode').addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+            const barcode = e.target.value.trim();
+            if (barcode) await loadOrder(barcode);
+        }
+    });
+
+    // Load order by barcode
+    async function loadOrder(barcode) {
+        try {
+            const response = await fetch('/scanner/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                currentOrder = data.order;
+                displayOrder(data.order);
+            } else {
+                alert(data.message);
             }
+        } catch (error) {
+            console.error('Load order error:', error);
+            alert('เกิดข้อผิดพลาดในการค้นหา');
+        }
+    }
 
-            // Unlock audio context interactively if needed, but here we try auto
-            if (audioCtx.state === 'suspended') audioCtx.resume().catch(e => console.log(e));
+    // Display order info
+    function displayOrder(order) {
+        document.getElementById('scanned-info').classList.remove('hidden');
+        document.getElementById('scanned-job-no').textContent = order.job_no;
+        document.getElementById('scanned-receiver').textContent = order.receiver_name || '-';
+        document.getElementById('scanned-time').textContent = new Date().toLocaleTimeString('th-TH');
 
-            if (flashDataPayload.type === 'success') {
-                setTimeout(() => playTone(800, 'sine', 0.1), 100);
-            } else if (flashDataPayload.type === 'error') {
-                setTimeout(() => playTone(200, 'sawtooth', 0.3), 100);
+        // Update status badge
+        const statusBadge = document.getElementById('scanned-status-badge');
+        const statusMap = {
+            'NEW': { class: 'badge-new', icon: 'circle-dot', text: 'ใหม่' },
+            'RECEIVED': { class: 'badge-received', icon: 'box-open', text: 'รับของ' },
+            'CROSS_BORDER': { class: 'badge-crossing', icon: 'globe', text: 'ข้ามแดน' },
+            'AT_DEST_WH': { class: 'badge-warehouse', icon: 'warehouse', text: 'ถึงคลัง' },
+            'DEPARTED': { class: 'badge-delivery', icon: 'truck', text: 'ออกส่ง' },
+            'DELIVERED': { class: 'badge-completed', icon: 'check-circle', text: 'สำเร็จ' }
+        };
+
+        const status = statusMap[order.status] || statusMap['NEW'];
+        statusBadge.className = `status-badge ${status.class}`;
+        statusBadge.innerHTML = `<i class="fa-solid fa-${status.icon}"></i> ${status.text}`;
+    }
+
+    // Toggle status shortcuts
+    document.getElementById('btn-update-status').addEventListener('click', () => {
+        const shortcuts = document.getElementById('status-shortcuts');
+        shortcuts.classList.toggle('hidden');
+    });
+
+    // Quick status update
+    document.querySelectorAll('#status-shortcuts .status-badge').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!currentOrder) return;
+
+            const newStatus = btn.dataset.status;
+            try {
+                const response = await fetch(`/scanner/update/${currentOrder.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('อัพเดทสถานะสำเร็จ!');
+                    currentOrder.status = newStatus;
+                    displayOrder(currentOrder);
+                    document.getElementById('status-shortcuts').classList.add('hidden');
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Status update error:', error);
+                alert('เกิดข้อผิดพลาดในการอัพเดท');
             }
+        });
+    });
+
+    // Print button
+    document.getElementById('btn-print').addEventListener('click', () => {
+        if (currentOrder) {
+            window.open(`/orders/${currentOrder.id}/print`, '_blank');
+        }
+    });
+
+    // View details button
+    document.getElementById('btn-view-details').addEventListener('click', () => {
+        if (currentOrder) {
+            window.location.href = `/orders/${currentOrder.id}`;
+        }
+    });
+
+    // Initialize on load
+    initCamera();
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
         }
     });
 </script>

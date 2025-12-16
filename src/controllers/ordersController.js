@@ -487,6 +487,57 @@ export async function printWaybill(req, res) {
   });
 }
 
+export async function showPrint(req, res) {
+  try {
+    const { id } = req.params;
+
+    const [[order]] = await pool.query(
+      `SELECT o.*, 
+              s.name AS sender_name, s.phone AS sender_phone, 
+              s.address AS sender_address, s.city AS sender_city, 
+              s.province AS sender_province,
+              r.name AS receiver_name, r.phone AS receiver_phone,
+              r.address AS receiver_address, r.city AS receiver_city,
+              r.province AS receiver_province
+       FROM orders o
+       LEFT JOIN customers s ON o.sender_id = s.id
+       LEFT JOIN customers r ON o.receiver_id = r.id
+       WHERE o.id = ?`,
+      [id]
+    );
+
+    if (!order) return res.status(404).send('Order not found');
+
+    const [[customs]] = await pool.query(
+      'SELECT amount FROM payments WHERE order_id = ? AND type = "customs" LIMIT 1',
+      [id]
+    );
+
+    res.render('orders/print', {
+      layout: false,
+      order,
+      sender: {
+        name: order.sender_name,
+        phone: order.sender_phone,
+        address: order.sender_address,
+        city: order.sender_city,
+        province: order.sender_province
+      },
+      receiver: {
+        name: order.receiver_name,
+        phone: order.receiver_phone,
+        address: order.receiver_address,
+        city: order.receiver_city,
+        province: order.receiver_province
+      },
+      customs: customs || { amount: 0 }
+    });
+  } catch (error) {
+    console.error('Print view error:', error);
+    res.status(500).send('Error generating print view: ' + error.message);
+  }
+}
+
 export async function showScan(req, res) {
   res.render('orders/scan', {
     user: req.session.user,

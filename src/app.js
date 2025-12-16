@@ -9,6 +9,7 @@ import csrf from 'csurf';
 import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
 import orderRoutes from './routes/orders.js';
+import scannerRoutes from './routes/scanner.js';
 import tripRoutes from './routes/trips.js';
 import customsRoutes from './routes/customs.js';
 import codRoutes from './routes/cod.js';
@@ -104,6 +105,7 @@ app.use(authRoutes);
 app.use(dashboardRoutes);
 app.use(customersRoutes);
 app.use(orderRoutes);
+app.use(scannerRoutes);
 app.use(tripRoutes);
 app.use(customsRoutes);
 

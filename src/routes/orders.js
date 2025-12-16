@@ -17,6 +17,7 @@ router.get('/orders/:id', requireLogin, orders.detail);
 router.get('/orders/:id/edit', requireLogin, orders.showEdit);
 router.post('/orders/:id/edit', requireLogin, orders.update);
 router.get('/orders/:id/waybill', requireLogin, orders.printWaybill);
+router.get('/orders/:id/print', requireLogin, orders.showPrint);
 
 // Status updates
 router.post('/orders/:id/receive', requireLogin, orders.receiveOrder);
