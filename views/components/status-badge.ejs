@@ -1,0 +1,6 @@
+<!-- Status Badge Component -->
+<% /* Expected locals: status (string), label (string) */ %>
+    <span class="status-pill <%= status %>"><i
+            class="fa-solid <%= status === 'new' ? 'fa-circle-dot' : status === 'received' ? 'fa-box-open' : status === 'crossing' ? 'fa-globe' : status === 'warehouse' ? 'fa-warehouse' : status === 'delivery' ? 'fa-truck' : 'fa-check-circle' %>"></i>
+        <%= label %>
+    </span>

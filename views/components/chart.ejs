@@ -1,0 +1,56 @@
+<!-- Chart Component -->
+<div class="glass-panel-dark p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-white font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-chart-bar text-cyan-400"></i> สถิติการจัดส่ง
+        </h3>
+        <select class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white"
+            id="chartRangeSelect" onchange="updateChartRange(this.value)">
+            <option value="30">30 วันล่าสุด</option>
+            <option value="7">7 วันล่าสุด</option>
+            <option value="month">เดือนนี้</option>
+        </select>
+    </div>
+    <canvas id="ordersChart" class="w-full h-64 md:h-80"></canvas>
+    <script>
+        const chartData = {
+            labels: <%= JSON.stringify(charts.labels) %>,
+            orders: <%= JSON.stringify(charts.orders30) %>,
+            revenue: <%= JSON.stringify(charts.revenue30) %>
+    };
+        const ctx = document.getElementById('ordersChart').getContext('2d');
+        const ordersChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'ออเดอร์',
+                        data: chartData.orders,
+                        backgroundColor: 'rgba(6,182,212,0.6)'
+                    },
+                    {
+                        label: 'รายได้ (฿)',
+                        data: chartData.revenue,
+                        type: 'line',
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245,158,11,0.3)',
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: { beginAtZero: true },
+                    y1: { position: 'right', beginAtZero: true }
+                }
+            }
+        });
+        function updateChartRange(range) {
+            // Placeholder: In a real app you would request new data via AJAX.
+            console.log('Change range to', range);
+        }
+    </script>
+</div>

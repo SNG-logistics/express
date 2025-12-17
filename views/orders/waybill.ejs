@@ -1,51 +1,111 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="lo">
 
 <head>
     <meta charset="utf-8">
-    <title>Waybill <%= order.job_no %>
+    <title>SNG Waybill <%= order.job_no %>
     </title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
+
+    <!-- Fonts: Sarabun, Prompt, Noto Sans Lao -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
+
+    <!-- Tailwind & FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Luxury Theme -->
+    <link rel="stylesheet" href="/css/luxury.css">
+
     <style>
+        :root {
+            /* Fallback if luxury.css not loaded */
+            --bg-body: #050b14;
+        }
+
         body {
-            font-family: 'Sarabun', sans-serif;
-            background: #f3f4f6;
-            color: black;
+            font-family: 'Prompt', 'Noto Sans Lao', sans-serif;
+            background-color: var(--bg-body, #0f172a);
+            color: #1e293b;
+            /* Standard dark text for paper */
         }
 
-        @media print {
+        /* Screen-only Backdrop (The "Desk") */
+        @media screen {
             body {
-                -webkit-print-color-adjust: exact;
-                background: white;
+                overflow: hidden;
+                /* Prevent body scroll, let container scroll if needed */
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
-            .no-print {
-                display: none;
-            }
-
-            .page-break {
-                page-break-after: always;
+            .screen-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                background:
+                    radial-gradient(circle at 15% 50%, rgba(6, 182, 212, 0.15) 0%, transparent 25%),
+                    radial-gradient(circle at 85% 30%, rgba(217, 70, 239, 0.15) 0%, transparent 25%);
+                background-color: var(--bg-body);
             }
         }
 
+        /* The Paper Waybill */
         .label-page {
             width: 100mm;
             min-height: 150mm;
-            /* A6 size roughly */
-            margin: 0 auto;
             padding: 5mm;
             background: white;
-            border: 1px solid #ddd;
+            position: relative;
+
+            /* Screen visual effects */
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.2);
+            transform: scale(0.95);
+            transition: all 0.3s ease;
         }
 
-        @media print {
+        @media screen and (min-height: 800px) {
             .label-page {
-                border: none;
+                transform: scale(1);
+            }
+        }
+
+        /* Print Override */
+        @media print {
+            @page {
+                margin: 0;
+                size: 100mm 150mm;
+            }
+
+            body {
+                background: white;
+                -webkit-print-color-adjust: exact;
+                height: auto;
+                display: block;
+                overflow: visible;
+            }
+
+            .screen-backdrop,
+            .no-print {
+                display: none !important;
+            }
+
+            .label-page {
                 width: 100%;
                 height: 100%;
+                margin: 0;
+                border: none;
+                box-shadow: none;
+                transform: none;
+                page-break-after: always;
             }
         }
 
@@ -55,35 +115,57 @@
             width: 80%;
             margin: 10px auto;
         }
+
+        /* Typography Refinement */
+        h1,
+        h2,
+        h3,
+        .font-heading {
+            font-family: 'Prompt', 'Noto Sans Lao', sans-serif;
+        }
     </style>
 </head>
 
-<body class="flex items-center justify-center min-h-screen p-8 print:p-0 print:block">
+<body>
 
-    <div class="fixed top-4 right-4 no-print flex flex-col gap-2">
-        <button onclick="window.print()"
-            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-bold flex items-center gap-2">
-            <i class="fa-solid fa-print"></i> Print Label
-        </button>
-        <button onclick="window.close()" class="bg-gray-500 text-white px-4 py-2 rounded shadow hover:bg-gray-600">
-            Close
-        </button>
+    <!-- Fancy Background for Screen -->
+    <div class="screen-backdrop bg-gradient-mesh"></div>
+
+    <!-- Floating Tools -->
+    <div class="fixed top-6 right-6 no-print z-50 flex flex-col gap-3">
+        <div class="glass-panel p-2 rounded-xl flex flex-col gap-2">
+            <button onclick="window.print()"
+                class="btn-gold rounded-lg shadow-lg hover:shadow-cyan-500/50 flex items-center justify-center gap-2 min-w-[120px]">
+                <i class="fa-solid fa-print"></i>
+                <span>ພິມ (Print)</span>
+            </button>
+            <button onclick="window.close()"
+                class="btn-ghost rounded-lg border-white/20 text-white hover:bg-white/10 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-xmark"></i>
+                <span>ປິດ (Close)</span>
+            </button>
+        </div>
     </div>
 
-    <div class="label-page shadow-lg print:shadow-none flex flex-col">
+    <!-- The Waybill Paper -->
+    <div class="label-page flex flex-col justify-between">
+
         <!-- Header -->
         <div class="border-b-2 border-black pb-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
-                <div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold text-xl rounded">S
+                <div
+                    class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold text-xl rounded shadow-sm">
+                    S</div>
+                <div class="leading-tight uppercase">
+                    <h1 class="font-bold text-lg tracking-tight">SNG Logistics</h1>
+                    <span class="text-xs font-medium text-gray-600">Thailand - Laos (ຂົນສົ່ງ ໄທ-ລາວ)</span>
                 </div>
-                <div class="font-bold leading-tight uppercase">SNG Logistics<br><span
-                        class="text-xs font-normal text-gray-600">Thailand - Laos</span></div>
             </div>
             <div class="text-right">
-                <h1 class="font-bold text-2xl">
+                <h1 class="font-black text-3xl tracking-tighter">
                     <%= order.direction==='TH_TO_LA' ? 'TH 🇹🇭' : 'LA 🇱🇦' %>
                 </h1>
-                <p class="text-xs text-gray-500">
+                <p class="text-[10px] text-gray-500 font-medium">
                     <%= new Date(order.created_at).toLocaleDateString('th-TH') %>
                 </p>
             </div>
@@ -91,72 +173,86 @@
 
         <!-- Job No & Barcode -->
         <div class="text-center py-4 border-b-2 border-dashed border-gray-300">
-            <h2 class="text-3xl font-black tracking-widest font-mono">
+            <h2 class="text-4xl font-black tracking-widest font-mono text-black">
                 <%= order.job_no %>
             </h2>
-            <div class="barcode-bar"></div>
-            <p class="text-xs text-gray-400">SCAN FOR TRACKING</p>
+            <div class="barcode-bar opacity-80"></div>
+            <p class="text-[10px] text-gray-400 font-medium tracking-wider uppercase mt-1">Scan for Tracking / ສະແກນ</p>
         </div>
 
         <!-- Receiver (Big) -->
-        <div class="p-4 border-b-2 border-black bg-gray-50 print:bg-gray-50">
-            <span class="text-xs uppercase text-gray-500 font-bold block mb-1">TO (ผู้รับ)</span>
-            <div class="text-xl font-bold">
+        <div class="p-4 border-b-2 border-black bg-gray-50 print:bg-gray-50 rounded-lg my-2">
+            <span class="text-[10px] uppercase text-gray-500 font-bold block mb-1 tracking-wide">
+                <i class="fa-solid fa-location-dot mr-1"></i> ເຖິງ (ຜູ້ຮັບ) / TO
+            </span>
+            <div class="text-2xl font-bold leading-none text-black mb-2 break-words">
                 <%= order.receiver_name || 'N/A' %>
             </div>
-            <div class="text-sm mt-1 leading-relaxed">
+            <div class="text-sm leading-relaxed text-gray-800 break-words font-medium">
                 <%= order.receiver_address || '-' %>
             </div>
-            <div class="mt-2 text-lg font-bold"><i class="fa-solid fa-phone text-xs mr-1"></i>
+            <div class="mt-3 text-lg font-bold text-black border-t border-gray-200 pt-2 flex items-center gap-2">
+                <i
+                    class="fa-solid fa-phone text-xs bg-black text-white p-1 rounded-full w-5 h-5 flex items-center justify-center"></i>
                 <%= order.receiver_phone || '-' %>
             </div>
         </div>
 
         <!-- Sender (Small) -->
-        <div class="p-3 border-b border-gray-300 text-sm">
-            <span class="text-xs uppercase text-gray-500 font-bold block mb-1">FROM (ผู้ส่ง)</span>
-            <div class="font-semibold">
-                <%= order.sender_name || 'N/A' %>
-            </div>
-            <div class="text-xs text-gray-500">
-                <%= order.sender_phone || '-' %>
+        <div class="px-4 py-2 border-b border-gray-200 text-sm">
+            <span class="text-[10px] uppercase text-gray-400 font-bold block mb-1 tracking-wide">
+                <i class="fa-solid fa-box mr-1"></i> ຈາກ (ຜູ້ສົ່ງ) / FROM
+            </span>
+            <div class="font-semibold text-gray-900 grid grid-cols-[1fr,auto] gap-2">
+                <span class="truncate">
+                    <%= order.sender_name || 'N/A' %>
+                </span>
+                <span class="text-xs text-gray-500">
+                    <%= order.sender_phone || '-' %>
+                </span>
             </div>
         </div>
 
-        <!-- COD & Info -->
-        <div class="grid grid-cols-2 text-center border-b-2 border-black text-sm">
-            <div class="p-3 border-r border-black">
-                <span class="block text-xs text-gray-500 uppercase">Service</span>
-                <span class="font-bold uppercase">
+        <!-- Info Grid -->
+        <div class="grid grid-cols-2 text-center border-b-2 border-black text-sm divide-x divide-black">
+            <div class="p-2">
+                <span class="block text-[10px] text-gray-500 uppercase font-bold">Service / ບໍລິການ</span>
+                <span class="font-black uppercase text-base">
                     <%= order.service_type || 'General' %>
                 </span>
             </div>
-            <div class="p-3">
-                <span class="block text-xs text-gray-500 uppercase">Weight</span>
-                <span class="font-bold">
+            <div class="p-2">
+                <span class="block text-[10px] text-gray-500 uppercase font-bold">Weight / ນ້ຳໜັກ</span>
+                <span class="font-black text-base">
                     <%= order.actual_weight || order.declared_weight || '-' %> kg
                 </span>
             </div>
         </div>
 
-        <div class="flex-grow flex flex-col justify-center items-center py-6">
+        <!-- COD Status -->
+        <div class="flex-grow flex flex-col justify-center items-center py-4">
             <% if (order.cod_amount> 0) { %>
-                <div class="bg-black text-white p-4 w-full text-center print:bg-black print:text-white">
-                    <p class="text-sm opacity-80 mb-1">CASH ON DELIVERY (เก็บเงินปลายทาง)</p>
-                    <p class="text-4xl font-black">฿<%= Number(order.cod_amount).toLocaleString() %>
-                    </p>
+                <div
+                    class="bg-black text-white p-4 w-full text-center rounded-lg shadow-sm print:bg-black print:text-white print:shadow-none">
+                    <p class="text-[10px] opacity-80 mb-1 font-bold uppercase tracking-widest">COD (ເກັບເງິນປາຍທາງ)</p>
+                    <div class="flex items-baseline justify-center gap-1">
+                        <span class="text-sm opacity-60">฿</span>
+                        <p class="text-5xl font-black tracking-tighter">
+                            <%= Number(order.cod_amount).toLocaleString() %>
+                        </p>
+                    </div>
                 </div>
                 <% } else { %>
-                    <div class="border-2 border-black border-dashed p-4 w-full text-center text-gray-400">
-                        <p class="font-bold text-xl text-black">PAID / NO COD</p>
-                        <p class="text-xs">ไม่ต้องเก็บเงินปลายทาง</p>
+                    <div class="border-2 border-black border-dashed p-4 w-full text-center rounded-lg opacity-60">
+                        <p class="font-black text-2xl text-black">PAID / ຈ່າຍແລ້ວ</p>
+                        <p class="text-xs mt-1">NO COD (ບໍ່ມີຍອດເກັບປາຍທາງ)</p>
                     </div>
                     <% } %>
         </div>
 
         <!-- Footer -->
-        <div class="text-center text-[10px] text-gray-400 mt-2">
-            <p>SNG Logistics Company Limited (Thailand-Laos Border Service)</p>
+        <div class="text-center text-[9px] text-gray-400 mt-auto pt-2">
+            <p class="font-medium">SNG Logistics Company Limited</p>
             <p>www.sng-logistics.com | Line: @snglogistics</p>
         </div>
     </div>

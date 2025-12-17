@@ -1,0 +1,95 @@
+<!-- Order Table Component -->
+<div class="glass-panel-dark overflow-hidden">
+    <div class="flex items-center justify-between p-6 border-b border-white/5">
+        <h3 class="text-white font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+            ออเดอร์ล่าสุด
+        </h3>
+        <a href="/orders" class="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+            ดูทั้งหมด <i class="fa-solid fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>เลขพัสดุ</th>
+                    <th>ผู้ส่ง</th>
+                    <th>ผู้รับ</th>
+                    <th>สถานะ</th>
+                    <th>COD</th>
+                    <th class="text-right">จัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (latest && latest.length> 0) { %>
+                    <% latest.forEach(order=> { %>
+                        <tr>
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 flex items-center justify-center">
+                                        <span class="text-cyan-400 font-bold text-xs">
+                                            <%= order.job_no.slice(-3) %>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <div class="font-mono text-white font-semibold text-sm">
+                                            <%= order.job_no %>
+                                        </div>
+                                        <div class="text-xs text-slate-500">
+                                            <%= order.direction==='TH_TO_LA' ? 'ไทย → ลาว' : 'ลาว → ไทย' %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-white text-sm">
+                                    <%= order.sender_name || '-' %>
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    <%= order.sender_phone || '' %>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-white text-sm">
+                                    <%= order.receiver_name || '-' %>
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    <%= order.receiver_phone || '' %>
+                                </div>
+                            </td>
+                            <td>
+                                <%- include('status-badge', {status: order.status, label: order.statusLabel}) %>
+                            </td>
+                            <td>
+                                <% if (order.cod_amount && order.cod_amount> 0) { %>
+                                    <span class="text-amber-400 font-semibold">฿<%=
+                                            Number(order.cod_amount).toLocaleString() %></span>
+                                    <% } else { %>
+                                        <span class="text-slate-500">-</span>
+                                        <% } %>
+                            </td>
+                            <td class="text-right">
+                                <a href="/orders/<%= order.id %>"
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 transition-all">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" class="text-center py-12">
+                                        <div class="text-slate-500">
+                                            <i class="fa-solid fa-inbox text-4xl mb-4 block"></i>
+                                            <p>ยังไม่มีออเดอร์</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -75,9 +75,37 @@ export async function dashboard(req, res) {
        ORDER BY ym ASC`
     );
 
+
+    // Process Chart Data
+    const labels = orders30.map(item => {
+      const date = new Date(item.d);
+      return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    });
+
+    // Process Latest Orders Status
+    const statusMap = {
+      'NEW': { status: 'new', label: 'ใหม่' },
+      'RECEIVED': { status: 'received', label: 'รับของ' },
+      'CROSS_BORDER': { status: 'crossing', label: 'ข้ามแดน' },
+      'AT_DEST_WH': { status: 'warehouse', label: 'ถึงคลัง' },
+      'DEPARTED': { status: 'delivery', label: 'กำลังส่ง' },
+      'DELIVERED': { status: 'completed', label: 'สำเร็จ' },
+      'COD_COLLECTED': { status: 'completed', label: 'สำเร็จ' },
+      'COMPLETED': { status: 'completed', label: 'สำเร็จ' }
+    };
+
+    const processedLatest = latest.map(order => {
+      const statusInfo = statusMap[order.status] || { status: 'new', label: order.status };
+      return {
+        ...order,
+        status: statusInfo.status, // overwrite with lowercase class
+        statusLabel: statusInfo.label
+      };
+    });
+
     res.render('dashboard/index', {
       user: req.session.user,
-      title: 'Dashboard',
+      title: 'Dashboard | ภาพรวม',
       kpi: {
         todayOrders: todayRevenue.cnt,
         todayRevenue: todayRevenue.rev,
@@ -90,11 +118,12 @@ export async function dashboard(req, res) {
         delivered: deliveredCount.cnt
       },
       charts: {
-        orders30,
-        revenue30,
+        labels,
+        orders30: orders30.map(i => i.cnt),
+        revenue30: revenue30.map(i => i.rev),
         directionMonthly
       },
-      latest
+      latest: processedLatest
     });
   } catch (error) {
     console.error('Dashboard error:', error);
