@@ -311,16 +311,27 @@
     const ctx = document.getElementById('ordersChart');
     if (!ctx) return;
 
-    const chartData = <% - JSON.stringify(chartData || { labels: [], orders: [], revenue: [] }) %>;
+    // Build chart data from controller
+    const orders30 = <% - JSON.stringify(charts?.orders30 || []) %>;
+    const revenue30 = <% - JSON.stringify(charts?.revenue30 || []) %>;
+
+    // Extract labels and data
+    const labels = orders30.map(item => {
+      const date = new Date(item.d);
+      return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    });
+
+    const ordersData = orders30.map(item => item.cnt);
+    const revenueData = revenue30.map(item => item.rev);
 
     new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: chartData.labels || [],
+        labels: labels,
         datasets: [
           {
             label: 'จำนวนออเดอร์',
-            data: chartData.orders || [],
+            data: ordersData,
             backgroundColor: 'rgba(6, 182, 212, 0.5)',
             borderColor: 'rgba(6, 182, 212, 1)',
             borderWidth: 1,
@@ -329,7 +340,7 @@
           },
           {
             label: 'รายได้ (บาท)',
-            data: chartData.revenue || [],
+            data: revenueData,
             type: 'line',
             borderColor: 'rgba(168, 85, 247, 1)',
             backgroundColor: 'rgba(168, 85, 247, 0.1)',
