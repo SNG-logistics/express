@@ -8,6 +8,12 @@
   </title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <!-- Google Fonts - Sarabun & Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+
   <!-- Libraries -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,172 +21,495 @@
 
   <!-- Custom Premium CSS -->
   <link rel="stylesheet" href="/css/luxury.css">
+
   <style>
-    /* Prevent FOUC (Flash of Unstyled Content) */
-    html {
-      visibility: visible;
+    * {
+      font-family: 'Sarabun', 'Prompt', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%);
+      min-height: 100vh;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: 280px;
+      min-height: 100vh;
+      background: rgba(10, 10, 15, 0.95);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 50;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-brand {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-nav {
+      padding: 1rem 0.75rem;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.875rem 1rem;
+      border-radius: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      transition: all 0.25s ease;
+      margin-bottom: 0.25rem;
+    }
+
+    .sidebar-link:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .sidebar-link.active {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.15));
+      color: #06b6d4;
+      border: 1px solid rgba(6, 182, 212, 0.2);
+    }
+
+    .sidebar-link i {
+      width: 20px;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      padding: 1.25rem 1rem 0.5rem;
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 280px;
+      min-height: 100vh;
+    }
+
+    /* Top Bar */
+    .topbar {
+      padding: 1rem 2rem;
+      background: rgba(10, 10, 15, 0.6);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    /* KPI Card Premium */
+    .kpi-card-premium {
+      background: rgba(15, 15, 20, 0.8);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .kpi-card-premium::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .kpi-card-premium:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi-card-premium:hover::before {
       opacity: 1;
+    }
+
+    .kpi-card-premium.blue {
+      --gradient: linear-gradient(90deg, #3b82f6, #06b6d4);
+    }
+
+    .kpi-card-premium.orange {
+      --gradient: linear-gradient(90deg, #f97316, #fb923c);
+    }
+
+    .kpi-card-premium.green {
+      --gradient: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .kpi-card-premium.purple {
+      --gradient: linear-gradient(90deg, #a855f7, #c084fc);
+    }
+
+    .kpi-card-premium.emerald {
+      --gradient: linear-gradient(90deg, #059669, #10b981);
+    }
+
+    .kpi-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .kpi-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: white;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-label {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 500;
+    }
+
+    /* Glass Panel */
+    .glass-panel-dark {
+      background: rgba(15, 15, 20, 0.85);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+    }
+
+    /* Status Badges */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-pill.new {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .status-pill.received {
+      background: rgba(249, 115, 22, 0.15);
+      color: #fb923c;
+      border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+
+    .status-pill.crossing {
+      background: rgba(168, 85, 247, 0.15);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .status-pill.warehouse {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .status-pill.delivery {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-pill.completed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Premium Table */
+    .table-premium {
+      width: 100%;
+    }
+
+    .table-premium th {
+      padding: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.4);
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .table-premium td {
+      padding: 1rem;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .table-premium tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Mobile Toggle */
+    .sidebar-toggle {
+      display: none;
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .sidebar-toggle {
+        display: flex;
+      }
+
+      .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 45;
+        display: none;
+      }
+
+      .sidebar-overlay.open {
+        display: block;
+      }
     }
   </style>
 </head>
 
-<body class="antialiased selection:bg-amber-500 selection:text-white">
-  <!-- Navigation Bar -->
+<body class="antialiased">
   <% if (currentUser) { %>
-    <nav class="sticky top-0 z-50 backdrop-blur-md shadow-lg transition-all duration-300">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-3 gap-6">
 
-          <!-- Brand -->
-          <a href="/dashboard" class="flex items-center gap-3 group">
-            <img src="/images/snglogo.png" alt="SNG" class="object-contain transition-transform group-hover:scale-105"
-              style="width: 45px; height: 45px;">
-            <div class="flex flex-col leading-tight">
-              <span class="font-bold text-lg tracking-tight text-main">
-                SNG <span class="text-gold">LOGISTICS</span>
-              </span>
-              <span class="text-[10px] text-muted uppercase tracking-widest font-medium">Thailand ▸ Laos Border</span>
-            </div>
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Left Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <a href="/dashboard" class="flex items-center gap-3">
+          <img src="/images/snglogo.png" alt="SNG" class="w-10 h-10 rounded-lg object-contain">
+          <div>
+            <div class="text-white font-bold text-lg">SNG <span class="text-cyan-400">Logistics</span></div>
+            <div class="text-[10px] text-slate-500 uppercase tracking-widest">ไทย → ลาว</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-title">เมนูหลัก</div>
+
+        <a href="/dashboard"
+          class="sidebar-link <%= (typeof title !== 'undefined' && title.includes('ภาพรวม')) ? 'active' : '' %>">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>แดชบอร์ด</span>
+        </a>
+
+        <a href="/orders"
+          class="sidebar-link <%= (typeof title !== 'undefined' && title.includes('ออเดอร์')) ? 'active' : '' %>">
+          <i class="fa-solid fa-boxes-stacked"></i>
+          <span>ออเดอร์ขนส่ง</span>
+        </a>
+
+        <a href="/orders/scan" class="sidebar-link">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>สถานะพัสดุ</span>
+        </a>
+
+        <a href="/trips"
+          class="sidebar-link <%= (typeof title !== 'undefined' && title.includes('รอบรถ')) ? 'active' : '' %>">
+          <i class="fa-solid fa-truck-fast"></i>
+          <span>เที่ยวรถ</span>
+        </a>
+
+        <div class="sidebar-section-title">การเงิน</div>
+
+        <a href="/cod"
+          class="sidebar-link <%= (typeof title !== 'undefined' && title.includes('การเงิน')) ? 'active' : '' %>">
+          <i class="fa-solid fa-wallet"></i>
+          <span>รายรับ–ต้นทุน</span>
+        </a>
+
+        <div class="sidebar-section-title">จัดการ</div>
+
+        <a href="/customers"
+          class="sidebar-link <%= (typeof title !== 'undefined' && title.includes('ลูกค้า')) ? 'active' : '' %>">
+          <i class="fa-solid fa-users"></i>
+          <span>ลูกค้า</span>
+        </a>
+
+        <% if (currentUser && currentUser.role==='admin' ) { %>
+          <a href="/users" class="sidebar-link">
+            <i class="fa-solid fa-user-tie"></i>
+            <span>คนขับ–พนักงาน</span>
           </a>
+          <% } %>
 
-          <!-- Navigation Menu -->
-          <div class="hidden lg:flex items-center gap-1.5 p-1.5 rounded-xl border border-color bg-[var(--bg-glass)]">
-            <a href="/dashboard"
-              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ภาพรวม')) ? 'active font-bold text-indigo' : '' %>">
-              <i class="fa-solid fa-chart-pie mb-0.5"></i> ภาพรวม
-            </a>
-            <a href="/orders"
-              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ออเดอร์')) ? 'active font-bold text-indigo' : '' %>">
-              <i class="fa-solid fa-box mb-0.5"></i> ออเดอร์
-            </a>
-            <a href="/trips"
-              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('รอบรถ')) ? 'active font-bold text-indigo' : '' %>">
-              <i class="fa-solid fa-truck-fast mb-0.5"></i> รอบรถ
-            </a>
-            <a href="/customers"
-              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('ลูกค้า')) ? 'active font-bold text-indigo' : '' %>">
-              <i class="fa-solid fa-users mb-0.5"></i> ลูกค้า
-            </a>
-            <a href="/cod"
-              class="nav-link text-sm font-medium flex items-center gap-2 <%= (typeof title !== 'undefined' && title.includes('การเงิน')) ? 'active font-bold text-indigo' : '' %>">
-              <i class="fa-solid fa-wallet mb-0.5"></i> การเงิน
+            <div class="sidebar-section-title">ระบบ</div>
+
+            <a href="#" class="sidebar-link">
+              <i class="fa-solid fa-chart-bar"></i>
+              <span>รายงาน</span>
             </a>
 
-            <% if (currentUser && ['admin', 'manager' ].includes(currentUser.role)) { %>
-              <div class="w-px h-6 bg-slate-500/20 mx-1"></div>
-              <% if (currentUser.role==='admin' ) { %>
-                <a href="/users" class="nav-link text-xs flex items-center gap-1 opacity-80 hover:opacity-100">
-                  <i class="fa-solid fa-users-gear"></i> ทีมงาน
-                </a>
-                <a href="/settings/rates" class="nav-link text-xs flex items-center gap-1 opacity-80 hover:opacity-100">
-                  <i class="fa-solid fa-tags"></i> ราคา
-                </a>
-                <% } %>
-                  <a href="/whatsapp"
-                    class="nav-link text-xs flex items-center gap-1 text-emerald-500/90 hover:text-emerald-500 font-bold">
-                    <i class="fa-brands fa-whatsapp"></i> WA
-                  </a>
-                  <% } %>
+            <% if (currentUser && currentUser.role==='admin' ) { %>
+              <a href="/settings/rates" class="sidebar-link">
+                <i class="fa-solid fa-gear"></i>
+                <span>ตั้งค่าระบบ</span>
+              </a>
+              <% } %>
+      </nav>
+
+      <!-- User Info (Bottom) -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold">
+            <%= currentUser.username.charAt(0).toUpperCase() %>
           </div>
-
-          <!-- User & Actions -->
-          <div class="flex items-center gap-4">
-            <!-- Theme Toggle -->
-            <button id="theme-toggle"
-              class="w-10 h-10 rounded-xl border border-color flex items-center justify-center transition-all hover:bg-white/5 text-gold hover:scale-110">
-              <i class="fa-solid fa-sun text-lg" id="theme-icon"></i>
-            </button>
-
-            <a href="/orders/new"
-              class="hidden md:inline-flex items-center gap-2 btn-gold text-sm shadow-lg shadow-amber-500/20">
-              <i class="fa-solid fa-plus"></i> <span class="hidden lg:inline">สร้างออเดอร์</span>
-            </a>
-
-            <div class="flex items-center gap-4 pl-4 border-l border-color">
-              <% if (currentUser) { %>
-                <div class="hidden md:flex flex-col items-end">
-                  <span class="text-sm font-bold text-main tracking-wide">
-                    <%= currentUser.username %>
-                  </span>
-                  <span
-                    class="text-[10px] px-2 py-0.5 rounded border border-color bg-white/5 text-muted uppercase font-bold tracking-wider">
-                    <%= currentUser.role %>
-                  </span>
-                </div>
-                <form action="/logout" method="post">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button
-                    class="w-9 h-9 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/30 text-muted hover:text-red-400 flex items-center justify-center transition-all">
-                    <i class="fa-solid fa-power-off"></i>
-                  </button>
-                </form>
-                <% } else { %>
-                  <a href="/login" class="btn-gold text-sm shadow-md">เข้าสู่ระบบ</a>
-                  <% } %>
+          <div class="flex-1 min-w-0">
+            <div class="text-white text-sm font-semibold truncate">
+              <%= currentUser.username %>
+            </div>
+            <div class="text-slate-500 text-xs uppercase">
+              <%= currentUser.role %>
             </div>
           </div>
+          <form action="/logout" method="post" class="flex-shrink-0">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button
+              class="w-8 h-8 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center">
+              <i class="fa-solid fa-power-off text-sm"></i>
+            </button>
+          </form>
         </div>
       </div>
-    </nav>
-    <% } %>
+    </aside>
 
-      <!-- Main Content -->
-      <main class="max-w-7xl mx-auto p-4 md:p-8 animate-fade-in-up min-h-[calc(100vh-200px)]">
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <!-- Mobile Toggle -->
+            <button class="sidebar-toggle w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-white"
+              onclick="toggleSidebar()">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+            <div>
+              <h1 class="text-xl font-bold text-white">
+                <%= title || 'SNG Logistics' %>
+              </h1>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <!-- Theme Toggle -->
+            <button id="theme-toggle"
+              class="w-10 h-10 rounded-lg bg-white/5 border border-white/10 text-amber-400 hover:bg-white/10 transition-all">
+              <i class="fa-solid fa-sun" id="theme-icon"></i>
+            </button>
+
+            <!-- Quick Actions -->
+            <a href="/orders/new"
+              class="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-500/30 transition-all">
+              <i class="fa-solid fa-plus"></i>
+              <span>สร้างออเดอร์</span>
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <main class="p-4 md:p-6 lg:p-8">
         <% if (flash) { %>
           <div
-            class="mb-8 p-5 rounded-2xl shadow-2xl flex items-center gap-4 border animate-fade-in-up backdrop-blur-md <%= flash.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' %>">
-            <div class="text-2xl">
-              <i
-                class="<%= flash.type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check' %>"></i>
-            </div>
-            <div>
-              <h4 class="font-bold text-xs uppercase tracking-[0.18em] mb-1 opacity-80">
-                <%= flash.type==='error' ? 'System Alert' : 'Success' %>
-              </h4>
-              <p class="font-bold text-lg text-main">
-                <%= flash.message %>
-              </p>
-            </div>
+            class="mb-6 p-4 rounded-xl flex items-center gap-4 <%= flash.type === 'error' ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' %>">
+            <i
+              class="<%= flash.type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check' %> text-xl"></i>
+            <span class="font-medium">
+              <%= flash.message %>
+            </span>
           </div>
           <% } %>
 
             <%- body %>
       </main>
+    </div>
 
-      <!-- Footer -->
-      <footer
-        class="mt-12 py-6 text-center text-muted text-xs font-medium border-t border-color bg-[var(--bg-glass)] backdrop-blur-sm">
-        <p class="mb-1">&copy; <%= new Date().getFullYear() %> SNG Logistics (Thailand-Laos).</p>
-        <p class="opacity-60">ระบบขนส่งสำหรับทีมมืออาชีพ ภายใต้การดูแลของบริษัท SNG Comprehensive Service Co.,Ltd.</p>
-      </footer>
+    <% } else { %>
+      <!-- Login Page (No Sidebar) -->
+      <main class="min-h-screen flex items-center justify-center p-4">
+        <%- body %>
+      </main>
+      <% } %>
 
-      <script>
-        // Theme Toggling Logic (Simplified)
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
+        <script>
+          // Sidebar Toggle
+          function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
+          }
 
-        // Check Local Storage on Load
-        if (localStorage.getItem('theme') === 'light') {
-          document.body.classList.add('light-mode');
-          if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
-        }
+          // Theme Toggle
+          const themeToggleBtn = document.getElementById('theme-toggle');
+          const themeIcon = document.getElementById('theme-icon');
 
-        if (themeToggleBtn) {
-          themeToggleBtn.addEventListener('click', () => {
-            document.body.classList.toggle('light-mode');
-            const isLight = document.body.classList.contains('light-mode');
+          if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+            if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
+          }
 
-            // Update Icon
-            if (isLight) {
-              themeIcon.classList.replace('fa-sun', 'fa-moon');
-              localStorage.setItem('theme', 'light');
-            } else {
-              themeIcon.classList.replace('fa-moon', 'fa-sun');
-              localStorage.setItem('theme', 'dark');
-            }
-          });
-        }
-      </script>
+          if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => {
+              document.body.classList.toggle('light-mode');
+              const isLight = document.body.classList.contains('light-mode');
+              if (isLight) {
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                localStorage.setItem('theme', 'light');
+              } else {
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+                localStorage.setItem('theme', 'dark');
+              }
+            });
+          }
+        </script>
 </body>
 
 </html>
