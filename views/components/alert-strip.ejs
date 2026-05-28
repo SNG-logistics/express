@@ -1,0 +1,22 @@
+<%#
+  views/components/alert-strip.ejs
+
+  Props:
+    alerts — array of { type: 'warning'|'danger', icon: 'fa-...',  message: '...', link: '/...' }
+
+  Usage:
+    <%- include('../components/alert-strip', { alerts: dashboardAlerts }) %>
+%>
+<% if (alerts && alerts.length > 0) { %>
+  <div class="space-y-2 mb-6">
+    <% alerts.forEach(function(alert) { %>
+      <div class="alert-strip <%= alert.type || 'warning' %>">
+        <i class="fa-solid <%= alert.icon || 'fa-triangle-exclamation' %> text-lg flex-shrink-0"></i>
+        <span class="flex-1"><%= alert.message %></span>
+        <% if (alert.link) { %>
+          <a href="<%= alert.link %>" class="text-xs underline opacity-70 hover:opacity-100 flex-shrink-0">ดูรายการ →</a>
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+<% } %>

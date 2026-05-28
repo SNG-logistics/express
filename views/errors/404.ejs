@@ -1,0 +1,26 @@
+<%# views/errors/404.ejs — Not Found page %>
+
+<div class="min-h-[60vh] flex flex-col items-center justify-center text-center gap-6 px-4">
+  <div class="w-20 h-20 rounded-2xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center">
+    <i class="fa-solid fa-compass text-slate-400 text-3xl"></i>
+  </div>
+
+  <div>
+    <div class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">HTTP 404 — Not Found</div>
+    <h1 class="text-3xl font-bold text-white mb-2">ไม่พบหน้าที่ต้องการ</h1>
+    <p class="text-slate-400 text-sm max-w-md mx-auto">
+      ลิงก์นี้อาจถูกลบ เปลี่ยนชื่อ หรือไม่มีอยู่ในระบบ
+    </p>
+  </div>
+
+  <div class="flex gap-3">
+    <a href="javascript:history.back()"
+      class="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm transition-all">
+      <i class="fa-solid fa-arrow-left mr-2"></i>กลับ
+    </a>
+    <a href="/dashboard"
+      class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold hover:shadow-cyan-500/25 hover:shadow-lg transition-all">
+      <i class="fa-solid fa-house mr-2"></i>หน้าหลัก
+    </a>
+  </div>
+</div>

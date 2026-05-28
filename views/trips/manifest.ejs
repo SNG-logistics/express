@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargo Manifest — <%= trip.trip_no %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Noto+Sans+Lao:wght@300;400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Font: Noto Sans Lao auto-swap ── */
+    @font-face {
+      font-family: 'Noto Sans Lao';
+      src: local('Noto Sans Lao');
+      unicode-range: U+0E80-0EFF;
+    }
+
+    body {
+      font-family: 'Noto Sans', 'Noto Sans Thai', 'Noto Sans Lao', Arial, sans-serif;
+      font-size: 10pt;
+      background: #e8e8e8;
+      color: #111;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── Screen wrapper ── */
+    .ctrl-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1e293b; color: #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+    .ctrl-bar h2 { font-size: 13px; font-weight: 700; color: #94a3b8; letter-spacing: .5px; }
+    .ctrl-bar h2 b { color: #f1f5f9; }
+    .ctrl-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: opacity .15s;
+    }
+    .ctrl-btn:active { opacity: .75; }
+    .btn-print { background: #f59e0b; color: #111; }
+    .btn-back  { background: rgba(255,255,255,.1); color: #f1f5f9; }
+
+    .page-wrap {
+      padding: 56px 20px 30px;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+
+    @media print {
+      .ctrl-bar, .page-wrap > .no-print { display: none !important; }
+      body { background: #fff; }
+      .page-wrap { padding: 0; }
+    }
+
+    /* ══════════════════════════════════════════════
+       A4 PAGE
+    ══════════════════════════════════════════════ */
+    .a4 {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      padding: 14mm 14mm 18mm;
+      box-shadow: 0 4px 30px rgba(0,0,0,.25);
+      position: relative;
+    }
+
+    @page { size: A4; margin: 12mm 12mm 16mm; }
+    @media print {
+      .a4 { width: 100%; min-height: auto; padding: 0; box-shadow: none; }
+    }
+
+    /* ── Document border (double rule) ── */
+    .a4-inner {
+      border: 2px solid #111;
+      padding: 0;
+      min-height: 260mm;
+      display: flex;
+      flex-direction: column;
+    }
+    @media print { .a4-inner { min-height: auto; } }
+
+    /* ══ HEADER BAND ══ */
+    .doc-header {
+      display: grid;
+      grid-template-columns: 60px 1fr 60px;
+      align-items: center;
+      border-bottom: 2px solid #111;
+      background: #fff;
+    }
+    .hdr-logo {
+      border-right: 1px solid #111;
+      padding: 6px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hdr-logo img { width: 44px; height: 44px; object-fit: contain; }
+    .hdr-center { text-align: center; padding: 6px 10px; }
+    .hdr-center .doc-title {
+      font-size: 16pt; font-weight: 800;
+      letter-spacing: 3px; text-transform: uppercase; color: #111;
+    }
+    .hdr-center .doc-sub {
+      font-size: 8.5pt; color: #555; margin-top: 1px; font-weight: 600;
+    }
+    .hdr-center .doc-sub-lao {
+      font-size: 8pt; color: #555; margin-top: 0;
+      font-family: 'Noto Sans Lao', sans-serif;
+    }
+    .hdr-qr {
+      border-left: 1px solid #111;
+      padding: 6px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hdr-qr #qr-code canvas, .hdr-qr #qr-code img { width: 44px !important; height: 44px !important; }
+
+    /* ══ DOC NUMBER BAND ══ */
+    .doc-ref-band {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid #111;
+    }
+    .ref-cell {
+      padding: 4px 8px; border-right: 1px solid #aaa;
+      display: flex; flex-direction: column;
+    }
+    .ref-cell:last-child { border-right: none; }
+    .ref-lbl { font-size: 6.5pt; font-weight: 800; text-transform: uppercase; color: #777; letter-spacing: .5px; }
+    .ref-val  { font-size: 10pt; font-weight: 800; color: #111; font-family: 'Courier New', monospace; }
+    .ref-val.big { font-size: 13pt; font-weight: 900; }
+
+    /* ══ TWO-COLUMN INFO ══ */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 2px solid #111;
+    }
+    .info-panel { padding: 6px 8px; }
+    .info-panel + .info-panel { border-left: 1px solid #111; }
+    .info-panel-title {
+      font-size: 7pt; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .6px; color: #fff; background: #111;
+      padding: 2px 6px; margin: -6px -8px 5px; display: block;
+    }
+    .info-row { display: flex; gap: 4px; margin-bottom: 2px; align-items: baseline; }
+    .info-key { font-size: 7pt; font-weight: 700; color: #555; min-width: 80px; flex-shrink: 0; }
+    .info-val { font-size: 8.5pt; font-weight: 700; color: #111; }
+
+    /* ══ CUSTOMS NOTE BAND ══ */
+    .customs-band {
+      background: #fef9c3;
+      border-bottom: 1px solid #111;
+      border-top: 1px solid #d97706;
+      padding: 4px 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .customs-band .cust-icon { font-size: 14pt; }
+    .customs-band .cust-title { font-size: 8.5pt; font-weight: 900; text-transform: uppercase; color: #92400e; }
+    .customs-band .cust-sub   { font-size: 7.5pt; color: #78350f; }
+
+    /* ══ CARGO TABLE ══ */
+    .cargo-section { flex: 1; }
+    .cargo-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 8pt;
+    }
+    .cargo-table thead tr { background: #111; color: #fff; }
+    .cargo-table thead th {
+      padding: 4px 5px;
+      font-size: 7pt; font-weight: 700;
+      text-align: center; text-transform: uppercase;
+      letter-spacing: .4px;
+      border-right: 1px solid #444;
+    }
+    .cargo-table thead th:last-child { border-right: none; }
+    .cargo-table tbody tr:nth-child(even) { background: #f8f9fa; }
+    .cargo-table tbody tr:hover { background: #fffbeb; }
+    .cargo-table td {
+      padding: 4px 5px;
+      border-bottom: .5px solid #ccc;
+      border-right: .5px solid #ccc;
+      vertical-align: middle;
+    }
+    .cargo-table td:last-child { border-right: none; }
+    .td-no    { width: 22px; text-align: center; font-weight: 700; }
+    .td-job   { width: 98px; font-family: 'Courier New', monospace; font-size: 7.5pt; font-weight: 800; text-align: center; }
+    .td-desc  { min-width: 90px; }
+    .td-names { }
+    .td-wt    { width: 42px; text-align: center; }
+    .td-qty   { width: 28px; text-align: center; }
+    .td-val   { width: 55px; text-align: right; }
+    .td-cust  { width: 24px; text-align: center; }
+    .td-note  { width: 55px; }
+    .name-sender   { font-size: 8pt; font-weight: 700; color: #111; }
+    .name-receiver { font-size: 7pt; color: #555; margin-top: 1px; }
+    .customs-flag  { color: #dc2626; font-weight: 900; font-size: 9pt; }
+    .no-cargo { text-align: center; padding: 24px; color: #aaa; font-size: 9pt; }
+
+    /* ══ TOTALS ROW ══ */
+    .totals-row { background: #f1f5f9 !important; }
+    .totals-row td { border-top: 1.5px solid #111; font-weight: 800; font-size: 8pt; }
+    .total-label { text-align: right; color: #555; font-size: 7pt; padding-right: 4px; }
+
+    /* ══ SUMMARY BAND ══ */
+    .summary-band {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border-top: 2px solid #111;
+      border-bottom: 1px solid #111;
+    }
+    .sum-cell {
+      text-align: center; padding: 5px 4px;
+      border-right: 1px solid #aaa;
+    }
+    .sum-cell:last-child { border-right: none; }
+    .sum-lbl { font-size: 6.5pt; font-weight: 700; text-transform: uppercase; color: #777; }
+    .sum-val  { font-size: 12pt; font-weight: 900; color: #111; line-height: 1.1; }
+    .sum-unit { font-size: 7pt; color: #888; }
+
+    /* ══ DECLARATION BOX ══ */
+    .declaration {
+      border-top: 1px solid #ccc;
+      padding: 5px 8px;
+      background: #f8fafc;
+      font-size: 7pt; color: #555; line-height: 1.4;
+    }
+    .declaration b { color: #111; }
+
+    /* ══ SIGNATURE SECTION ══ */
+    .sig-section {
+      border-top: 2px solid #111;
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr 1px 1fr;
+    }
+    .sig-divider { background: #111; }
+    .sig-col { padding: 8px 10px 8px; display: flex; flex-direction: column; }
+    .sig-heading {
+      font-size: 7pt; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .6px; color: #fff; background: #374151;
+      padding: 2px 6px; margin: -8px -10px 6px; display: block;
+    }
+    .sig-heading.customs { background: #7f1d1d; }
+    .sig-heading.officer { background: #1e3a5f; }
+    .sig-heading.verify  { background: #14532d; }
+    .sig-box {
+      border: 1px solid #ccc; background: #fafafa;
+      height: 48px; border-radius: 3px; margin-bottom: 5px;
+      display: flex; align-items: flex-end;
+      padding: 0 6px 3px;
+    }
+    .sig-date-line {
+      display: flex; justify-content: space-between;
+      border-top: 1px solid #ccc; padding-top: 3px; margin-top: 1px;
+    }
+    .sig-name-line {
+      font-size: 7pt; color: #777;
+      border-top: 1px dashed #ddd; padding-top: 2px; margin-top: 2px;
+    }
+    .sig-stamp { font-size: 6.5pt; color: #bbb; align-self: flex-end; text-align: right; }
+    .stamp-circle {
+      border: 1.5px dashed #d1d5db;
+      border-radius: 50%; width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 3px;
+    }
+    .stamp-circle span { font-size: 6pt; color: #ccc; text-align: center; }
+    .sig-date-val { font-size: 7pt; color: #777; }
+    .sig-role-lbl {
+      font-size: 8pt; font-weight: 800; color: #111;
+      text-align: center; margin-top: 2px;
+    }
+    .sig-role-sub { font-size: 6.5pt; color: #777; text-align: center; }
+
+    /* ══ FOOTER ══ */
+    .doc-footer {
+      border-top: 1px solid #ccc;
+      padding: 3px 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #f8fafc;
+    }
+    .footer-left  { font-size: 6.5pt; color: #888; }
+    .footer-right { font-size: 6.5pt; color: #888; text-align: right; }
+    .footer-right b { color: #111; }
+
+    /* WATERMARK for unofficial copies */
+    .watermark {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 70pt; font-weight: 900; color: rgba(0,0,0,.04);
+      pointer-events: none; white-space: nowrap; z-index: 0;
+      text-transform: uppercase; letter-spacing: 8px;
+    }
+  </style>
+</head>
+
+<%
+  const totals = tripOrders.reduce((a, o) => ({
+    count:  a.count  + 1,
+    weight: a.weight + Number(o.actual_weight || o.declared_weight || 0),
+    value:  a.value  + Number(o.declared_value  || 0),
+    cod:    a.cod    + Number(o.cod_amount       || 0),
+    customs: a.customs + (o.requires_customs ? 1 : 0),
+  }), { count: 0, weight: 0, value: 0, cod: 0, customs: 0 });
+
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    const day = String(dt.getDate()).padStart(2,'0');
+    const mon = String(dt.getMonth()+1).padStart(2,'0');
+    const yr  = dt.getFullYear();
+    return `${day}/${mon}/${yr}`;
+  };
+
+  const printedAt = new Date().toLocaleString('th-TH', {
+    dateStyle: 'long', timeStyle: 'short'
+  });
+
+  const direction = (trip.direction === 'TH_TO_LA') ? 'Thailand → Laos PDR' : 'Laos PDR → Thailand';
+  const directionTH = (trip.direction === 'TH_TO_LA') ? 'ไทย → ลาว' : 'ลาว → ไทย';
+%>
+<body>
+
+<!-- ── Screen controls ── -->
+<div class="ctrl-bar no-print">
+  <h2>📋 Cargo Manifest — <b><%= trip.trip_no %></b></h2>
+  <div style="display:flex;gap:8px;">
+    <a href="/trips/<%= trip.id %>" class="ctrl-btn btn-back">← กลับ</a>
+    <button onclick="window.print()" class="ctrl-btn btn-print">🖨 พิมพ์ A4</button>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+<!-- ══════════════════════════════════════════════
+     A4 DOCUMENT
+══════════════════════════════════════════════ -->
+<div class="a4">
+  <div class="watermark">MANIFEST</div>
+
+  <div class="a4-inner">
+
+    <!-- ①  HEADER ── -->
+    <div class="doc-header">
+      <div class="hdr-logo">
+        <img src="/images/snglogo.png" alt="SNG">
+      </div>
+      <div class="hdr-center">
+        <div class="doc-title">Cargo Manifest</div>
+        <div class="doc-sub">ใบกำกับสินค้าข้ามแดน — Borderline Freight Declaration</div>
+        <div class="doc-sub-lao">ໃບກຳກັບສິນຄ້າຂ້າມແດນ — SNG Express Logistics</div>
+      </div>
+      <div class="hdr-qr">
+        <div id="qr-code"></div>
+      </div>
+    </div>
+
+    <!-- ②  DOC REFERENCE ── -->
+    <div class="doc-ref-band">
+      <div class="ref-cell">
+        <span class="ref-lbl">Manifest No. / เลขใบกำกับ</span>
+        <span class="ref-val big"><%= trip.trip_no %></span>
+      </div>
+      <div class="ref-cell">
+        <span class="ref-lbl">Trip Date / วันที่เดินทาง</span>
+        <span class="ref-val"><%= fmtDate(trip.trip_date) %></span>
+      </div>
+      <div class="ref-cell">
+        <span class="ref-lbl">Printed / พิมพ์เมื่อ</span>
+        <span class="ref-val" style="font-size:8pt;"><%= printedAt %></span>
+      </div>
+    </div>
+
+    <!-- ③  INFO GRID ── -->
+    <div class="info-grid">
+      <!-- Vehicle -->
+      <div class="info-panel">
+        <span class="info-panel-title">🚛 Vehicle / ยานพาหนะ</span>
+        <div class="info-row">
+          <span class="info-key">Plate No. / ทะเบียน</span>
+          <span class="info-val"><%= trip.vehicle || '—' %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Driver / คนขับ</span>
+          <span class="info-val"><%= trip.driver_name || '—' %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Direction / ทิศทาง</span>
+          <span class="info-val"><%= direction %></span>
+        </div>
+      </div>
+      <!-- Route -->
+      <div class="info-panel">
+        <span class="info-panel-title">📍 Route / เส้นทาง</span>
+        <div class="info-row">
+          <span class="info-key">Origin / ต้นทาง</span>
+          <span class="info-val"><%= trip.origin_border || 'หนองคาย, ไทย' %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Destination / ปลายทาง</span>
+          <span class="info-val"><%= trip.dest_border || 'ท่านาแล้ง, ลาว' %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Checkpoint / จุดผ่านแดน</span>
+          <span class="info-val"><%= trip.border_checkpoint || '—' %></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④  CUSTOMS NOTE BAND (only if customs items) ── -->
+    <% if (totals.customs > 0) { %>
+    <div class="customs-band">
+      <span class="cust-icon">⚠️</span>
+      <div>
+        <div class="cust-title">Customs Clearance Required — ต้องผ่านพิธีศุลกากร</div>
+        <div class="cust-sub">มี <b><%= totals.customs %></b> รายการที่ต้องแจ้งศุลกากร · ยื่นเอกสารเพิ่มเติมก่อนข้ามแดน</div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- ⑤  CARGO TABLE ── -->
+    <div class="cargo-section">
+      <table class="cargo-table">
+        <thead>
+          <tr>
+            <th class="td-no">#</th>
+            <th class="td-job">Job No.</th>
+            <th class="td-names">Sender / ผู้ฝาก</th>
+            <th class="td-names">Receiver / ผู้รับ</th>
+            <th style="width:70px;">Description<br>ประเภทสินค้า</th>
+            <th class="td-wt">Weight<br>น้ำหนัก</th>
+            <th class="td-qty">Qty<br>ชิ้น</th>
+            <th class="td-val">Value<br>มูลค่า</th>
+            <th class="td-cust">Cust.<br>ศุลฯ</th>
+            <th class="td-note">Remark / หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (tripOrders.length === 0) { %>
+          <tr>
+            <td colspan="10" class="no-cargo">— No Cargo / ไม่มีสินค้าในรอบนี้ —</td>
+          </tr>
+          <% } %>
+          <% tripOrders.forEach((o, i) => { %>
+          <tr>
+            <td class="td-no"><%= i + 1 %></td>
+            <td class="td-job"><%= o.job_no %></td>
+            <td class="td-names">
+              <div class="name-sender"><%= o.sender_name || '—' %></div>
+              <div class="name-receiver" style="font-size:6.5pt;color:#888;"><%= o.sender_phone || '' %></div>
+            </td>
+            <td class="td-names">
+              <div class="name-sender"><%= o.receiver_name || '—' %></div>
+              <div class="name-receiver" style="font-size:6.5pt;color:#888;"><%= o.receiver_phone || '' %></div>
+            </td>
+            <td style="font-size:7.5pt;"><%= o.service_type || o.item_description || 'General' %></td>
+            <td class="td-wt" style="text-align:center;"><%= Number(o.actual_weight || o.declared_weight || 0).toFixed(1) %> kg</td>
+            <td class="td-qty" style="text-align:center;"><%= o.item_count || 1 %></td>
+            <td class="td-val"><%= Number(o.declared_value || 0).toLocaleString() %></td>
+            <td class="td-cust">
+              <% if (o.requires_customs) { %><span class="customs-flag">✓</span><% } %>
+            </td>
+            <td class="td-note" style="font-size:7pt;"><%= o.notes || '' %></td>
+          </tr>
+          <% }) %>
+
+          <!-- Totals row -->
+          <% if (tripOrders.length > 0) { %>
+          <tr class="totals-row">
+            <td colspan="5" class="total-label">TOTAL / รวม</td>
+            <td class="td-wt" style="text-align:center; font-weight:900;"><%= totals.weight.toFixed(1) %> kg</td>
+            <td class="td-qty" style="text-align:center; font-weight:900;"><%= tripOrders.reduce((a,o)=>a+Number(o.item_count||1),0) %></td>
+            <td class="td-val" style="font-weight:900;"><%= totals.value.toLocaleString() %></td>
+            <td colspan="2" style="text-align:center; font-size:7pt; color:#555;"><%= totals.customs %> รายการ ศุลฯ</td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ⑥  SUMMARY BAND ── -->
+    <div class="summary-band">
+      <div class="sum-cell">
+        <div class="sum-lbl">Total Parcels / รวมพัสดุ</div>
+        <div class="sum-val"><%= totals.count %></div>
+        <div class="sum-unit">รายการ / Items</div>
+      </div>
+      <div class="sum-cell">
+        <div class="sum-lbl">Total Weight / น้ำหนักรวม</div>
+        <div class="sum-val"><%= totals.weight.toFixed(1) %></div>
+        <div class="sum-unit">กิโลกรัม / kg</div>
+      </div>
+      <div class="sum-cell">
+        <div class="sum-lbl">Declared Value / มูลค่าสินค้า</div>
+        <div class="sum-val" style="font-size:10pt;"><%= totals.value.toLocaleString() %></div>
+        <div class="sum-unit">บาท / THB</div>
+      </div>
+      <div class="sum-cell">
+        <div class="sum-lbl">Customs Items / สินค้าศุลกากร</div>
+        <div class="sum-val" style="<%= totals.customs>0 ? 'color:#dc2626' : '' %>"><%= totals.customs %></div>
+        <div class="sum-unit">รายการ / Items</div>
+      </div>
+      <div class="sum-cell">
+        <div class="sum-lbl">Direction / ทิศทาง</div>
+        <div class="sum-val" style="font-size:8pt; color:#374151;"><%= directionTH %></div>
+        <div class="sum-unit"><%= direction %></div>
+      </div>
+    </div>
+
+    <!-- ⑦  DECLARATION ── -->
+    <div class="declaration">
+      <b>Declaration / คำรับรอง:</b> I/We hereby declare that the particulars given in this manifest are true and correct to the best of my/our knowledge and belief, and that the goods described herein are not prohibited items under applicable customs regulations of Thailand and the Lao PDR. /
+      ข้าพเจ้าขอรับรองว่าข้อมูลในใบกำกับนี้ถูกต้องตามความเป็นจริง และสินค้าที่ระบุไม่ใช่สินค้าต้องห้ามตามกฎหมายศุลกากรของราชอาณาจักรไทยและสาธารณรัฐประชาธิปไตยประชาชนลาว
+    </div>
+
+    <!-- ⑧  SIGNATURE SECTION ── -->
+    <div class="sig-section">
+
+      <!-- Driver -->
+      <div class="sig-col">
+        <span class="sig-heading customs">🚗 Driver / ผู้ขับขี่</span>
+        <div style="margin-bottom:3px;">
+          <div style="font-size:7pt;color:#555;">ชื่อ/Name: <b style="color:#111;"><%= trip.driver_name || '................................' %></b></div>
+          <div style="font-size:7pt;color:#555;margin-top:1px;">ทะเบียน/Plate: <b style="color:#111;"><%= trip.vehicle || '................................' %></b></div>
+        </div>
+        <div class="sig-box">
+          <span class="sig-stamp" style="font-size:6pt;color:#ddd;">ลายเซ็น / Signature</span>
+        </div>
+        <div class="sig-date-line">
+          <span class="sig-date-val">วันที่ / Date: _____ / _____ / _______</span>
+        </div>
+        <div class="sig-role-lbl" style="margin-top:3px;">ผู้ขับขี่</div>
+        <div class="sig-role-sub">Driver Signature</div>
+      </div>
+
+      <div class="sig-divider"></div>
+
+      <!-- Customs Officer -->
+      <div class="sig-col">
+        <span class="sig-heading officer">🛃 Customs Officer / เจ้าหน้าที่ศุลกากร</span>
+        <div style="margin-bottom:3px;">
+          <div style="font-size:7pt;color:#555;">ชื่อ / Name: ...................................</div>
+          <div style="font-size:7pt;color:#555;margin-top:1px;">รหัสเจ้าหน้าที่ / Officer ID: .....................</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <div class="sig-box" style="flex:1;">
+            <span class="sig-stamp" style="font-size:6pt;color:#ddd;">ลายเซ็น / Signature</span>
+          </div>
+          <div>
+            <div class="stamp-circle"><span>ประทับ<br>ตราศุลกากร<br>Customs<br>Stamp</span></div>
+          </div>
+        </div>
+        <div class="sig-date-line">
+          <span class="sig-date-val">วันที่ / Date: _____ / _____ / _______</span>
+        </div>
+        <div class="sig-role-lbl" style="margin-top:3px;">เจ้าหน้าที่ศุลกากร</div>
+        <div class="sig-role-sub">Customs Officer — <%= trip.border_checkpoint || 'ด่านศุลกากร' %></div>
+      </div>
+
+      <div class="sig-divider"></div>
+
+      <!-- Receiver / Verifier -->
+      <div class="sig-col">
+        <span class="sig-heading verify">✅ Receiver / ผู้รับสินค้า (ปลายทาง)</span>
+        <div style="margin-bottom:3px;">
+          <div style="font-size:7pt;color:#555;">ชื่อ / Name: ...................................</div>
+          <div style="font-size:7pt;color:#555;margin-top:1px;">ตำแหน่ง / Position: ......................</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <div class="sig-box" style="flex:1;">
+            <span class="sig-stamp" style="font-size:6pt;color:#ddd;">ลายเซ็น / Signature</span>
+          </div>
+          <div>
+            <div class="stamp-circle"><span>ประทับ<br>ตราบริษัท<br>Company<br>Stamp</span></div>
+          </div>
+        </div>
+        <div class="sig-date-line">
+          <span class="sig-date-val">วันที่รับ / Received: _____ / _____ / _______</span>
+        </div>
+        <div class="sig-role-lbl" style="margin-top:3px;">ผู้รับสินค้า / ตัวแทน</div>
+        <div class="sig-role-sub">Consignee / Authorized Agent</div>
+      </div>
+
+    </div><!-- /.sig-section -->
+
+    <!-- ⑨  FOOTER ── -->
+    <div class="doc-footer">
+      <div class="footer-left">
+        SNG Express Logistics Co., Ltd. · บริษัท เอสเอ็นจี เอ็กซ์เพรส โลจิสติกส์ จำกัด<br>
+        เลขที่: <%= trip.trip_no %> · วันที่พิมพ์: <%= printedAt %>
+      </div>
+      <div class="footer-right">
+        หน้า 1/1 · Page 1 of 1<br>
+        <b>เอกสารฉบับนี้ต้องพิมพ์ 3 ชุด</b> (ต้นทาง / ศุลกากร / ปลายทาง)<br>
+        This document must be printed in 3 copies (Origin / Customs / Destination)
+      </div>
+    </div>
+
+  </div><!-- /.a4-inner -->
+</div><!-- /.a4 -->
+
+</div><!-- /.page-wrap -->
+
+<!-- QR code -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+  try {
+    new QRCode(document.getElementById('qr-code'), {
+      text: '<%= trip.trip_no %>',
+      width: 44, height: 44,
+      colorDark: '#000', colorLight: '#fff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {}
+</script>
+</body>
+</html>

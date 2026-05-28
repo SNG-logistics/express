@@ -1,0 +1,298 @@
+<div class="max-w-7xl mx-auto space-y-6" x-data="expensesDashboard()">
+
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-black text-white flex items-center gap-3">
+        <i class="fa-solid fa-wallet text-amber-400"></i> บัญชีรายจ่าย / ลงทุน
+      </h1>
+      <p class="text-slate-400 mt-1">สรุปยอดเงินลงทุน, ค่าใช้จ่ายรอบรถ, และรายจ่ายออฟฟิศ</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/expenses/new" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2">
+        <i class="fa-solid fa-plus"></i> บันทึกรายจ่ายใหม่
+      </a>
+    </div>
+  </div>
+
+  <% if (flash && flash.message) { %>
+    <div class="p-4 rounded-xl <%= flash.type === 'error' ? 'bg-red-500/10 text-red-200 border-red-500/20' : 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' %> border flex items-center gap-3">
+      <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check' %>"></i>
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <!-- Summary Cards: 3 Categories -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+    <!-- CAPEX -->
+    <div class="glass-panel-dark p-6 rounded-2xl border border-emerald-500/20 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-emerald-500/10 group-hover:text-emerald-500/20 transition-colors">
+        <i class="fa-solid fa-building text-8xl"></i>
+      </div>
+      <div class="relative z-10">
+        <h3 class="text-xs font-bold text-emerald-400/70 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span class="w-2 h-2 bg-emerald-400 rounded-full"></span>เงินลงทุน/ก่อตั้ง (CAPEX)
+        </h3>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 font-semibold">🇹🇭 THB</span>
+            <span class="text-lg font-black text-white">฿ <%= (Number(summary?.total_capital_thb) || 0).toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 font-semibold">🇱🇦 LAK</span>
+            <span class="text-sm font-bold text-slate-300">₭ <%= (Number(summary?.total_capital_lak) || 0).toLocaleString('th-TH') %></span>
+          </div>
+          <div class="flex items-center justify-between border-t border-white/5 pt-1.5 mt-1.5">
+            <span class="text-[11px] text-blue-400 font-semibold">🇺🇸 USD</span>
+            <span class="text-sm font-bold text-blue-300">$ <%= (Number(summary?.total_capital_usd) || 0).toLocaleString('en-US', {minimumFractionDigits:2}) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPEX -->
+    <div class="glass-panel-dark p-6 rounded-2xl border border-purple-500/20 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-purple-500/10 group-hover:text-purple-500/20 transition-colors">
+        <i class="fa-solid fa-truck-moving text-8xl"></i>
+      </div>
+      <div class="relative z-10">
+        <h3 class="text-xs font-bold text-purple-400/70 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span class="w-2 h-2 bg-purple-400 rounded-full"></span>รายจ่ายรอบรถ (OPEX)
+        </h3>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 font-semibold">🇹🇭 THB</span>
+            <span class="text-lg font-black text-white">฿ <%= (Number(summary?.total_trip_thb) || 0).toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 font-semibold">🇱🇦 LAK</span>
+            <span class="text-sm font-bold text-slate-300">₭ <%= (Number(summary?.total_trip_lak) || 0).toLocaleString('th-TH') %></span>
+          </div>
+          <div class="flex items-center justify-between border-t border-white/5 pt-1.5 mt-1.5">
+            <span class="text-[11px] text-blue-400 font-semibold">🇺🇸 USD</span>
+            <span class="text-sm font-bold text-blue-300">$ <%= (Number(summary?.total_trip_usd) || 0).toLocaleString('en-US', {minimumFractionDigits:2}) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="glass-panel-dark p-6 rounded-2xl border border-blue-500/20 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
+        <i class="fa-solid fa-file-invoice text-8xl"></i>
+      </div>
+      <div class="relative z-10">
+        <h3 class="text-xs font-bold text-blue-400/70 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span class="w-2 h-2 bg-blue-400 rounded-full"></span>รายจ่ายออฟฟิศ (Admin)
+        </h3>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 font-semibold">🇹🇭 THB</span>
+            <span class="text-lg font-black text-white">฿ <%= (Number(summary?.total_admin_thb) || 0).toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 font-semibold">🇱🇦 LAK</span>
+            <span class="text-sm font-bold text-slate-300">₭ <%= (Number(summary?.total_admin_lak) || 0).toLocaleString('th-TH') %></span>
+          </div>
+          <div class="flex items-center justify-between border-t border-white/5 pt-1.5 mt-1.5">
+            <span class="text-[11px] text-blue-400 font-semibold">🇺🇸 USD</span>
+            <span class="text-sm font-bold text-blue-300">$ <%= (Number(summary?.total_admin_usd) || 0).toLocaleString('en-US', {minimumFractionDigits:2}) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grand Total Card with Currency Converter -->
+  <div class="glass-panel-dark rounded-2xl border border-amber-500/30 p-6 relative overflow-hidden"
+       x-data="{
+         displayCurrency: 'THB',
+         rateThbLak: <%= rates.thb_lak %>,
+         rateUsdThb: <%= rates.usd_thb %>,
+         grandTotalThb: <%= Number(summary?.grand_total_thb) || 0 %>,
+         grandTotalLak: <%= Number(summary?.grand_total_lak) || 0 %>,
+         grandTotalUsd: <%= Number(summary?.grand_total_usd) || 0 %>,
+         get convertedTotal() {
+           const totalInThb = this.grandTotalThb 
+             + (this.grandTotalLak / this.rateThbLak) 
+             + (this.grandTotalUsd * this.rateUsdThb);
+           if (this.displayCurrency === 'THB') return { symbol: '฿', value: totalInThb, decimals: 2 };
+           if (this.displayCurrency === 'LAK') return { symbol: '₭', value: totalInThb * this.rateThbLak, decimals: 0 };
+           if (this.displayCurrency === 'USD') return { symbol: '$', value: totalInThb / this.rateUsdThb, decimals: 2 };
+           return { symbol: '฿', value: totalInThb, decimals: 2 };
+         }
+       }">
+
+    <div class="absolute -right-10 -top-10 text-amber-500/5">
+      <i class="fa-solid fa-coins text-[180px]"></i>
+    </div>
+
+    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div>
+        <p class="text-xs font-bold text-amber-400/70 uppercase tracking-widest mb-1 flex items-center gap-2">
+          <i class="fa-solid fa-sigma"></i> ยอดรวมทั้งหมด (Grand Total)
+        </p>
+        <div class="flex items-end gap-3">
+          <div class="text-4xl font-black text-white tabular-nums transition-all duration-300" x-text="convertedTotal.symbol + ' ' + convertedTotal.value.toLocaleString('en-US', { minimumFractionDigits: convertedTotal.decimals, maximumFractionDigits: convertedTotal.decimals })"></div>
+          <div class="text-lg font-bold text-amber-400 mb-1" x-text="displayCurrency"></div>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">
+          อัตราแลกเปลี่ยน: 1 THB = <span x-text="rateThbLak.toLocaleString()"></span> LAK &nbsp;|&nbsp; 1 USD = <span x-text="rateUsdThb"></span> THB
+          <a href="/settings/rates#fx" class="ml-2 text-amber-500 hover:text-amber-400 underline underline-offset-2">แก้ไขเรท</a>
+        </p>
+      </div>
+
+      <!-- Currency Switcher -->
+      <div class="flex flex-col gap-2">
+        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">แสดงยอดในสกุลเงิน</p>
+        <div class="flex gap-2">
+          <button @click="displayCurrency = 'THB'"
+                  :class="displayCurrency === 'THB' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'bg-slate-800 text-slate-400 hover:text-white'"
+                  class="px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            🇹🇭 THB
+          </button>
+          <button @click="displayCurrency = 'LAK'"
+                  :class="displayCurrency === 'LAK' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'bg-slate-800 text-slate-400 hover:text-white'"
+                  class="px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            🇱🇦 LAK
+          </button>
+          <button @click="displayCurrency = 'USD'"
+                  :class="displayCurrency === 'USD' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:text-white'"
+                  class="px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            🇺🇸 USD
+          </button>
+        </div>
+
+        <!-- Mini Breakdown -->
+        <div class="grid grid-cols-3 gap-2 mt-1">
+          <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+            <div class="text-[10px] text-slate-500 font-bold">THB ดิบ</div>
+            <div class="text-xs font-black text-white">฿ <span x-text="grandTotalThb.toLocaleString('en-US',{minimumFractionDigits:0})"></span></div>
+          </div>
+          <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+            <div class="text-[10px] text-slate-500 font-bold">LAK ดิบ</div>
+            <div class="text-xs font-black text-white">₭ <span x-text="grandTotalLak.toLocaleString('en-US',{minimumFractionDigits:0})"></span></div>
+          </div>
+          <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+            <div class="text-[10px] text-blue-400 font-bold">USD ดิบ</div>
+            <div class="text-xs font-black text-blue-300">$ <span x-text="grandTotalUsd.toLocaleString('en-US',{minimumFractionDigits:2})"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex gap-2 p-1 bg-white/5 rounded-xl w-fit">
+    <button @click="filter = 'ALL'" :class="filter === 'ALL' ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">ทั้งหมด</button>
+    <button @click="filter = 'CAPITAL'" :class="filter === 'CAPITAL' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">เงินลงทุน</button>
+    <button @click="filter = 'TRIP'" :class="filter === 'TRIP' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">รอบรถ</button>
+    <button @click="filter = 'ADMIN'" :class="filter === 'ADMIN' ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">ออฟฟิศ</button>
+  </div>
+
+  <!-- Expenses Table -->
+  <div class="glass-panel-dark rounded-2xl border border-white/5 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse min-w-[800px]">
+        <thead>
+          <tr class="bg-white/5 border-b border-white/10 text-slate-300 text-[10px] uppercase tracking-wider">
+            <th class="p-4 font-bold">วันที่</th>
+            <th class="p-4 font-bold">หมวดหมู่</th>
+            <th class="p-4 font-bold">ประเภท / รายละเอียด</th>
+            <th class="p-4 font-bold text-right">ยอดเงิน</th>
+            <th class="p-4 font-bold">ผู้จ่าย/นักลงทุน</th>
+            <th class="p-4 font-bold">รอบรถ</th>
+            <th class="p-4 font-bold text-center">หลักฐาน</th>
+            <th class="p-4 font-bold text-right">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm">
+          <% if (expenses.length === 0) { %>
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">ยังไม่มีประวัติรายจ่าย</td></tr>
+          <% } else { %>
+            <% expenses.forEach(e => { %>
+              <tr class="hover:bg-white/5 transition-colors group" x-show="filter === 'ALL' || filter === '<%= e.category %>'" x-transition>
+                <td class="p-4 whitespace-nowrap text-slate-300">
+                  <i class="fa-regular fa-calendar-days text-slate-500 mr-2"></i>
+                  <%= new Date(e.expense_date).toLocaleDateString('th-TH') %>
+                </td>
+                <td class="p-4">
+                  <% if (e.category === 'CAPITAL') { %>
+                    <span class="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold">CAPITAL</span>
+                  <% } else if (e.category === 'TRIP') { %>
+                    <span class="px-2 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded text-[10px] font-bold">TRIP OPEX</span>
+                  <% } else { %>
+                    <span class="px-2 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded text-[10px] font-bold">ADMIN</span>
+                  <% } %>
+                </td>
+                <td class="p-4">
+                  <div class="font-bold text-white"><%= e.type %></div>
+                  <% if (e.description) { %>
+                    <div class="text-xs text-slate-400 mt-1 max-w-[200px] truncate" title="<%= e.description %>"><%= e.description %></div>
+                  <% } %>
+                </td>
+                <td class="p-4 text-right font-mono font-bold">
+                  <% if (e.currency === 'USD') { %>
+                    <span class="text-blue-300">$ <%= Number(e.amount).toLocaleString('en-US', {minimumFractionDigits:2}) %></span>
+                    <div class="mt-0.5 flex justify-end">
+                      <span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[9px] font-bold font-sans">USD</span>
+                    </div>
+                  <% } else if (e.currency === 'LAK') { %>
+                    <span class="text-amber-200">₭ <%= Number(e.amount).toLocaleString('th-TH') %></span>
+                    <div class="mt-0.5 flex justify-end">
+                      <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-bold font-sans">LAK</span>
+                    </div>
+                  <% } else { %>
+                    <span class="text-white">฿ <%= Number(e.amount).toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+                    <div class="mt-0.5 flex justify-end">
+                      <span class="px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 text-[9px] font-bold font-sans">THB</span>
+                    </div>
+                  <% } %>
+                </td>
+                <td class="p-4 text-slate-300">
+                  <%= e.paid_by || '-' %>
+                </td>
+                <td class="p-4">
+                  <% if (e.trip_id) { %>
+                    <a href="/trips/<%= e.trip_id %>" class="text-indigo-400 hover:text-indigo-300 font-mono text-xs font-bold underline decoration-indigo-400/30 underline-offset-4">
+                      <%= e.trip_no || `TRIP-${e.trip_id}` %>
+                    </a>
+                  <% } else { %>
+                    <span class="text-slate-600">-</span>
+                  <% } %>
+                </td>
+                <td class="p-4 text-center">
+                  <% if (e.receipt_image) { %>
+                    <a href="<%= e.receipt_image %>" target="_blank" class="w-8 h-8 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center mx-auto transition-colors text-slate-300 hover:text-white" title="ดูบิลใบเสร็จ">
+                      <i class="fa-solid fa-receipt"></i>
+                    </a>
+                  <% } else { %>
+                    <span class="text-slate-600">-</span>
+                  <% } %>
+                </td>
+                <td class="p-4 text-right">
+                  <% if (user.role === 'admin' || user.role === 'manager') { %>
+                    <form action="/expenses/<%= e.id %>/delete" method="POST" onsubmit="return confirm('ยืนยันลบรายการรายจ่ายนี้?');" class="inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="text-slate-500 hover:text-red-400 p-2 transition-colors" title="ลบรายการ">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function expensesDashboard() {
+  return {
+    filter: 'ALL'
+  }
+}
+</script>

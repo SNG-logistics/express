@@ -1,0 +1,15 @@
+--- SYSTEM DIAGNOSIS ---
+Time: 2026-04-18T14:05:56.928Z
+User: adminkaideeder
+OS Release: PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+------------------------
+--- BROWSER CHECK ---
+Chromium (which chromium): Not found / Error
+Chromium Browser (which chromium-browser): Not found / Error
+Google Chrome (which google-chrome): Not found / Error
+Google Chrome Stable (which google-chrome-stable): Not found / Error
+------------------------
+--- LIBRARY CHECK ---
+libnss3.so: Not found / Error
+libatk: Not found / Error
+------------------------

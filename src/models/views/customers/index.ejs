@@ -1,0 +1,157 @@
+<div class="max-w-7xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 animate-fade-in">
+        <div>
+            <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                <span class="bg-amber-500 w-1.5 h-8 rounded-full inline-block"></span>
+                จัดการลูกค้า
+            </h1>
+            <p class="text-slate-400 mt-2 ml-6 text-sm">รายชื่อลูกค้าและร้านค้าทั้งหมดในระบบ</p>
+        </div>
+        <a href="/customers/new"
+            class="cta-primary text-sm inline-flex items-center gap-2 group px-6 py-3 rounded-full font-semibold shadow-lg shadow-amber-500/20 transition-transform hover:scale-105 active:scale-95">
+            <i class="fa-solid fa-plus group-hover:rotate-90 transition-transform"></i> เพิ่มลูกค้าใหม่
+        </a>
+    </div>
+
+    <div
+        class="glass-panel-dark card-elevated rounded-3xl p-6 md:p-8 border border-white/5 shadow-2xl animate-fade-in-up">
+        <!-- Search & Filter -->
+        <div class="mb-8 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <form action="/customers" method="get" class="w-full md:max-w-md">
+                <div class="search-bar-dark relative">
+                    <input type="text" name="q" value="<%= q || '' %>" placeholder="ค้นหาชื่อ, เบอร์โทร, หรือ Tax ID..."
+                        class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all outline-none">
+                    <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                </div>
+            </form>
+        </div>
+
+        <% if(error) { %>
+            <div
+                class="mb-8 p-4 rounded-xl bg-red-500/10 text-red-200 border border-red-500/20 flex items-center gap-3 animate-pulse-once">
+                <i class="fa-solid fa-circle-exclamation text-xl"></i>
+                <%= error %>
+            </div>
+            <% } %>
+
+                <div class="overflow-x-auto rounded-2xl border border-white/5">
+                    <table class="table-premium w-full text-left">
+                        <thead class="text-xs text-slate-400 uppercase bg-black/20 border-b border-white/5">
+                            <tr>
+                                <th class="py-4 px-6 font-semibold tracking-wider text-center w-24">ID</th>
+                                <th class="py-4 px-6 font-semibold tracking-wider">ประเภท</th>
+                                <th class="py-4 px-6 font-semibold tracking-wider">ชื่อลูกค้า/ร้านค้า</th>
+                                <th class="py-4 px-6 font-semibold tracking-wider">ติดต่อ</th>
+                                <th class="py-4 px-6 font-semibold tracking-wider">ที่อยู่</th>
+                                <th class="py-4 px-6 font-semibold tracking-wider">สถานะ</th>
+                                <th class="py-4 px-6 font-semibold tracking-wider text-right">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 text-slate-300">
+                            <% if(customers.length===0) { %>
+                                <tr>
+                                    <td colspan="7" class="py-16 text-center text-slate-500">
+                                        <div class="flex flex-col items-center justify-center">
+                                            <i class="fa-regular fa-folder-open text-5xl mb-4 opacity-20"></i>
+                                            <p class="font-medium">ไม่พบข้อมูลลูกค้า</p>
+                                            <p class="text-xs mt-1 opacity-60">ลองค้นหาด้วยคำอื่น หรือเพิ่มลูกค้าใหม่
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <% } %>
+                                    <% customers.forEach((c)=> { %>
+                                        <tr class="hover:bg-white/5 transition-colors group">
+                                            <td
+                                                class="py-4 px-6 text-slate-500 font-mono text-xs text-center font-bold">
+                                                #<%= c.id %>
+                                            </td>
+                                            <td class="py-4 px-6">
+                                                <% if(c.type==='shop' ) { %>
+                                                    <span
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wide">
+                                                        <i class="fa-solid fa-store"></i> ร้านค้า
+                                                    </span>
+                                                    <% } else { %>
+                                                        <span
+                                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                                                            <i class="fa-solid fa-user"></i> บุคคล
+                                                        </span>
+                                                        <% } %>
+                                            </td>
+                                            <td class="py-4 px-6">
+                                                <div
+                                                    class="font-bold text-white text-base group-hover:text-amber-400 transition-colors">
+                                                    <%= c.name %>
+                                                </div>
+                                                <% if(c.tax_id) { %>
+                                                    <div
+                                                        class="text-[10px] text-slate-500 mt-0.5 font-mono flex items-center gap-1">
+                                                        <span
+                                                            class="px-1 rounded bg-slate-800 text-[9px] uppercase tracking-wider">TAX</span>
+                                                        <%= c.tax_id %>
+                                                    </div>
+                                                    <% } %>
+                                            </td>
+                                            <td class="py-4 px-6">
+                                                <div class="flex flex-col gap-1">
+                                                    <div class="text-sm text-slate-300 flex items-center gap-2">
+                                                        <i class="fa-solid fa-phone text-slate-600 text-xs w-4"></i>
+                                                        <span class="font-mono">
+                                                            <%= c.phone || '-' %>
+                                                        </span>
+                                                    </div>
+                                                    <% if(c.email) { %>
+                                                        <div class="text-xs text-slate-500 flex items-center gap-2">
+                                                            <i
+                                                                class="fa-solid fa-envelope text-slate-600 text-xs w-4"></i>
+                                                            <%= c.email %>
+                                                        </div>
+                                                        <% } %>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-6">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-bold text-slate-200">
+                                                        <%= c.city || '' %>
+                                                            <%= c.province || '' %>
+                                                    </span>
+                                                    <span class="text-xs text-slate-500 truncate max-w-[180px] mt-0.5"
+                                                        title="<%= c.address %>">
+                                                        <%= c.address || '-' %>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-6">
+                                                <% if(c.active) { %>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="relative flex h-2 w-2">
+                                                            <span
+                                                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                            <span
+                                                                class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                        </span>
+                                                        <span
+                                                            class="text-xs font-bold text-emerald-400 uppercase tracking-wide">Active</span>
+                                                    </div>
+                                                    <% } else { %>
+                                                        <div class="flex items-center gap-2 opacity-50">
+                                                            <span class="h-2 w-2 rounded-full bg-slate-500"></span>
+                                                            <span
+                                                                class="text-xs font-bold text-slate-500 uppercase tracking-wide">Inactive</span>
+                                                        </div>
+                                                        <% } %>
+                                            </td>
+                                            <td class="py-4 px-6 text-right">
+                                                <a href="/customers/<%= c.id %>/edit" title="แก้ไขข้อมูล"
+                                                    class="btn-icon-glass text-amber-500 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all p-2 rounded-lg">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+    </div>
+</div>

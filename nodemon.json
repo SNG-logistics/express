@@ -1,0 +1,5 @@
+{
+  "watch": ["src", "views"],
+  "ext": "js,mjs,ejs,json",
+  "ignore": ["tmp_*.mjs", "tmp_*.js", "public/*", "uploads/*", "*.test.js"]
+}

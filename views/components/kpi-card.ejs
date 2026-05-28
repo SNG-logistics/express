@@ -1,0 +1,20 @@
+<!-- KPI Card Component -->
+<% /* Expected locals: iconClass, bgColorClass, label, value, changeBadge (optional) */ %>
+    <div class="kpi-card-premium <%= bgColorClass %>">
+        <div class="flex items-center justify-between mb-4">
+            <div class="kpi-icon <%= bgColorClass %>00/20">
+                <i class="fa-solid <%= iconClass %> text-<%= bgColorClass %>-400"></i>
+            </div>
+            <% if (changeBadge) { %>
+                <div class="text-xs text-<%= bgColorClass %>-400 bg-<%= bgColorClass %>/10 px-2 py-1 rounded-full">
+                    <%= changeBadge %>
+                </div>
+                <% } %>
+        </div>
+        <p class="kpi-label mb-1">
+            <%= label %>
+        </p>
+        <h3 class="kpi-value">
+            <%= value %>
+        </h3>
+    </div>

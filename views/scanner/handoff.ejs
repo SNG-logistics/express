@@ -1,0 +1,278 @@
+<%#
+  views/scanner/handoff.ejs — Trip Handoff Scan Screen
+  Data: trip, tripOrders[], confirmed, total, allConfirmed, user
+  
+  Workflow:
+  1. Shows all orders assigned to the trip
+  2. Staff scans each parcel barcode
+  3. Each confirmed order → ON_TRUCK (if not already)
+  4. Progress bar shows X/Y confirmed
+  5. When all confirmed → "จบ Handoff" button activates
+  6. Audit trail: every confirm logged as [HANDOFF]
+%>
+<%
+  function capText(c, t) {
+    if (t === 0) return '0/0';
+    return `${c}/${t}`;
+  }
+  const pct = total > 0 ? Math.round(confirmed / total * 100) : 0;
+
+  const ORDER_STATUS_TH = {
+    'NEW':'ใหม่','RECEIVED_WH_TH':'รับคลังไทย','RECEIVED_WH_LA':'รับคลังลาว',
+    'ON_TRUCK':'ขึ้นรถแล้ว ✅','CROSSING_BORDER':'ข้ามแดน',
+  };
+%>
+
+<div class="max-w-3xl mx-auto space-y-5" x-data="handoffApp()" x-init="init()">
+
+  <%# Header %>
+  <div class="flex items-center gap-3">
+    <a href="/scanner" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div class="flex-1">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-truck-loading text-amber-400"></i>
+        Handoff: <span class="font-mono text-amber-300"><%= trip.trip_no %></span>
+      </h2>
+      <p class="text-slate-400 text-xs mt-0.5">
+        <%= trip.direction === 'TH_TO_LA' ? '🇹🇭 ไทย → ลาว 🇱🇦' : '🇱🇦 ลาว → ไทย 🇹🇭' %>
+        · <%= trip.driver_name || 'ไม่ระบุคนขับ' %>
+        <% if (trip.vehicle) { %> · <span class="font-mono"><%= trip.vehicle %></span><% } %>
+      </p>
+    </div>
+    <%# Progress counter %>
+    <div class="text-center">
+      <div class="text-3xl font-black <%= confirmed === total ? 'text-emerald-400' : 'text-amber-400' %>">
+        <%= confirmed %>/<%= total %>
+      </div>
+      <div class="text-[10px] text-slate-500 uppercase">ยืนยันแล้ว</div>
+    </div>
+  </div>
+
+  <%# Progress bar %>
+  <div class="glass-panel-dark rounded-xl px-5 py-3 flex items-center gap-4 border border-white/8">
+    <span class="text-xs text-slate-500 whitespace-nowrap">Progress</span>
+    <div class="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
+      <div class="h-full rounded-full <%= pct === 100 ? 'bg-emerald-500' : 'bg-amber-500' %> transition-all"
+           id="handoff-bar" style="--w:<%= pct %>%;width:var(--w)"></div>
+    </div>
+    <span class="text-xs font-bold <%= pct === 100 ? 'text-emerald-400' : 'text-amber-400' %>" id="handoff-pct"><%= pct %>%</span>
+  </div>
+
+  <%# All confirmed banner %>
+  <% if (allConfirmed && total > 0) { %>
+  <div class="flex items-center gap-3 px-4 py-4 rounded-2xl bg-emerald-500/12 border border-emerald-500/25">
+    <i class="fa-solid fa-circle-check text-emerald-400 text-xl flex-shrink-0"></i>
+    <div>
+      <div class="text-emerald-300 font-bold">พัสดุครบ <%= total %>/<%= total %> ชิ้น — พร้อม Handoff!</div>
+      <div class="text-emerald-500 text-xs mt-0.5">อนุมัติ Dispatcher ก่อนออกรถ</div>
+    </div>
+    <a href="/trips/<%= trip.id %>" class="ml-auto px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-bold hover:bg-emerald-500/30 transition-all">
+      ไปหน้า Trip →
+    </a>
+  </div>
+  <% } %>
+
+  <%# Scan Input %>
+  <div class="glass-panel-dark rounded-2xl p-4 border border-white/8">
+    <div class="relative">
+      <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xl"></i>
+      <input
+        type="text"
+        x-ref="scanInput"
+        x-model="query"
+        @keydown.enter.prevent="scanHandoff()"
+        :disabled="scanLoading"
+        class="w-full pl-14 pr-28 py-4 rounded-xl bg-white/5 border-2 border-amber-500/40 text-white text-lg font-mono placeholder-slate-600 focus:outline-none focus:border-amber-400/70 transition-all"
+        placeholder="สแกน Job No. เพื่อยืนยัน"
+        autocomplete="off"
+        autofocus>
+      <button @click="scanHandoff()" :disabled="scanLoading || !query"
+        class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-semibold disabled:opacity-40 transition-all">
+        <template x-if="scanLoading"><i class="fa-solid fa-spinner fa-spin"></i></template>
+        <template x-if="!scanLoading"><span>ยืนยัน</span></template>
+      </button>
+    </div>
+    <div x-show="scanMsg" x-cloak
+         :class="scanOk ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'"
+         class="mt-3 flex items-center gap-2 p-3 rounded-xl border text-sm">
+      <i class="fa-solid" :class="scanOk ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
+      <span x-text="scanMsg"></span>
+    </div>
+  </div>
+
+  <%# Order list %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/6">
+      <h3 class="text-white font-semibold text-sm">รายการพัสดุในรอบรถ</h3>
+      <span class="text-xs text-slate-500"><%= total %> ออเดอร์</span>
+    </div>
+    <div class="divide-y divide-white/5 max-h-96 overflow-y-auto" id="order-list">
+      <% tripOrders.forEach(o => { %>
+      <div class="flex items-center justify-between px-5 py-3
+        <%= o.status === 'ON_TRUCK' ? 'bg-emerald-500/5' : '' %>"
+        id="order-row-<%= o.id %>">
+        <div class="flex items-center gap-3">
+          <%# Status indicator %>
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
+            <%= o.status === 'ON_TRUCK' ? 'bg-emerald-500/15 border border-emerald-500/25' : 'bg-white/5 border border-white/10' %>">
+            <i class="fa-solid text-xs <%= o.status === 'ON_TRUCK' ? 'fa-check text-emerald-400' : 'fa-clock text-slate-500' %>"></i>
+          </div>
+          <div>
+            <div class="font-mono font-bold text-sm
+              <%= o.status === 'ON_TRUCK' ? 'text-emerald-300' : 'text-white' %>">
+              <%= o.job_no %>
+            </div>
+            <div class="text-slate-500 text-[11px]">
+              <%= o.sender_name %> → <%= o.receiver_name %>
+              <% if (o.declared_weight) { %>· <%= o.declared_weight %> กก.<% } %>
+              <% if (o.cod_amount > 0) { %><span class="text-amber-400"> · COD ฿<%= Number(o.cod_amount).toLocaleString() %></span><% } %>
+              <% if (o.requires_customs) { %><span class="text-amber-400"> · ศุลกากร</span><% } %>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] px-2 py-1 rounded-lg border
+            <%= o.status === 'ON_TRUCK' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-500 bg-white/5 border-white/8' %>">
+            <%= ORDER_STATUS_TH[o.status] || o.status %>
+          </span>
+          <% if (o.status !== 'ON_TRUCK') { %>
+          <button onclick="window.handoffApp.manualConfirm('<%= o.id %>', '<%= o.job_no %>')"
+            class="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 text-xs flex items-center justify-center transition-all" title="ยืนยันด้วยตัวเอง">
+            <i class="fa-solid fa-check text-[10px]"></i>
+          </button>
+          <% } %>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <%# Toast %>
+  <div x-show="toast" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 translate-y-2"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       :class="toast?.type === 'error' ? 'bg-red-500/20 border-red-500/40 text-red-300' : toast?.type === 'warn' ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'"
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl border font-semibold shadow-xl backdrop-blur-lg text-sm">
+    <i class="fa-solid" :class="toast?.type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check'"></i>
+    <span x-text="toast?.msg"></span>
+  </div>
+
+</div>
+
+<script>
+const CSRF_TOKEN   = '<%= csrfToken %>';
+const TRIP_ID      = '<%= trip.id %>';
+const TOTAL_ORDERS = <%= total %>;
+
+// Map job_no → order id for quick lookup
+const ORDER_MAP = <%- JSON.stringify(
+  tripOrders.reduce((acc, o) => { acc[o.job_no] = { id: o.id, status: o.status }; return acc; }, {})
+) %>;
+
+function handoffApp() {
+  const app = {
+    query: '',
+    scanLoading: false,
+    scanMsg: null,
+    scanOk: false,
+    toast: null,
+    confirmed: <%= confirmed %>,
+
+    init() {
+      this.$nextTick(() => this.$refs.scanInput?.focus());
+    },
+
+    async scanHandoff() {
+      const q = this.query.trim();
+      if (!q) return;
+
+      // Find order in this trip
+      const entry = ORDER_MAP[q];
+      if (!entry) {
+        this.scanMsg = `"${q}" ไม่ได้อยู่ในรอบรถนี้`;
+        this.scanOk = false;
+        this.$nextTick(() => this.$refs.scanInput?.select());
+        return;
+      }
+      if (entry.status === 'ON_TRUCK') {
+        this.scanMsg = `${q} — ยืนยันแล้ว`;
+        this.scanOk = true;
+        setTimeout(() => { this.scanMsg = null; this.query = ''; }, 2000);
+        return;
+      }
+
+      await this.confirmOrder(entry.id, q);
+    },
+
+    async manualConfirm(orderId, jobNo) {
+      await this.confirmOrder(orderId, jobNo);
+    },
+
+    async confirmOrder(orderId, jobNo) {
+      this.scanLoading = true;
+      try {
+        const res  = await fetch(`/scanner/handoff/${TRIP_ID}/confirm/${orderId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Update UI row
+          const row = document.getElementById(`order-row-${orderId}`);
+          if (row) {
+            row.classList.add('bg-emerald-500/5');
+            const icon = row.querySelector('.fa-clock');
+            if (icon) { icon.classList.remove('fa-clock', 'text-slate-500'); icon.classList.add('fa-check', 'text-emerald-400'); }
+            const iconWrap = row.querySelector('.w-7.h-7.rounded-lg');
+            if (iconWrap) { iconWrap.className = 'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-500/15 border border-emerald-500/25'; }
+            const badge = row.querySelector('.text-\\[10px\\]');
+            if (badge) { badge.textContent = 'ขึ้นรถแล้ว ✅'; badge.className = 'text-[10px] px-2 py-1 rounded-lg border text-emerald-400 bg-emerald-500/10 border-emerald-500/20'; }
+            const manualBtn = row.querySelector('button[onclick]');
+            if (manualBtn) manualBtn.remove();
+          }
+
+          if (!data.alreadyDone) this.confirmed++;
+          ORDER_MAP[jobNo] = { ...ORDER_MAP[jobNo], status: 'ON_TRUCK' };
+
+          // Update progress bar
+          const pct = Math.round(this.confirmed / TOTAL_ORDERS * 100);
+          const bar = document.getElementById('handoff-bar');
+          if (bar) { bar.style.setProperty('--w', pct + '%'); }
+          const pctEl = document.getElementById('handoff-pct');
+          if (pctEl) { pctEl.textContent = pct + '%'; }
+
+          this.scanMsg = `✅ ${jobNo} — ยืนยันขึ้นรถสำเร็จ`;
+          this.scanOk = true;
+          this.showToast({ type: 'ok', msg: `✅ ${jobNo} ขึ้นรถแล้ว` });
+          setTimeout(() => { this.scanMsg = null; this.query = ''; this.$refs.scanInput?.focus(); }, 1800);
+        } else {
+          this.scanMsg = data.message;
+          this.scanOk = false;
+          this.showToast({ type: 'error', msg: data.message });
+        }
+      } catch {
+        this.scanMsg = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+        this.scanOk = false;
+      } finally {
+        this.scanLoading = false;
+      }
+    },
+
+    showToast(t) {
+      this.toast = t;
+      setTimeout(() => { this.toast = null; }, 3000);
+    },
+  };
+
+  // Expose for inline buttons
+  window.handoffApp = app;
+  return app;
+}
+</script>

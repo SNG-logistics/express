@@ -1,0 +1,305 @@
+<%# views/freight/booking-detail.ejs — รายละเอียดการจอง %>
+<%
+  const STATUS_LABEL = {
+    DRAFT:'รอยืนยัน', CONFIRMED:'ยืนยันแล้ว',
+    LOADED:'ขึ้นรถแล้ว', IN_TRANSIT:'ระหว่างทาง',
+    COMPLETED:'สำเร็จ', CANCELLED:'ยกเลิก'
+  };
+  const STATUS_CSS = {
+    DRAFT: 'bg-slate-500/15 text-slate-300 border-slate-500/20',
+    CONFIRMED: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
+    LOADED: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
+    IN_TRANSIT: 'bg-purple-500/15 text-purple-300 border-purple-500/20',
+    COMPLETED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
+    CANCELLED: 'bg-red-500/15 text-red-300 border-red-500/20',
+  };
+  const PAY_STATUS_TH = { UNPAID: 'ค้างชำระ', PARTIAL: 'ชำระบางส่วน', PAID: 'ชำระแล้ว' };
+  const remaining = Number(booking.grand_total_thb) - Number(booking.paid_amount_thb || 0);
+  function fmtDate(d) {
+    if (!d) return '–';
+    return new Date(d).toLocaleString('th-TH', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+  }
+%>
+
+<div class="max-w-4xl mx-auto space-y-5">
+
+  <%# Header %>
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="flex items-center gap-3 flex-1">
+      <a href="/freight" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+        <i class="fa-solid fa-arrow-left text-sm"></i>
+      </a>
+      <div>
+        <div class="flex items-center gap-3">
+          <h2 class="font-mono font-black text-white text-xl"><%= booking.booking_no %></h2>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-lg border <%= STATUS_CSS[booking.status] || '' %>">
+            <%= STATUS_LABEL[booking.status] || booking.status %>
+          </span>
+        </div>
+        <div class="text-slate-400 text-xs mt-0.5"><%= booking.partner_name %> — สร้างเมื่อ <%= fmtDate(booking.created_at) %></div>
+      </div>
+    </div>
+    <%# Document buttons %>
+    <div class="flex gap-2">
+      <a href="/freight/<%= booking.id %>/quote" target="_blank"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 text-sm font-semibold transition-all">
+        <i class="fa-solid fa-file-invoice text-xs"></i> ใบเสนอราคา
+      </a>
+      <a href="/freight/<%= booking.id %>/invoice" target="_blank"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 text-sm font-semibold transition-all">
+        <i class="fa-solid fa-receipt text-xs"></i> ใบเรียกเก็บเงิน
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <%# Left — Main Info %>
+    <div class="lg:col-span-2 space-y-4">
+
+      <%# Partner Card %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/8">
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-3">ข้อมูลร้านฝากส่ง</div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ชื่อร้าน</div>
+            <div class="text-white font-semibold"><%= booking.partner_name %></div>
+          </div>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ผู้ติดต่อ</div>
+            <div class="text-white"><%= booking.contact_name %></div>
+          </div>
+          <% if (booking.partner_phone) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">โทร</div>
+            <div class="text-white"><%= booking.partner_phone %></div>
+          </div>
+          <% } %>
+          <% if (booking.line_id) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">LINE</div>
+            <div class="text-emerald-400"><%= booking.line_id %></div>
+          </div>
+          <% } %>
+          <% if (booking.partner_tax_id) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">เลขผู้เสียภาษี</div>
+            <div class="text-white font-mono text-xs"><%= booking.partner_tax_id %></div>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <%# Cargo Details %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/8">
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-3">รายละเอียดสินค้า</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ประเภท</div>
+            <div class="text-white font-bold text-base"><%= booking.unit_label || booking.unit_type %></div>
+          </div>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">จำนวน</div>
+            <div class="text-white font-bold text-base"><%= booking.quantity %> หน่วย</div>
+          </div>
+          <% if (booking.dim_l_cm) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ขนาด (ซม.)</div>
+            <div class="text-white font-mono"><%= booking.dim_w_cm %>×<%= booking.dim_l_cm %>×<%= booking.dim_h_cm %></div>
+          </div>
+          <% } %>
+          <% if (booking.total_weight_kg) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">น้ำหนักรวม</div>
+            <div class="text-white"><%= booking.total_weight_kg %> กก.</div>
+          </div>
+          <% } %>
+        </div>
+        <% if (booking.cargo_description) { %>
+        <div class="bg-white/3 rounded-xl p-3 text-sm text-slate-300">
+          <span class="text-slate-500 text-[10px] uppercase font-bold mr-2">สินค้า:</span>
+          <%= booking.cargo_description %>
+        </div>
+        <% } %>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
+          <% if (booking.direction) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ทิศทาง</div>
+            <div class="text-white"><%= booking.direction === 'TH_TO_LA' ? '🇹🇭 ไทย → ลาว 🇱🇦' : '🇱🇦 ลาว → ไทย 🇹🇭' %></div>
+          </div>
+          <% } %>
+          <% if (booking.trip_no) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ทริป</div>
+            <div class="text-white font-mono"><a href="/trips/<%= booking.trip_id %>" class="text-blue-400 hover:underline"><%= booking.trip_no %></a></div>
+          </div>
+          <% } %>
+          <% if (booking.pickup_address) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ที่รับสินค้า</div>
+            <div class="text-white text-xs"><%= booking.pickup_address %></div>
+          </div>
+          <% } %>
+          <% if (booking.delivery_address) { %>
+          <div>
+            <div class="text-slate-500 text-[10px] uppercase">ที่ส่งสินค้า</div>
+            <div class="text-white text-xs"><%= booking.delivery_address %></div>
+          </div>
+          <% } %>
+        </div>
+        <% if (booking.special_notes) { %>
+        <div class="mt-3 p-3 bg-amber-500/5 border border-amber-500/15 rounded-xl text-xs text-amber-300">
+          <i class="fa-solid fa-circle-info mr-1"></i> <%= booking.special_notes %>
+        </div>
+        <% } %>
+      </div>
+
+      <%# Status Change %>
+      <% if (booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED') { %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/8">
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-3">เปลี่ยนสถานะ</div>
+        <form action="/freight/<%= booking.id %>/status" method="POST" class="space-y-3">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="flex gap-2 flex-wrap">
+            <% const nextMap = {
+              DRAFT: ['CONFIRMED','CANCELLED'],
+              CONFIRMED: ['LOADED','CANCELLED'],
+              LOADED: ['IN_TRANSIT'],
+              IN_TRANSIT: ['COMPLETED','CANCELLED'],
+            };
+            const nextStatuses = nextMap[booking.status] || [];
+            nextStatuses.forEach(ns => { %>
+            <button type="submit" name="new_status" value="<%= ns %>"
+                    class="px-4 py-2 rounded-xl text-sm font-bold border transition-all
+                      <%= ns === 'CANCELLED' ? 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20' :
+                          ns === 'CONFIRMED' ? 'border-blue-500/30 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20' :
+                          ns === 'COMPLETED' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' :
+                          'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' %>">
+              <%= STATUS_LABEL[ns] || ns %>
+            </button>
+            <% }); %>
+          </div>
+
+          <%# ผูกทริป %>
+          <% if (!booking.trip_no) { %>
+          <div class="flex gap-2 mt-2">
+            <select name="trip_id" class="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none">
+              <option value="">— ผูกทริป (ถ้าต้องการ) —</option>
+              <% trips.forEach(t => { %>
+              <option value="<%= t.id %>"><%= t.trip_no %> (<%= t.direction %>)</option>
+              <% }); %>
+            </select>
+          </div>
+          <% } %>
+
+          <input type="text" name="note" placeholder="หมายเหตุการเปลี่ยนสถานะ (ถ้ามี)"
+                 class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50 placeholder-slate-600">
+        </form>
+      </div>
+      <% } %>
+    </div>
+
+    <%# Right — Finance + Logs %>
+    <div class="space-y-4">
+
+      <%# Financial Summary %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-amber-500/15">
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-3">สรุปการเงิน</div>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between text-slate-400">
+            <span><%= booking.quantity %> × ฿<%= Number(booking.unit_price_thb).toLocaleString() %></span>
+            <span class="text-white">฿<%= Number(booking.total_amount_thb).toLocaleString() %></span>
+          </div>
+          <% if (Number(booking.discount_thb) > 0) { %>
+          <div class="flex justify-between text-slate-400">
+            <span>ส่วนลด</span>
+            <span class="text-red-400">-฿<%= Number(booking.discount_thb).toLocaleString() %></span>
+          </div>
+          <% } %>
+          <% if (Number(booking.vat_amount_thb) > 0) { %>
+          <div class="flex justify-between text-slate-400">
+            <span>VAT <%= booking.vat_pct %>%</span>
+            <span class="text-amber-400">+฿<%= Number(booking.vat_amount_thb).toLocaleString() %></span>
+          </div>
+          <% } %>
+          <div class="border-t border-white/10 pt-2 flex justify-between font-bold">
+            <span class="text-white">ยอดสุทธิ</span>
+            <span class="text-amber-400 text-xl">฿<%= Number(booking.grand_total_thb).toLocaleString() %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-400">ชำระแล้ว</span>
+            <span class="text-emerald-400">฿<%= Number(booking.paid_amount_thb || 0).toLocaleString() %></span>
+          </div>
+          <% if (remaining > 0) { %>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-400">ยังค้างอยู่</span>
+            <span class="text-red-400 font-bold">฿<%= Number(remaining).toLocaleString() %></span>
+          </div>
+          <% } %>
+        </div>
+
+        <%# Payment type badge %>
+        <div class="mt-3 flex items-center gap-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold
+            <%= booking.payment_type === 'CREDIT' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300' %>">
+            <%= booking.payment_type === 'CREDIT' ? 'เครดิต' : 'ชำระล่วงหน้า' %>
+          </span>
+          <% if (booking.due_date) { %>
+          <span class="text-[10px] text-slate-400">ครบกำหนด: <%= new Date(booking.due_date).toLocaleDateString('th-TH', {day:'2-digit',month:'short',year:'2-digit'}) %></span>
+          <% } %>
+        </div>
+
+        <%# Record payment %>
+        <% if (booking.payment_status !== 'PAID' && booking.status !== 'CANCELLED') { %>
+        <form action="/freight/<%= booking.id %>/payment" method="POST" class="mt-4 space-y-2 pt-4 border-t border-white/8">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">บันทึกรับชำระ</div>
+          <input type="number" name="paid_amount" step="0.01" min="0"
+                 max="<%= remaining %>" placeholder="จำนวนที่รับ (บาท)"
+                 class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-400/50">
+          <input type="text" name="payment_ref" placeholder="อ้างอิง (เลขโอน, ชื่อ)"
+                 class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-400/50">
+          <button type="submit"
+                  class="w-full py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-sm font-bold transition-all">
+            <i class="fa-solid fa-circle-check mr-1"></i> บันทึกรับเงิน
+          </button>
+        </form>
+        <% } %>
+      </div>
+
+      <%# Status Log %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/8">
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-3">ประวัติ</div>
+        <div class="space-y-3">
+          <% logs.forEach((log, i) => { %>
+          <div class="flex gap-2 text-xs">
+            <div class="w-2 h-2 rounded-full bg-amber-400/60 mt-1 flex-shrink-0"></div>
+            <div>
+              <div class="text-slate-300 font-semibold"><%= STATUS_LABEL[log.to_status] || log.to_status %></div>
+              <% if (log.note) { %><div class="text-slate-500"><%= log.note %></div><% } %>
+              <div class="text-slate-600 mt-0.5"><%= fmtDate(log.action_at) %><% if (log.username) { %> · <%= log.username %><% } %></div>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+      </div>
+
+      <%# Document Numbers %>
+      <div class="glass-panel-dark rounded-2xl p-4 border border-white/8 text-xs space-y-2">
+        <% if (booking.quote_no) { %>
+        <div class="flex justify-between text-slate-400">
+          <span>ใบเสนอราคา</span>
+          <span class="font-mono text-amber-400"><%= booking.quote_no %></span>
+        </div>
+        <% } %>
+        <% if (booking.invoice_no) { %>
+        <div class="flex justify-between text-slate-400">
+          <span>ใบเรียกเก็บเงิน</span>
+          <span class="font-mono text-emerald-400"><%= booking.invoice_no %></span>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>

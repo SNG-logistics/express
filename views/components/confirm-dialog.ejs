@@ -1,0 +1,94 @@
+<%#
+  views/components/confirm-dialog.ejs
+  
+  Wraps a form POST in an Alpine.js confirmation modal.
+  
+  Usage:
+    include('../components/confirm-dialog', {
+      dialogId:     'closeOrder',
+      triggerLabel: 'ปิดงาน',
+      triggerClass: 'btn-danger',
+      triggerIcon:  'fa-solid fa-lock',
+      title:        'ยืนยันปิดงาน?',
+      body:         'ไม่สามารถย้อนกลับได้',
+      formAction:   '/orders/' + order.id + '/close',
+      confirmLabel: 'ปิดงาน',
+      confirmIcon:  'fa-solid fa-lock',
+      extraFields:  '<input name="reason" ...>',   <!-- optional -->
+    })
+
+  NOTE: csrfToken must be in res.locals (it always is via app.js middleware)
+%>
+
+<div x-data="{ open: false }" id="dialog-<%= dialogId %>">
+
+  <%# Trigger button %>
+  <button type="button"
+          @click="open = true"
+          class="<%= triggerClass || 'btn-danger' %> inline-flex items-center gap-2">
+    <% if (typeof triggerIcon !== 'undefined' && triggerIcon) { %>
+      <i class="<%= triggerIcon %>"></i>
+    <% } %>
+    <%= triggerLabel %>
+  </button>
+
+  <%# Modal backdrop %>
+  <div x-show="open"
+       x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+       @click.self="open = false">
+
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         class="glass-panel-dark max-w-md w-full p-6 rounded-2xl shadow-2xl">
+
+      <%# Header %>
+      <div class="flex items-start gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+          <i class="<%= typeof triggerIcon !== 'undefined' ? triggerIcon : 'fa-solid fa-triangle-exclamation' %> text-red-400"></i>
+        </div>
+        <div>
+          <h3 class="text-white font-bold text-lg leading-tight"><%= title %></h3>
+          <p class="text-slate-400 text-sm mt-1"><%- body %></p>
+        </div>
+      </div>
+
+      <%# Extra fields (optional) %>
+      <% if (typeof extraFields !== 'undefined' && extraFields) { %>
+        <div class="mb-4">
+          <%- extraFields %>
+        </div>
+      <% } %>
+
+      <%# Actions %>
+      <div class="flex gap-3 justify-end mt-6">
+        <button type="button"
+                @click="open = false"
+                class="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm transition-all">
+          ยกเลิก
+        </button>
+        <form action="<%= formAction %>" method="POST" class="inline" id="form-<%= dialogId %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% if (typeof hiddenFields !== 'undefined' && hiddenFields) { %>
+            <%- hiddenFields %>
+          <% } %>
+          <button type="submit"
+                  class="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-all flex items-center gap-2">
+            <% if (typeof confirmIcon !== 'undefined' && confirmIcon) { %>
+              <i class="<%= confirmIcon %>"></i>
+            <% } %>
+            <%= confirmLabel || 'ยืนยัน' %>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

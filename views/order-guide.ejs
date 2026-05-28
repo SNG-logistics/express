@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>คู่มือสั่งสินค้าออนไลน์ | SNG Express ไทย-ลาว</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Fonts: Thai + Lao -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800;900&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --yellow:      #FFE000;
+      --yellow-dark: #EBB800;
+      --black:       #0a0a0a;
+      --dark2:       #1a1a1a;
+      --red:         #E8002D;
+    }
+
+    /* Thai base font */
+    body {
+      font-family: 'Prompt', 'Sarabun', 'Noto Sans Lao', sans-serif;
+      background: #eeeee8;
+      color: #111;
+      min-height: 100vh;
+    }
+
+    /* Lao text class */
+    .lo {
+      font-family: 'Noto Sans Lao', 'Prompt', sans-serif;
+      line-height: 1.75;
+    }
+
+    /* Bilingual pair */
+    .bi {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .bi .th { line-height: 1.5; }
+    .bi .lo { font-size: 0.88em; color: rgba(0,0,0,0.55); }
+    .bi-inv .lo { font-size: 0.88em; color: rgba(255,255,255,0.50); }
+    .bi-inv .th { color: inherit; }
+
+    /* ── SCREEN CONTROLS ── */
+    .screen-controls {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      z-index: 999;
+      display: flex;
+      gap: 0.625rem;
+    }
+
+    .btn-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.125rem;
+      border-radius: 999px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      font-family: 'Prompt', sans-serif;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-pdf {
+      background: var(--yellow);
+      color: #000;
+      box-shadow: 0 4px 16px rgba(255,224,0,0.40);
+    }
+
+    .btn-pdf:hover { background: var(--yellow-dark); transform: translateY(-1px); }
+    .btn-back { background: rgba(0,0,0,0.10); color: #333; }
+    .btn-back:hover { background: rgba(0,0,0,0.17); }
+
+    /* ── A4 PAGE ── */
+    .page {
+      width: 794px;
+      margin: 2rem auto;
+      background: white;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.18);
+    }
+
+    /* ── HEADER ── */
+    .page-header {
+      background: var(--black);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page-header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        -45deg, transparent, transparent 18px,
+        rgba(255,224,0,0.035) 18px, rgba(255,224,0,0.035) 36px
+      );
+    }
+
+    .header-top-bar { height: 6px; background: linear-gradient(90deg, var(--yellow), #FFC107); }
+
+    .header-content {
+      position: relative; z-index: 1;
+      padding: 1.625rem 2.25rem 1.375rem;
+      display: flex;
+      align-items: center;
+      gap: 1.375rem;
+    }
+
+    .header-logo-wrap {
+      width: 76px; height: 76px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 3px solid rgba(255,224,0,0.38);
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(255,224,0,0.18);
+    }
+
+    .header-logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+
+    .header-text { flex: 1; }
+
+    .header-doc-type {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--yellow);
+      margin-bottom: 0.2rem;
+    }
+    .header-doc-type .lo { font-size: 0.65rem; letter-spacing: 0.05em; opacity: 0.75; }
+
+    .header-title {
+      font-size: 1.65rem;
+      font-weight: 900;
+      color: white;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+    }
+    .header-title span { color: var(--yellow); }
+    .header-title-lo {
+      font-family: 'Noto Sans Lao', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.50);
+      margin-top: 0.15rem;
+      line-height: 1.5;
+    }
+    .header-title-lo span { color: rgba(255,224,0,0.70); }
+
+    .header-subtitle { font-size: 0.75rem; color: rgba(255,255,255,0.38); margin-top: 0.2rem; }
+    .header-subtitle .lo { font-size: 0.72rem; }
+
+    .header-route-badges {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+      align-items: flex-end;
+    }
+
+    .route-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.875rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .route-badge .lo { font-size: 0.68rem; }
+    .route-badge.th-la { background: rgba(255,224,0,0.12); border: 1.5px solid rgba(255,224,0,0.30); color: var(--yellow); }
+    .route-badge.la-th { background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.40); }
+
+    /* ── INTRO STRIP ── */
+    .intro-strip {
+      background: var(--yellow);
+      padding: 0.75rem 2.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+    .intro-strip-icon { font-size: 1.375rem; flex-shrink: 0; }
+    .intro-strip-text { font-size: 0.88rem; font-weight: 700; color: #000; line-height: 1.4; }
+    .intro-strip-text .lo { font-size: 0.78rem; color: rgba(0,0,0,0.52); margin-top: 0.1rem; }
+
+    /* ── PAGE BODY ── */
+    .page-body { padding: 1.75rem 2.25rem 2.25rem; }
+
+    /* ── PLATFORMS ── */
+    .platforms-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.75rem;
+      padding: 0.875rem 1.125rem;
+      background: #f8f8f4;
+      border-radius: 12px;
+      border: 1.5px solid #e8e8e0;
+    }
+
+    .platforms-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #aaa;
+      flex-shrink: 0;
+    }
+    .platforms-label .lo { font-size: 0.68rem; letter-spacing: 0; }
+
+    .platform-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.275rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border: 1.5px solid transparent;
+    }
+    .chip-lazada  { background: #f57b00; color: #fff; }
+    .chip-shopee  { background: #ee4d2d; color: #fff; }
+    .chip-tiktok  { background: #010101; color: #fff; }
+    .chip-facebook{ background: #1877f2; color: #fff; }
+    .chip-website { background: #374151; color: #fff; }
+
+    /* ── STEPS TITLE ── */
+    .steps-title {
+      font-size: 0.6rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #bbb;
+      margin-bottom: 0.875rem;
+    }
+    .steps-title .lo { font-size: 0.65rem; letter-spacing: 0; margin-top: 0.1rem; }
+
+    /* ── STEP CARD ── */
+    .steps-grid { display: flex; flex-direction: column; gap: 1.125rem; }
+
+    .step-card {
+      display: flex;
+      gap: 1.125rem;
+      background: #fafaf8;
+      border: 1.5px solid #ebebeb;
+      border-radius: 14px;
+      padding: 1.125rem 1.375rem;
+      position: relative;
+      overflow: hidden;
+      align-items: flex-start;
+    }
+    .step-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: var(--yellow);
+      border-radius: 4px 0 0 4px;
+    }
+    .step-card.step-final::before {
+      background: linear-gradient(180deg, #059669, #34d399);
+    }
+
+    .step-num {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: var(--black);
+      color: var(--yellow);
+      font-size: 1.25rem;
+      font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-card.step-final .step-num {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+    }
+
+    .step-content { flex: 1; min-width: 0; }
+
+    .step-title {
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #111;
+      line-height: 1.25;
+    }
+    .step-title-lo {
+      font-family: 'Noto Sans Lao', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #666;
+      margin-top: 0.1rem;
+      line-height: 1.55;
+    }
+
+    .step-desc {
+      font-size: 0.785rem;
+      color: #555;
+      line-height: 1.6;
+      margin-top: 0.3rem;
+    }
+    .step-desc .lo {
+      font-size: 0.745rem;
+      color: #888;
+      margin-top: 0.15rem;
+      line-height: 1.65;
+    }
+
+    .sub-steps {
+      margin-top: 0.5rem;
+      padding-left: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .sub-steps li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+      color: #444;
+      line-height: 1.5;
+    }
+    .sub-steps li::before {
+      content: '';
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--yellow-dark);
+      margin-top: 0.45rem;
+      flex-shrink: 0;
+    }
+    .sub-steps li .lo {
+      font-size: 0.715rem;
+      color: #888;
+      display: block;
+      margin-top: 0.05rem;
+      line-height: 1.6;
+    }
+
+    /* Step visual */
+    .step-visual {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      flex-shrink: 0;
+      width: 78px;
+    }
+    .step-icon-big {
+      width: 58px; height: 58px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.65rem;
+    }
+    .step-icon-big.yellow { background: rgba(255,224,0,0.14); color: #b8860a; }
+    .step-icon-big.blue   { background: rgba(59,130,246,0.10); color: #3b82f6; }
+    .step-icon-big.green  { background: rgba(16,185,129,0.10); color: #10b981; }
+    .step-icon-big.purple { background: rgba(168,85,247,0.10); color: #a855f7; }
+    .step-icon-big.orange { background: rgba(249,115,22,0.10); color: #f97316; }
+    .step-icon-big.teal   { background: rgba(20,184,166,0.10); color: #14b8a6; }
+
+    .step-tag { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #bbb; text-align: center; line-height: 1.4; }
+    .step-tag .lo { font-size: 0.6rem; letter-spacing: 0; }
+
+    /* Connector */
+    .step-connector {
+      display: flex; align-items: center; justify-content: center;
+      color: var(--yellow-dark);
+      font-size: 1.1rem;
+      margin: -0.35rem 0;
+    }
+
+    /* ── TIPS BOX ── */
+    .tips-box {
+      margin-top: 1.5rem;
+      background: var(--black);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.875rem;
+    }
+    .tips-box-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--yellow);
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      margin-bottom: -0.125rem;
+    }
+    .tips-box-header .lo { font-size: 0.75rem; letter-spacing: 0; color: rgba(255,224,0,0.75); margin-left: 0.25rem; }
+
+    .tip-item {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 0.8rem;
+    }
+    .tip-item-icon { font-size: 1.25rem; margin-bottom: 0.4rem; }
+    .tip-item-title { font-size: 0.78rem; font-weight: 700; color: white; margin-bottom: 0.25rem; }
+    .tip-item-title .lo { font-size: 0.74rem; font-weight: 600; color: rgba(255,255,255,0.55); }
+    .tip-item-text { font-size: 0.70rem; color: rgba(255,255,255,0.42); line-height: 1.55; }
+    .tip-item-text .lo { font-size: 0.68rem; color: rgba(255,255,255,0.30); }
+
+    /* ── FOOTER ── */
+    .page-footer {
+      background: var(--yellow);
+      padding: 1rem 2.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.625rem;
+    }
+    .footer-contact-list { display: flex; align-items: center; gap: 1.375rem; flex-wrap: wrap; }
+    .footer-contact-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 700; color: #000; }
+    .footer-contact-item i { font-size: 0.88rem; }
+    .footer-tagline { font-size: 0.68rem; font-weight: 700; color: rgba(0,0,0,0.45); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; line-height: 1.6; }
+    .footer-tagline .lo { font-size: 0.70rem; letter-spacing: 0; display: block; }
+    .footer-bottom-bar { height: 6px; background: var(--black); }
+
+    /* ── PRINT ── */
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .screen-controls { display: none !important; }
+      .page { width: 100%; margin: 0; box-shadow: none; }
+      .step-card, .tips-box { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Controls (screen only) -->
+  <div class="screen-controls">
+    <a href="/dashboard" class="btn-ctrl btn-back">
+      <i class="fa-solid fa-arrow-left"></i> กลับ
+    </a>
+    <button class="btn-ctrl btn-pdf" onclick="window.print()">
+      <i class="fa-solid fa-file-pdf"></i> Export PDF
+    </button>
+  </div>
+
+  <div class="page">
+
+    <!-- ═══ HEADER ═══ -->
+    <div class="page-header">
+      <div class="header-top-bar"></div>
+      <div class="header-content">
+
+        <div class="header-logo-wrap">
+          <img src="/images/snglogo.png" alt="SNG Express"
+               onerror="this.style.display='none';this.parentElement.style.background='#FFE000';this.parentElement.innerHTML='<span style=\'font-size:2rem;font-weight:900;color:#000\'>S</span>'">
+        </div>
+
+        <div class="header-text">
+          <div class="header-doc-type">
+            คู่มือลูกค้า · Customer Guide
+            <span class="lo"> · ຄູ່ມືລູກຄ້າ</span>
+          </div>
+          <div class="header-title">
+            วิธีสั่งสินค้า<span>ออนไลน์</span><br>ผ่าน SNG Express
+          </div>
+          <div class="header-title-lo">
+            ວິທີການສັ່ງຊື້ສິນຄ້າ<span> ອອນໄລນ໌</span> ຜ່ານ SNG Express
+          </div>
+          <div class="header-subtitle bi">
+            <span class="th">ซื้อสินค้าออนไลน์ · SNG ขนส่งให้ถึงมือ ไทย–ลาว</span>
+            <span class="lo">ຊື້ຜະລິດຕະພັນອອນໄລນ໌ · SNG ສົ່ງເຖິງປະຕູເຮືອນໃນປະເທດໄທ ແລະ ລາວ</span>
+          </div>
+        </div>
+
+        <div class="header-route-badges">
+          <div class="route-badge th-la">🇹🇭 ไทย → ลาว 🇱🇦 <span class="lo">| ໄທ → ລາວ</span></div>
+          <div class="route-badge la-th">🇱🇦 ลาว → ไทย 🇹🇭 <span class="lo">| ລາວ → ໄທ</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ INTRO STRIP ═══ -->
+    <div class="intro-strip">
+      <div class="intro-strip-icon">🛒</div>
+      <div class="intro-strip-text">
+        <div class="th">สั่งสินค้าออนไลน์ได้ทุกแพลตฟอร์ม — SNG รับขนส่งให้ถึงมือที่สปป.ลาว</div>
+        <div class="lo">ສັ່ງຊື້ຜະລິດຕະພັນອອນໄລນ໌ໃນທຸກແພລດຟອມ — SNG ໃຫ້ບໍລິການຈັດສົ່ງເຖິງບ້ານໃນລາວ</div>
+      </div>
+    </div>
+
+    <!-- ═══ BODY ═══ -->
+    <div class="page-body">
+
+      <!-- Platforms -->
+      <div class="platforms-row">
+        <div class="platforms-label">
+          <div class="th">รองรับ:</div>
+          <div class="lo">ຮອງຮັບ:</div>
+        </div>
+        <div class="platform-chip chip-lazada"><i class="fa-solid fa-bag-shopping"></i> Lazada</div>
+        <div class="platform-chip chip-shopee"><i class="fa-solid fa-bag-shopping"></i> Shopee</div>
+        <div class="platform-chip chip-tiktok"><i class="fa-brands fa-tiktok"></i> TikTok Shop</div>
+        <div class="platform-chip chip-facebook"><i class="fa-brands fa-facebook"></i> Facebook</div>
+        <div class="platform-chip chip-website"><i class="fa-solid fa-globe"></i> เว็บไซต์ / ເວັບໄຊທ໌</div>
+      </div>
+
+      <div class="steps-title">
+        <div class="th">ขั้นตอนทั้งหมด · Step by Step</div>
+        <div class="lo">ທຸກໆຂັ້ນຕອນ · ເທື່ອລະຂັ້ນຕອນ</div>
+      </div>
+
+      <div class="steps-grid">
+
+        <!-- STEP 01 -->
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <div class="step-content">
+            <div class="step-title">เปิดแอปหรือเว็บไซต์ที่ต้องการซื้อ</div>
+            <div class="step-title-lo">ເປີດແອັບ ຫຼື ເວັບໄຊທ໌ທີ່ທ່ານຕ້ອງການຊື້</div>
+            <div class="step-desc">
+              <div class="th">เข้าไปในแอป <strong>Lazada / Shopee / TikTok Shop</strong> หรือเว็บไซต์ร้านค้าที่ต้องการ แล้วค้นหาสินค้าที่ต้องการ</div>
+              <div class="lo">ເຂົ້າໄປທີ່ ແອັບ <strong>Lazada / Shopee / TikTok Shop</strong> ຫຼື ເວັບໄຊທ໌ຂອງຮ້ານ ແລ້ວຄົ້ນຫາຜະລິດຕະພັນ</div>
+            </div>
+            <ul class="sub-steps">
+              <li>
+                <div>
+                  <span class="th">ค้นหาสินค้าด้วยชื่อหรือหมวดหมู่</span>
+                  <span class="lo">ຄົ້ນຫາຜະລິດຕະພັນຕາມຊື່ ຫຼື ໝວດໝູ່</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">เปรียบเทียบราคา สเปก และรีวิวก่อนตัดสินใจ</span>
+                  <span class="lo">ປຽບທຽບລາຄາ, ສະເປັກ ແລະ ການທົບທວນຄືນ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">ตรวจสอบว่าร้านค้ามีชื่อเสียงและรีวิวดี</span>
+                  <span class="lo">ກວດສອບວ່າຮ້ານມີຊື່ສຽງດີ ແລະ ມີການທົບທວນທີ່ດີ</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="step-visual">
+            <div class="step-icon-big yellow"><i class="fa-solid fa-mobile-screen"></i></div>
+            <div class="step-tag">
+              <div class="th">เปิดแอป</div>
+              <div class="lo">ເປີດແອັບ</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-connector"><i class="fa-solid fa-chevron-down"></i></div>
+
+        <!-- STEP 02 -->
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <div class="step-content">
+            <div class="step-title">คัดลอกลิงก์สินค้าที่ต้องการ</div>
+            <div class="step-title-lo">ຄັດລອກລິ້ງຂອງຜະລິດຕະພັນທີ່ຕ້ອງການ</div>
+            <div class="step-desc">
+              <div class="th">เมื่อเลือกสินค้าได้แล้ว กดปุ่ม <strong>"แชร์"</strong> หรือ <strong>"คัดลอกลิงก์"</strong> เพื่อส่งลิงก์ให้ SNG Express</div>
+              <div class="lo">ເມື່ອເລືອກຜະລິດຕະພັນແລ້ວ, ກົດ <strong>"ແບ່ງປັນ"</strong> ຫຼື <strong>"ຄັດລອກລິ້ງ"</strong> ເພື່ອສົ່ງໃຫ້ SNG</div>
+            </div>
+            <ul class="sub-steps">
+              <li>
+                <div>
+                  <span class="th">กดไอคอน <strong>แชร์ 🔗</strong> ในหน้าสินค้า</span>
+                  <span class="lo">ຄລິກທີ່ໄອຄອນ <strong>ແບ່ງປັນ 🔗</strong> ຢູ່ໃນໜ້າຜະລິດຕະພັນ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">เลือก <strong>"คัดลอกลิงก์"</strong> หรือ Copy Link</span>
+                  <span class="lo">ເລືອກ <strong>"ສຳເນົາລິ້ງ"</strong> ຫຼື ຄັດລອກລິ້ງ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">หรือ copy URL จาก address bar ในเบราว์เซอร์ได้เลย</span>
+                  <span class="lo">ຫຼືຄັດລອກ URL ຈາກແຖບທີ່ຢູ່ໃນບຣາວເຊີໄດ້ເລີຍ</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="step-visual">
+            <div class="step-icon-big blue"><i class="fa-solid fa-link"></i></div>
+            <div class="step-tag">
+              <div class="th">Copy Link</div>
+              <div class="lo">ສຳເນົາລິ້ງ</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-connector"><i class="fa-solid fa-chevron-down"></i></div>
+
+        <!-- STEP 03 -->
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <div class="step-content">
+            <div class="step-title">ส่งลิงก์+รายละเอียดให้ SNG Express</div>
+            <div class="step-title-lo">ສົ່ງລິ້ງ ແລະ ລາຍລະອຽດໄປທີ່ SNG Express</div>
+            <div class="step-desc">
+              <div class="th">ส่งลิงก์สินค้า พร้อมระบุ <strong>สี / ขนาด / จำนวน</strong> มาทาง <strong>LINE หรือ WhatsApp</strong></div>
+              <div class="lo">ສົ່ງລິ້ງຜະລິດຕະພັນ ພ້ອມລະບຸ <strong>ສີ, ຂະໜາດ ແລະ ຈຳນວນ</strong> ຜ່ານ <strong>LINE ຫຼື WhatsApp</strong></div>
+            </div>
+            <ul class="sub-steps">
+              <li>
+                <div>
+                  <span class="th">ส่งลิงก์สินค้าที่ copy ไว้</span>
+                  <span class="lo">ສົ່ງລິ້ງຜະລິດຕະພັນທີ່ທ່ານໄດ້ສຳເນົາໄວ້</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">ระบุสี / ขนาด / จำนวนที่ต้องการ</span>
+                  <span class="lo">ລະບຸສີ / ຂະໜາດ / ຈຳນວນທີ່ທ່ານຕ້ອງການ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">ระบุที่อยู่จัดส่งในสปป.ลาว</span>
+                  <span class="lo">ລະບຸທີ່ຢູ່ຈັດສົ່ງໃນ ສປປ.ລາວ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">แจ้งชื่อ-เบอร์โทรผู้รับในลาว</span>
+                  <span class="lo">ກະລຸນາໃຫ້ຊື່ ແລະ ເບີໂທຂອງຜູ້ຮັບໃນລາວ</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="step-visual">
+            <div class="step-icon-big green"><i class="fa-brands fa-line"></i></div>
+            <div class="step-tag">
+              <div>LINE</div>
+              <div>WhatsApp</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-connector"><i class="fa-solid fa-chevron-down"></i></div>
+
+        <!-- STEP 04 -->
+        <div class="step-card">
+          <div class="step-num">04</div>
+          <div class="step-content">
+            <div class="step-title">รับใบเสนอราคาและยืนยันออเดอร์</div>
+            <div class="step-title-lo">ຮັບໃບສະເໜີລາຄາ ແລະ ຢືນຢັນການສັ່ງຊື້</div>
+            <div class="step-desc">
+              <div class="th">ทีม SNG จะแจ้ง <strong>ราคารวมค่าสินค้า + ค่าขนส่ง</strong> รอการยืนยันก่อนดำเนินการ</div>
+              <div class="lo">ທີມ SNG ຈະແຈ້ງ <strong>ລາຄາທັງໝົດ + ຄ່າຂົນສົ່ງ</strong> ຮໍລໍຖ້າການຢືນຢັນກ່ອນດຳເນີນການ</div>
+            </div>
+            <ul class="sub-steps">
+              <li>
+                <div>
+                  <span class="th">รับ <strong>ใบเสนอราคา</strong> ภายใน 1-2 ชั่วโมงในวันทำการ</span>
+                  <span class="lo">ຮັບ <strong>ຄຳເວົ້າ</strong> ພາຍໃນ 1-2 ຊົ່ວໂມງໃນວັນທຳມະດາ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">ตรวจสอบราคาค่าสินค้า + ค่าขนส่งไทย-ลาว</span>
+                  <span class="lo">ກວດສອບລາຄາສິນຄ້າ + ຄ່າຂົນສົ່ງລະຫວ່າງໄທ ແລະ ລາວ</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">ยืนยันออเดอร์เพื่อดำเนินการต่อ</span>
+                  <span class="lo">ຢືນຢັນຄຳສັ່ງຊື້ຂອງທ່ານເພື່ອດຳເນີນການຕໍ່ໄປ</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="step-visual">
+            <div class="step-icon-big purple"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="step-tag">
+              <div class="th">ใบเสนอราคา</div>
+              <div class="lo">ຄຳເວົ້າ</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-connector"><i class="fa-solid fa-chevron-down"></i></div>
+
+        <!-- STEP 05 -->
+        <div class="step-card">
+          <div class="step-num">05</div>
+          <div class="step-content">
+            <div class="step-title">ชำระเงิน</div>
+            <div class="step-title-lo">ຊຳລະເງິນ</div>
+            <div class="step-desc">
+              <div class="th">โอนเงินตามจำนวนที่แจ้ง พร้อมส่ง <strong>สลิปการโอน</strong> มายืนยันกับ SNG ทันที</div>
+              <div class="lo">ໂອນເງິນຕາມຈຳນວນ ແລ້ວສົ່ງ <strong>ໃບໂອນເງິນ</strong> ໄປທີ່ SNG ທັນທີ</div>
+            </div>
+            <ul class="sub-steps">
+              <li>
+                <div>
+                  <span class="th">โอนผ่าน <strong>ธนาคาร / พร้อมเพย์ / PromptPay</strong></span>
+                  <span class="lo">ໂອນຜ່ານ <strong>ທະນາຄານ / ພ້ອມຈ່າຍເງິນ</strong></span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">ถ่ายสลิปและส่งมาที่ LINE / WhatsApp</span>
+                  <span class="lo">ຖ່າຍຮູບໃບຮັບເງິນ ແລະ ສົ່ງໄປທີ່ LINE / WhatsApp</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">รับการยืนยันการชำระจากทีม SNG</span>
+                  <span class="lo">ຮັບການຢືນຢັນການຈ່າຍເງິນຈາກທີມ SNG</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="step-visual">
+            <div class="step-icon-big orange"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <div class="step-tag">
+              <div class="th">โอนเงิน</div>
+              <div class="lo">ໂອນເງິນ</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-connector"><i class="fa-solid fa-chevron-down"></i></div>
+
+        <!-- STEP 06 -->
+        <div class="step-card step-final">
+          <div class="step-num">06</div>
+          <div class="step-content">
+            <div class="step-title">✅ รอรับสินค้าถึงมือที่อยู่ ที่สปป.ลาว!</div>
+            <div class="step-title-lo">✅ ຮັບສິນຄ້າຂອງທ່ານສົ່ງເຖິງທ່ານໃນ ສປປ.ລາວ!</div>
+            <div class="step-desc">
+              <div class="th">SNG จะสั่งซื้อสินค้า รับของที่คลังไทย และขนข้ามแดนไปส่ง <strong>ถึงมือที่อยู่ ที่สปป.ลาว</strong> — รวดเร็ว ปลอดภัย ไว้ใจได้</div>
+              <div class="lo">SNG ຈະສັ່ງຊື້ສິນຄ້າ, ຮັບສາງໄທ ແລະ ຂົນສົ່ງຂ້າມຊາຍແດນ <strong>ໄປ ສປປ.ລາວ</strong> — ວ່ອງໄວ, ປອດໄພ ແລະ ໜ້າເຊື່ອຖື</div>
+            </div>
+            <ul class="sub-steps">
+              <li>
+                <div>
+                  <span class="th">ติดตามสถานะออเดอร์ได้ตลอด 24 ชั่วโมง</span>
+                  <span class="lo">ຕິດຕາມສະຖານະການສັ່ງຊື້ໄດ້ 24/7</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">รับสินค้าภายใน <strong>3-7 วันทำการ</strong> (ขึ้นกับสินค้า)</span>
+                  <span class="lo">ຮັບສິນຄ້າພາຍໃນ <strong>3-7 ມື້ເຮັດວຽກ</strong> (ຂຶ້ນກັບຜະລິດຕະພັນ)</span>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <span class="th">มีปัญหา? ติดต่อ SNG ได้เลยทีเดียว</span>
+                  <span class="lo">ມີບັນຫາບໍ? ຕິດຕໍ່ SNG ໄດ້ເລີຍ</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="step-visual">
+            <div class="step-icon-big teal"><i class="fa-solid fa-truck-fast"></i></div>
+            <div class="step-tag">
+              <div class="th">ส่งถึงมือ!</div>
+              <div class="lo">ສົ່ງເຖິງເຮືອນ!</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /steps-grid -->
+
+      <!-- TIPS BOX -->
+      <div class="tips-box">
+        <div class="tips-box-header">
+          <i class="fa-solid fa-lightbulb"></i>
+          เคล็ดลับสำคัญ · Pro Tips
+          <span class="lo">· ຄຳແນະນຳທີ່ສຳຄັນ</span>
+        </div>
+
+        <div class="tip-item">
+          <div class="tip-item-icon">📸</div>
+          <div class="tip-item-title">
+            <div class="th">ถ่ายภาพสินค้าไว้</div>
+            <div class="lo">ຖ່າຍຮູບຜະລິດຕະພັນ</div>
+          </div>
+          <div class="tip-item-text">
+            <div class="th">ก่อนซื้อ screenshot หน้าสินค้าพร้อมราคา เก็บไว้เป็นหลักฐาน</div>
+            <div class="lo">ກ່ອນຊື້, ໃຫ້ຖ່າຍໜ້າຈໍ ແລະ ລາຄາ ເກັບໄວ້ອ້າງອີງ</div>
+          </div>
+        </div>
+
+        <div class="tip-item">
+          <div class="tip-item-icon">⚖️</div>
+          <div class="tip-item-title">
+            <div class="th">เช็คน้ำหนัก/ขนาด</div>
+            <div class="lo">ກວດສອບນ້ຳໜັກ/ຂະໜາດ</div>
+          </div>
+          <div class="tip-item-text">
+            <div class="th">สินค้าชิ้นใหญ่หรือหนัก ค่าขนส่งคำนวณตามน้ำหนักจริง แจ้ง SNG เพื่อประเมินราคาก่อน</div>
+            <div class="lo">ສິນຄ້າຂະໜາດໃຫຍ່ ຄ່າຂົນສົ່ງຄິດຕາມນ້ຳໜັກຕົວຈິງ ກະລຸນາຕິດຕໍ່ SNG ລ່ວງໜ້າ</div>
+          </div>
+        </div>
+
+        <div class="tip-item">
+          <div class="tip-item-icon">🚫</div>
+          <div class="tip-item-title">
+            <div class="th">สินค้าต้องห้าม</div>
+            <div class="lo">ສິ່ງຂອງຕ້ອງຫ້າມ</div>
+          </div>
+          <div class="tip-item-text">
+            <div class="th">ของผิดกฎหมาย วัตถุระเบิด ของเหลวไวไฟ ไม่รับขนส่ง สอบถาม SNG ก่อนสั่ง</div>
+            <div class="lo">ຫ້າມຂົນສົ່ງສິ່ງຂອງຜິດກົດໝາຍ, ລະເບີດ ແລະ ນ້ຳໄວໄຟ ກ່ອນສັ່ງ ກະລຸນາສອບຖາມ SNG</div>
+          </div>
+        </div>
+
+      </div><!-- /tips -->
+
+    </div><!-- /page-body -->
+
+    <!-- ═══ FOOTER ═══ -->
+    <div class="page-footer">
+      <div class="footer-contact-list">
+        <div class="footer-contact-item"><i class="fa-solid fa-phone"></i> 083-754-3623</div>
+        <div class="footer-contact-item"><i class="fa-brands fa-line"></i> @SNG_Express</div>
+        <div class="footer-contact-item"><i class="fa-brands fa-whatsapp"></i> 083-754-3623</div>
+        <div class="footer-contact-item"><i class="fa-brands fa-facebook"></i> SNG Express ขนส่งไทย-ลาว</div>
+      </div>
+      <div class="footer-tagline">
+        รวดเร็ว · ปลอดภัย · ไว้ใจได้
+        <span class="lo">ວ່ອງໄວ · ປອດໄພ · ໜ້າເຊື່ອຖື</span>
+      </div>
+    </div>
+    <div class="footer-bottom-bar"></div>
+
+  </div><!-- /page -->
+</body>
+</html>

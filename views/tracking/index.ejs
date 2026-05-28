@@ -1,0 +1,347 @@
+<%#
+  views/tracking/index.ejs — Public Order Tracking Page
+  
+  No authentication required.
+  Responsive, mobile-first design for customers scanning QR codes.
+%>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <meta name="description" content="ติดตามสถานะพัสดุ SNG Express ขนส่งไทย-ลาว">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    .container { max-width: 540px; margin: 0 auto; padding: 20px 16px; }
+
+    /* Logo Header */
+    .header {
+      text-align: center;
+      padding: 24px 0 16px;
+    }
+    .header .logo {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .header .subtitle {
+      color: #94a3b8; font-size: 13px; margin-top: 4px;
+    }
+
+    /* Search Box */
+    .search-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .search-box label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: #94a3b8; margin-bottom: 8px;
+    }
+    .search-row {
+      display: flex; gap: 8px;
+    }
+    .search-row input {
+      flex: 1;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: white; font-size: 15px; font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-row input:focus {
+      border-color: #06b6d4;
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.15);
+    }
+    .search-row input::placeholder { color: #475569; text-transform: none; font-weight: 400; }
+    .search-row button {
+      background: linear-gradient(135deg, #06b6d4, #0ea5e9);
+      border: none; border-radius: 12px;
+      padding: 12px 20px;
+      color: white; font-weight: 700; font-size: 14px;
+      cursor: pointer; white-space: nowrap;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .search-row button:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(6,182,212,0.3); }
+    .search-row button:active { transform: translateY(0); }
+
+    /* Error message */
+    .error-msg {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: #fca5a5;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .error-msg i { color: #ef4444; font-size: 16px; }
+
+    /* Order Card */
+    .order-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .order-header {
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(139,92,246,0.1));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .order-job {
+      font-size: 22px; font-weight: 800;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: #06b6d4;
+      letter-spacing: 1px;
+    }
+    .order-dir {
+      margin-top: 6px; font-size: 13px; color: #94a3b8;
+    }
+    .order-dir .flag { font-size: 16px; }
+
+    /* Status Badge */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px; font-weight: 700;
+      margin-top: 12px;
+    }
+    .status-badge.new         { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .status-badge.received    { background: rgba(6,182,212,0.15); color: #67e8f9; }
+    .status-badge.transit     { background: rgba(59,130,246,0.15); color: #93c5fd; }
+    .status-badge.crossing    { background: rgba(168,85,247,0.15); color: #c4b5fd; }
+    .status-badge.customs     { background: rgba(245,158,11,0.15); color: #fcd34d; }
+    .status-badge.warehouse   { background: rgba(20,184,166,0.15); color: #5eead4; }
+    .status-badge.delivery    { background: rgba(249,115,22,0.15); color: #fdba74; }
+    .status-badge.completed   { background: rgba(34,197,94,0.15); color: #86efac; }
+    .status-badge.failed      { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .status-badge.closed      { background: rgba(100,116,139,0.15); color: #cbd5e1; }
+
+    /* Info Grid */
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: rgba(255,255,255,0.06);
+    }
+    .info-cell {
+      padding: 14px 16px;
+      background: rgba(15,23,42,0.6);
+    }
+    .info-cell .label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-cell .value { font-size: 14px; font-weight: 600; color: #e2e8f0; margin-top: 4px; }
+    .info-cell.full { grid-column: 1 / -1; }
+
+    /* Timeline */
+    .timeline-section {
+      padding: 20px;
+    }
+    .timeline-title {
+      font-size: 14px; font-weight: 700; color: #94a3b8;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .timeline {
+      position: relative;
+      padding-left: 28px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute; left: 9px; top: 6px; bottom: 6px;
+      width: 2px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+    }
+    .tl-item {
+      position: relative;
+      padding-bottom: 20px;
+    }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-dot {
+      position: absolute; left: -28px; top: 2px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .tl-dot i { font-size: 8px; color: #64748b; }
+    .tl-item.active .tl-dot {
+      background: rgba(6,182,212,0.2);
+      border-color: #06b6d4;
+      box-shadow: 0 0 8px rgba(6,182,212,0.3);
+    }
+    .tl-item.active .tl-dot i { color: #06b6d4; }
+    .tl-item.done .tl-dot {
+      background: rgba(34,197,94,0.2);
+      border-color: #22c55e;
+    }
+    .tl-item.done .tl-dot i { color: #22c55e; }
+    .tl-status { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+    .tl-time { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px 0;
+      color: #475569;
+      font-size: 12px;
+    }
+    .footer a { color: #06b6d4; text-decoration: none; }
+
+    /* Animations */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); }}
+    .order-card { animation: fadeUp 0.4s ease-out; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">SNG Express</div>
+    <div class="subtitle">ขนส่งไทย-ลาว ติดตามพัสดุ</div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-box">
+    <label><i class="fa-solid fa-magnifying-glass" style="margin-right:4px"></i> ค้นหาหมายเลขพัสดุ</label>
+    <form action="/track" method="GET" class="search-row">
+      <input type="text" name="q" placeholder="เช่น SNG-260417-1234" value="<%= order?.job_no || '' %>" autofocus>
+      <button type="submit"><i class="fa-solid fa-search"></i> ค้นหา</button>
+    </form>
+  </div>
+
+  <% if (error) { %>
+  <div class="error-msg">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <span><%= error %></span>
+  </div>
+  <% } %>
+
+  <% if (order) { %>
+  <%
+    const statusInfo = statusLabels[order.status] || { label: order.status, cssClass: 'new' };
+    const dirLabel = order.direction === 'TH_TO_LA' ? 'ไทย → ลาว' : 'ลาว → ไทย';
+    const dirFlags = order.direction === 'TH_TO_LA' ? '🇹🇭 → 🇱🇦' : '🇱🇦 → 🇹🇭';
+    
+    function fmtDate(d) {
+      if (!d) return '–';
+      const dt = new Date(d);
+      return dt.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' })
+        + ' ' + dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    }
+  %>
+
+  <div class="order-card">
+    <!-- Header -->
+    <div class="order-header">
+      <div class="order-job"><%= order.job_no %></div>
+      <div class="order-dir">
+        <span class="flag"><%= dirFlags %></span>
+        <span><%= dirLabel %></span>
+      </div>
+      <div class="status-badge <%= statusInfo.cssClass %>">
+        <i class="fa-solid fa-circle" style="font-size:8px"></i>
+        <%= statusInfo.label %>
+      </div>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="label">ผู้ส่ง</div>
+        <div class="value"><%= order.sender_name || '–' %></div>
+      </div>
+      <div class="info-cell">
+        <div class="label">ผู้รับ</div>
+        <div class="value"><%= order.receiver_name || '–' %></div>
+      </div>
+      <div class="info-cell">
+        <div class="label">ปลายทาง</div>
+        <div class="value"><%= order.receiver_city || order.receiver_province || '–' %></div>
+      </div>
+      <div class="info-cell">
+        <div class="label">น้ำหนัก</div>
+        <div class="value"><%= order.declared_weight ? order.declared_weight + ' กก.' : '–' %></div>
+      </div>
+      <% if (order.cod_amount > 0) { %>
+      <div class="info-cell full">
+        <div class="label">💰 เก็บเงินปลายทาง (COD)</div>
+        <div class="value" style="color:#fbbf24; font-size:18px">฿<%= Number(order.cod_amount).toLocaleString() %></div>
+      </div>
+      <% } %>
+      <div class="info-cell">
+        <div class="label">วันที่สร้าง</div>
+        <div class="value"><%= fmtDate(order.created_at) %></div>
+      </div>
+      <div class="info-cell">
+        <div class="label">อัปเดตล่าสุด</div>
+        <div class="value"><%= fmtDate(order.updated_at || order.created_at) %></div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-section">
+      <div class="timeline-title">
+        <i class="fa-solid fa-timeline"></i> ประวัติสถานะ
+      </div>
+      <div class="timeline">
+        <% logs.forEach((log, idx) => {
+          const isLast = idx === logs.length - 1;
+          const logLabel = statusLabels[log.to_status]?.label || log.to_status;
+        %>
+        <div class="tl-item <%= isLast ? 'active' : 'done' %>">
+          <div class="tl-dot">
+            <i class="fa-solid <%= isLast ? 'fa-circle' : 'fa-check' %>"></i>
+          </div>
+          <div class="tl-status"><%= logLabel %></div>
+          <div class="tl-time"><%= fmtDate(log.action_at) %></div>
+        </div>
+        <% }); %>
+        <% if (logs.length === 0) { %>
+        <div class="tl-item active">
+          <div class="tl-dot"><i class="fa-solid fa-circle"></i></div>
+          <div class="tl-status"><%= statusInfo.label %></div>
+          <div class="tl-time"><%= fmtDate(order.created_at) %></div>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+  <% } else if (!error) { %>
+  <!-- Empty state -->
+  <div style="text-align:center; padding:40px 0; color:#64748b">
+    <i class="fa-solid fa-box-open" style="font-size:48px; margin-bottom:16px; display:block; color:#334155"></i>
+    <div style="font-size:15px; font-weight:600; color:#94a3b8">กรอกหมายเลขพัสดุเพื่อติดตามสถานะ</div>
+    <div style="font-size:12px; margin-top:6px">สแกน QR Code บนใบปะหน้าหรือพิมพ์เลข SNG-XXXXXX</div>
+  </div>
+  <% } %>
+
+  <div class="footer">
+    &copy; 2024-2026 <a href="/">SNG Express</a> — ขนส่งไทย-ลาว
+  </div>
+
+</div>
+</body>
+</html>

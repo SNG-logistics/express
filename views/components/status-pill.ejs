@@ -1,0 +1,68 @@
+<%#
+  views/components/status-pill.ejs
+  
+  Usage:
+    <%- include('../components/status-pill', { status: order.status }) %>
+  
+  From any directory depth:
+    <%- include('../../components/status-pill', { status: order.status }) %>
+    
+  statusLabels must be passed from controller as res.locals or as template variable.
+  Fallback: uses status string directly.
+%>
+<%
+  const STATUS_CLASSES = {
+    'NEW':               'new',
+    'RECEIVED_WH_TH':   'received',
+    'RECEIVED_WH_LA':   'received',
+    'ON_TRUCK':          'crossing',
+    'CROSSING_BORDER':  'crossing',
+    'CUSTOMS_HOLD':     'customs',
+    'CUSTOMS_CLEARED':  'transit',
+    'CUSTOMS_REJECTED': 'failed',
+    'ARRIVED_BORDER_WH':'warehouse',
+    'AT_DEST_WH':       'warehouse',
+    'BRANCH_TRANSFER':  'transit',
+    'BRANCH_RECEIVED':  'warehouse',
+    'RIDER_ASSIGNED':   'delivery',
+    'OUT_FOR_DELIVERY': 'delivery',
+    'DELIVERED':        'completed',
+    'DELIVERY_FAILED':  'failed',
+    'COD_COLLECTED':    'completed',
+    'COD_REMITTED':     'completed',
+    'RETURN_TO_SENDER': 'failed',
+    'CLOSED':           'closed',
+  };
+  const STATUS_LABELS_TH = {
+    'NEW':               'ใหม่',
+    'RECEIVED_WH_TH':   'รับที่คลังไทย',
+    'RECEIVED_WH_LA':   'รับที่คลังลาว',
+    'ON_TRUCK':          'ขึ้นรถ',
+    'CROSSING_BORDER':  'ข้ามแดน',
+    'CUSTOMS_HOLD':     'รอศุลกากร',
+    'CUSTOMS_CLEARED':  'ผ่านศุลกากร',
+    'CUSTOMS_REJECTED': 'ศุลกากรกัก',
+    'ARRIVED_BORDER_WH':'ถึงคลังชายแดน',
+    'AT_DEST_WH':       'ถึงคลังปลายทาง',
+    'BRANCH_TRANSFER':  'ส่งไปสาขา',
+    'BRANCH_RECEIVED':  'สาขารับแล้ว',
+    'RIDER_ASSIGNED':   'ไรเดอร์รับงาน',
+    'OUT_FOR_DELIVERY': 'กำลังส่ง',
+    'DELIVERED':        'ส่งสำเร็จ',
+    'DELIVERY_FAILED':  'ส่งไม่สำเร็จ',
+    'COD_COLLECTED':    'เก็บ COD แล้ว',
+    'COD_REMITTED':     'โอน COD แล้ว',
+    'RETURN_TO_SENDER': 'คืนผู้ส่ง',
+    'CLOSED':           'ปิดงาน',
+  };
+  const PULSE_STATUSES = ['CUSTOMS_HOLD', 'OUT_FOR_DELIVERY'];
+  const cssClass = STATUS_CLASSES[status] || 'default';
+  const label    = STATUS_LABELS_TH[status] || status;
+  const pulse    = PULSE_STATUSES.includes(status);
+%>
+<span class="status-pill <%= cssClass %>">
+  <% if (pulse) { %>
+    <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse flex-shrink-0"></span>
+  <% } %>
+  <%= label %>
+</span>

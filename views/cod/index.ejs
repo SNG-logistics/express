@@ -1,0 +1,260 @@
+<%#
+  views/cod/index.ejs — Redesigned v2
+  
+  3-tab layout: รอเก็บ | รอโอน | ประวัติ
+  Summary bar with live totals
+  Age indicator (green/amber/red)
+  Role-gated: collect=dispatcher+, remit=finance+
+%>
+<%
+  const currentTab = tab || 'collection';
+  function fmtBaht(n) { return '฿' + Number(n || 0).toLocaleString('th-TH'); }
+
+  // Age color helper
+  function ageColor(days) {
+    if (days < 1)      return 'text-emerald-400';
+    if (days <= 3)     return 'text-amber-400';
+    return 'text-red-400';
+  }
+  function ageDot(days) {
+    if (days < 1)  return 'bg-emerald-400';
+    if (days <= 3) return 'bg-amber-400';
+    return 'bg-red-400 animate-pulse';
+  }
+%>
+
+<div class="space-y-5">
+
+  <%# ── Page Header ──────────────────────────────────────── %>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-coins text-amber-400"></i>
+        COD Management
+      </h2>
+      <p class="text-slate-400 text-sm mt-0.5">ติดตามและจัดการเงินเก็บปลายทาง</p>
+    </div>
+    <% if (can.viewFinancials && summary) { %>
+    <div class="flex items-center gap-3 text-sm">
+      <div class="glass-panel-dark px-4 py-2 rounded-xl">
+        <div class="text-slate-400 text-xs">รอเก็บ</div>
+        <div class="text-amber-400 font-bold"><%= fmtBaht(summary.pendingAmt) %></div>
+      </div>
+      <div class="glass-panel-dark px-4 py-2 rounded-xl">
+        <div class="text-slate-400 text-xs">รอโอน</div>
+        <div class="text-cyan-400 font-bold"><%= fmtBaht(summary.collectedAmt) %></div>
+      </div>
+      <div class="glass-panel-dark px-4 py-2 rounded-xl">
+        <div class="text-slate-400 text-xs">โอนแล้ว/เดือน</div>
+        <div class="text-emerald-400 font-bold"><%= fmtBaht(summary.remittedAmt) %></div>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <%# ── Tab Bar ───────────────────────────────────────────── %>
+  <div class="flex gap-2">
+    <% const tabs = [
+      { id: 'collection', label: 'รอเก็บ COD', icon: 'fa-hand-holding-dollar', color: 'amber' },
+      { id: 'remittance', label: 'รอโอนคืน',  icon: 'fa-money-bill-transfer',  color: 'indigo' },
+      { id: 'history',    label: 'ประวัติ',    icon: 'fa-clock-rotate-left',    color: 'emerald' },
+    ]; %>
+    <% tabs.forEach(t => { const isActive = currentTab === t.id; %>
+    <a href="/cod?tab=<%= t.id %>"
+       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all
+         <%= isActive
+           ? (t.color === 'amber'   ? 'bg-amber-500/20 border border-amber-500/40 text-amber-400'
+           : t.color === 'indigo'  ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-400'
+           :                         'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400')
+           : 'bg-white/5 border border-white/8 text-slate-400 hover:text-white hover:bg-white/10' %>">
+      <i class="fa-solid <%= t.icon %>"></i>
+      <%= t.label %>
+      <% if (t.id === 'collection' && summary?.pendingCnt > 0) { %>
+        <span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold"><%= summary.pendingCnt %></span>
+      <% } %>
+      <% if (t.id === 'remittance' && summary?.collectedCnt > 0) { %>
+        <span class="ml-1 px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold"><%= summary.collectedCnt %></span>
+      <% } %>
+    </a>
+    <% }) %>
+  </div>
+
+  <%# Error flash %>
+  <% if (error) { %>
+  <div class="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <%= error %>
+  </div>
+  <% } %>
+
+  <%# ── Table Panel ─────────────────────────────────────── %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden">
+
+    <% if (!items || items.length === 0) { %>
+      <% const emptyMessages = {
+        collection: { title: 'ไม่มี COD รอเก็บ 🎉', sub: 'ทุกรายการเคลียร์แล้ว' },
+        remittance: { title: 'ไม่มีรายการรอโอน', sub: 'ยังไม่มี COD ที่เก็บแล้วรอโอนคืน' },
+        history:    { title: 'ยังไม่มีประวัติ', sub: 'ประวัติการโอนจะปรากฏที่นี่' },
+      }; const em = emptyMessages[currentTab]; %>
+      <%- include('../components/empty-state', {
+        icon: currentTab === 'collection' ? 'fa-circle-check' : 'fa-folder-open',
+        title: em.title,
+        subtitle: em.sub,
+      }) %>
+    <% } else { %>
+
+    <div class="overflow-x-auto">
+      <table class="table-premium w-full">
+        <thead>
+          <tr>
+            <th class="pl-6">Job No</th>
+            <th>ผู้ส่ง → ผู้รับ</th>
+            <th class="text-right">COD ฿</th>
+            <% if (currentTab === 'collection') { %><th>สถานะพัสดุ</th><th>อายุ</th><% } %>
+            <% if (currentTab === 'history') { %><th>โอนคืนให้</th><th>วันที่โอน</th><% } %>
+            <% if (currentTab !== 'history') { %><th class="text-right pr-6">ดำเนินการ</th><% } %>
+          </tr>
+        </thead>
+        <tbody>
+        <% items.forEach(o => {
+             const daysPending = o.days_pending || 0;
+           %>
+        <tr class="hover:bg-white/3 transition-colors">
+
+          <%# Job No %>
+          <td class="pl-6">
+            <a href="/orders/<%= o.id %>" class="group flex items-center gap-2 hover:text-cyan-400 transition-colors">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-coins text-amber-400 text-xs"></i>
+              </div>
+              <div>
+                <div class="font-mono font-bold text-white text-sm group-hover:text-cyan-400"><%= o.job_no %></div>
+                <div class="text-[10px] text-slate-500">
+                  <%= o.direction === 'TH_TO_LA' ? '🇹🇭→🇱🇦' : '🇱🇦→🇹🇭' %>
+                </div>
+              </div>
+            </a>
+          </td>
+
+          <%# Sender → Receiver %>
+          <td>
+            <div class="flex items-center gap-1.5 text-sm text-slate-300">
+              <span class="max-w-[100px] truncate" title="<%= o.sender_name %>"><%= o.sender_name || '–' %></span>
+              <i class="fa-solid fa-arrow-right text-slate-600 text-[10px]"></i>
+              <span class="max-w-[100px] truncate" title="<%= o.receiver_name %>"><%= o.receiver_name || '–' %></span>
+            </div>
+            <% if (o.receiver_phone) { %>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5"><%= o.receiver_phone %></div>
+            <% } %>
+          </td>
+
+          <%# Amount %>
+          <td class="text-right">
+            <div class="font-bold text-amber-400 text-lg font-mono"><%= fmtBaht(o.cod_amount) %></div>
+          </td>
+
+          <%# Age (collection tab only) %>
+          <% if (currentTab === 'collection') { %>
+          <td>
+            <% const st = typeof orderStatusLabels !== 'undefined' ? orderStatusLabels[o.status] : null; %>
+            <div class="inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-semibold
+              <%= st?.cssClass === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                  st?.cssClass === 'transit' ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' :
+                  st?.cssClass === 'warehouse' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' :
+                  st?.cssClass === 'delivery' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                  'bg-slate-500/10 border-slate-500/20 text-slate-400' %>">
+              <%= st?.label || o.status %>
+            </div>
+          </td>
+          <td>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full flex-shrink-0 <%= ageDot(daysPending) %>"></span>
+              <span class="text-sm font-medium <%= ageColor(daysPending) %>">
+                <%= daysPending === 0 ? 'วันนี้' : daysPending + ' วัน' %>
+              </span>
+            </div>
+          </td>
+          <% } %>
+
+          <%# History columns %>
+          <% if (currentTab === 'history') { %>
+          <td class="text-slate-300 text-sm"><%= o.remitted_to || '–' %></td>
+          <td class="text-slate-400 text-sm">
+            <%= o.remitted_at ? new Date(o.remitted_at).toLocaleDateString('th-TH') : '–' %>
+          </td>
+          <% } %>
+
+          <%# Action buttons %>
+          <% if (currentTab !== 'history') { %>
+          <td class="text-right pr-6">
+            <% if (currentTab === 'collection' && can.collectCod) { %>
+              <%- include('../components/confirm-dialog', {
+                dialogId: 'collect_' + o.id,
+                triggerLabel: 'บันทึกรับ COD',
+                triggerClass: 'inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 text-sm font-semibold transition-all',
+                triggerIcon: 'fa-solid fa-check',
+                title: 'ยืนยันรับ COD',
+                body: 'ยอด <strong>' + fmtBaht(o.cod_amount) + '</strong> จาก <strong>' + (o.receiver_name || '?') + '</strong>',
+                formAction: '/cod/' + o.id + '/collect',
+                confirmLabel: 'ยืนยันรับ',
+                confirmIcon: 'fa-solid fa-check',
+              }) %>
+
+            <% } else if (currentTab === 'remittance' && can.remitCod) { %>
+              <div x-data="{ open: false }" class="inline-block">
+                <button @click="open = !open"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/25 text-sm font-semibold transition-all">
+                  <i class="fa-solid fa-money-bill-transfer"></i>
+                  โอนคืน
+                </button>
+                <div x-show="open" x-cloak x-transition
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                     @click.self="open = false">
+                  <div class="glass-panel-dark max-w-md w-full p-6 rounded-2xl shadow-2xl">
+                    <h3 class="text-white font-bold text-lg mb-1">ยืนยันการโอน COD</h3>
+                    <p class="text-slate-400 text-sm mb-4">
+                      ยอด <span class="text-amber-400 font-bold text-xl font-mono"><%= fmtBaht(o.cod_amount) %></span>
+                      → <span class="text-white"><%= o.sender_name %></span>
+                    </p>
+                    <form action="/cod/<%= o.id %>/remit" method="POST">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <label class="block text-xs text-slate-400 uppercase tracking-wider mb-1">หลักฐาน / หมายเหตุ</label>
+                      <input type="text" name="remitted_to"
+                             placeholder="ธ.กสิกร xxx-x-xxxx-x วันที่ ..."
+                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 mb-4 transition-all">
+                      <div class="flex gap-3">
+                        <button type="button" @click="open = false"
+                                class="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm transition-all">ยกเลิก</button>
+                        <button type="submit"
+                                class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all">ยืนยันโอนแล้ว</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            <% } else if (!can.collectCod && !can.remitCod) { %>
+              <span class="text-slate-600 text-xs">—</span>
+            <% } %>
+          </td>
+          <% } %>
+
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <%# Footer summary row %>
+    <% if (items && items.length > 0 && currentTab !== 'history') { %>
+    <div class="px-6 py-3 border-t border-white/5 flex items-center justify-between">
+      <span class="text-slate-500 text-xs"><%= items.length %> รายการ</span>
+      <span class="text-white font-bold font-mono">
+        รวม: <%= fmtBaht(items.reduce((s,o) => s + Number(o.cod_amount || 0), 0)) %>
+      </span>
+    </div>
+    <% } %>
+
+  </div><%# /panel %>
+
+</div><%# /space-y-5 %>

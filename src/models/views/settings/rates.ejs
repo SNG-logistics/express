@@ -1,0 +1,132 @@
+<div class="max-w-7xl mx-auto animate-fade-in">
+    <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                <span class="bg-indigo-500 w-1.5 h-8 rounded-full inline-block"></span>
+                ตั้งค่าราคาขนส่ง (Shipping Rates)
+            </h1>
+            <p class="text-slate-400 mt-2 ml-6 text-sm">กำหนดราคาขนส่งตามน้ำหนักสำหรับคำนวณอัตโนมัติ</p>
+        </div>
+    </div>
+
+    <% if (success) { %>
+        <div
+            class="mb-6 p-4 rounded-xl bg-emerald-500/10 text-emerald-200 border border-emerald-500/20 flex items-center gap-3 animate-fade-in">
+            <i class="fa-solid fa-circle-check"></i>
+            <%= success %>
+        </div>
+        <% } %>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Form Section -->
+                <div class="lg:col-span-1">
+                    <div class="glass-panel-dark rounded-3xl p-6 border border-white/5 sticky top-24">
+                        <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-amber-500"></i> เพิ่มเรทราคาใหม่
+                        </h3>
+
+                        <form action="/settings/rates" method="post" class="space-y-5">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ชื่อรายการ</label>
+                                <input type="text" name="name" required placeholder="Ex. 1-5 Kg"
+                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ขนาดไม่เกิน
+                                        (cm)</label>
+                                    <input type="number" step="1" name="max_dimension" required placeholder="W+L+H"
+                                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500">
+                                    <p class="text-[10px] text-slate-500 mt-1">ผลรวม กว้าง+ยาว+สูง</p>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">น้ำหนักไม่เกิน
+                                        (Kg)</label>
+                                    <input type="number" step="0.01" name="max_weight" required placeholder="10.00"
+                                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-amber-500 focus:border-amber-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ราคา
+                                    (THB)</label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-3 text-slate-500">฿</span>
+                                    <input type="number" step="0.01" name="price" required placeholder="150.00"
+                                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-8 pr-4 py-3 text-white focus:ring-emerald-500 focus:border-emerald-500 font-bold text-emerald-400">
+                                </div>
+                            </div>
+
+                            <button type="submit"
+                                class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-save"></i> บันทึก
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- List Section -->
+                <div class="lg:col-span-2">
+                    <div class="glass-panel-dark rounded-3xl overflow-hidden border border-white/5 shadow-2xl">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-xs text-slate-400 uppercase bg-black/20 border-b border-white/5">
+                                    <tr>
+                                        <th class="px-6 py-4 font-bold">ชื่อรายการ</th>
+                                        <th class="px-6 py-4 font-bold text-center">ขนาด (cm)</th>
+                                        <th class="px-6 py-4 font-bold text-center">น้ำหนัก (Kg)</th>
+                                        <th class="px-6 py-4 font-bold text-right">ราคา</th>
+                                        <th class="px-6 py-4 font-bold text-right">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-white/5 text-slate-300">
+                                    <% if (rates.length===0) { %>
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+                                                <i class="fa-solid fa-scale-unbalanced text-4xl mb-3 opacity-20"></i>
+                                                <p>ยังไม่มีเรทราคา</p>
+                                            </td>
+                                        </tr>
+                                        <% } %>
+
+                                            <% rates.forEach((rate)=> { %>
+                                                <tr class="hover:bg-white/5 transition-colors">
+                                                    <td class="px-6 py-4 font-bold text-white">
+                                                        <%= rate.name %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-center font-mono text-xs">
+                                                        <= <%=Number(rate.max_dimension) %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-center font-mono text-xs">
+                                                        <= <%=Number(rate.max_weight) %>
+                                                    </td>
+                                                    <td
+                                                        class="px-6 py-4 text-right font-mono font-bold text-emerald-400">
+                                                        ฿<%= Number(rate.price).toLocaleString() %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-right">
+                                                        <form action="/settings/rates/<%= rate.id %>/delete"
+                                                            method="post"
+                                                            onsubmit="return confirm('ยืนยันลบรายการนี้?');">
+                                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                                            <button
+                                                                class="text-slate-500 hover:text-red-400 transition-colors">
+                                                                <i class="fa-solid fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+</div>

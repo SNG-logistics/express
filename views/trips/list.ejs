@@ -1,0 +1,249 @@
+<%#
+  views/trips/list.ejs — Dispatch Board v3
+  Data: trips (with total_weight, total_freight, total_cod, customs_count, max_weight), query
+%>
+<%
+  const TRIP_STATUS_LABELS = {
+    'PLANNED':    'วางแผนแล้ว',
+    'LOADING':    'กำลังโหลด',
+    'DEPARTED':   'ออกแล้ว',
+    'AT_BORDER':  'ที่ด่านพรมแดน',
+    'CROSSED':    'ข้ามแดนแล้ว',
+    'ARRIVED':    'ถึงคลังปลาย',
+    'UNLOADING':  'กำลังขนลง',
+    'COMPLETED':  'เสร็จสิ้น',
+    'CANCELLED':  'ยกเลิก',
+  };
+  const TRIP_STATUS_CSS = {
+    'PLANNED':   { cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30',      dot: 'bg-blue-400' },
+    'LOADING':   { cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30',   dot: 'bg-amber-400' },
+    'DEPARTED':  { cls: 'bg-purple-500/15 text-purple-400 border-purple-500/30',dot: 'bg-purple-400 animate-pulse' },
+    'AT_BORDER': { cls: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',      dot: 'bg-cyan-400 animate-pulse' },
+    'CROSSED':   { cls: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',dot: 'bg-indigo-400' },
+    'ARRIVED':   { cls: 'bg-teal-500/15 text-teal-400 border-teal-500/30',      dot: 'bg-teal-400' },
+    'UNLOADING': { cls: 'bg-orange-500/15 text-orange-400 border-orange-500/30',dot: 'bg-orange-400' },
+    'COMPLETED': { cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',dot: 'bg-emerald-400' },
+    'CANCELLED': { cls: 'bg-red-500/15 text-red-400 border-red-500/30',         dot: 'bg-red-400' },
+  };
+
+  const ACTIVE_S = ['PLANNED','LOADING','DEPARTED','AT_BORDER','CROSSED','ARRIVED','UNLOADING'];
+  const activeTrips    = trips.filter(t => ACTIVE_S.includes(t.status));
+  const completedTrips = trips.filter(t => !ACTIVE_S.includes(t.status));
+
+  const activeFilter = query?.filter || 'active';
+  const dirFilter    = query?.direction || '';
+  const showTrips    = activeFilter === 'completed' ? completedTrips : activeTrips;
+
+  function capPct(t) {
+    if (!t.max_weight || t.max_weight <= 0) return null;
+    return Math.min(100, Math.round(Number(t.total_weight) / Number(t.max_weight) * 100));
+  }
+  function capColor(pct) {
+    if (pct >= 90) return 'bg-red-500';
+    if (pct >= 70) return 'bg-amber-500';
+    return 'bg-emerald-500';
+  }
+  function capTextColor(pct) {
+    if (pct >= 90) return 'text-red-400';
+    if (pct >= 70) return 'text-amber-400';
+    return 'text-emerald-400';
+  }
+%>
+
+<div class="space-y-5">
+
+  <%# ── Page Header ─────────────────────────────────────────────────────────── %>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-white">เที่ยวรถข้ามแดน</h2>
+      <p class="text-slate-400 text-sm mt-0.5">
+        Active: <span class="text-purple-400 font-semibold"><%= activeTrips.length %></span>
+        · เสร็จแล้ว: <span class="text-emerald-400 font-semibold"><%= completedTrips.length %></span>
+      </p>
+    </div>
+    <% if (can.createTrip) { %>
+    <a href="/trips/new" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all">
+      <i class="fa-solid fa-plus"></i> สร้างรอบรถ
+    </a>
+    <% } %>
+  </div>
+
+  <%# ── Filter Bar ──────────────────────────────────────────────────────────── %>
+  <div class="flex flex-wrap gap-2 items-center">
+
+    <%# Status filter %>
+    <div class="flex gap-2 flex-wrap">
+      <a href="/trips?filter=active&direction=<%= dirFilter %>"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
+           <%= activeFilter !== 'completed' ? 'bg-purple-500/20 border border-purple-500/40 text-purple-400' : 'bg-white/5 border border-white/8 text-slate-400 hover:bg-white/10' %>">
+        <i class="fa-solid fa-truck-fast"></i>
+        กำลังดำเนินการ
+        <% if (activeTrips.length > 0) { %>
+          <span class="px-1.5 py-0.5 rounded-full bg-purple-500 text-white text-[10px] font-bold"><%= activeTrips.length %></span>
+        <% } %>
+      </a>
+      <a href="/trips?filter=completed&direction=<%= dirFilter %>"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
+           <%= activeFilter === 'completed' ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400' : 'bg-white/5 border border-white/8 text-slate-400 hover:bg-white/10' %>">
+        <i class="fa-solid fa-circle-check"></i> เสร็จสิ้น / ยกเลิก
+      </a>
+    </div>
+
+    <%# Direction filter %>
+    <div class="flex gap-2 ml-auto">
+      <a href="/trips?filter=<%= activeFilter %>&direction="
+         class="px-3 py-2 rounded-xl text-xs font-semibold transition-all
+           <%= !dirFilter ? 'bg-white/12 border border-white/20 text-white' : 'bg-white/5 border border-white/8 text-slate-500 hover:text-white' %>">
+        ทุกทิศทาง
+      </a>
+      <a href="/trips?filter=<%= activeFilter %>&direction=TH_TO_LA"
+         class="px-3 py-2 rounded-xl text-xs font-semibold transition-all
+           <%= dirFilter === 'TH_TO_LA' ? 'bg-blue-500/25 border border-blue-500/40 text-blue-300' : 'bg-white/5 border border-white/8 text-slate-500 hover:text-white' %>">
+        🇹🇭→🇱🇦
+      </a>
+      <a href="/trips?filter=<%= activeFilter %>&direction=LA_TO_TH"
+         class="px-3 py-2 rounded-xl text-xs font-semibold transition-all
+           <%= dirFilter === 'LA_TO_TH' ? 'bg-violet-500/25 border border-violet-500/40 text-violet-300' : 'bg-white/5 border border-white/8 text-slate-500 hover:text-white' %>">
+        🇱🇦→🇹🇭
+      </a>
+    </div>
+  </div>
+
+  <%# ── Trip Cards ──────────────────────────────────────────────────────────── %>
+  <% if (showTrips.length === 0) { %>
+    <%- include('../components/empty-state', {
+      icon: activeFilter === 'completed' ? 'fa-circle-check' : 'fa-truck-fast',
+      title: activeFilter === 'completed' ? 'ยังไม่มีรอบรถที่เสร็จสิ้น' : 'ไม่มีรอบรถ Active',
+      subtitle: activeFilter === 'completed' ? '' : 'สร้างรอบรถใหม่เพื่อเริ่มจัดส่ง',
+      ctaLabel: can.createTrip && activeFilter !== 'completed' ? '+ สร้างรอบรถ' : null,
+      ctaHref: '/trips/new',
+    }) %>
+  <% } else { %>
+  <div class="space-y-3">
+    <% showTrips.forEach(t => {
+         const sc    = TRIP_STATUS_CSS[t.status] || { cls: 'bg-slate-500/15 text-slate-400 border-slate-500/30', dot: 'bg-slate-400' };
+         const lbl   = TRIP_STATUS_LABELS[t.status] || t.status;
+         const dirTH = t.direction === 'TH_TO_LA' || (!t.direction);
+         const pct   = capPct(t);
+         const isMoving = ['DEPARTED','AT_BORDER','CROSSED'].includes(t.status);
+         const freightFmt = Number(t.total_freight || 0).toLocaleString('th-TH');
+         const weightFmt  = Number(t.total_weight  || 0).toFixed(1);
+    %>
+    <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/6
+      <%= isMoving ? 'border-purple-500/20' : '' %>"
+      x-data="{ expanded: false }">
+
+      <%# Card Header %>
+      <div class="flex items-center gap-4 p-4">
+
+        <%# Icon %>
+        <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center
+          <%= isMoving ? 'bg-purple-500/20 border border-purple-500/30' : 'bg-white/6 border border-white/10' %>">
+          <i class="fa-solid <%= isMoving ? 'fa-truck-moving text-purple-400' : 'fa-truck text-slate-400' %> text-lg"></i>
+        </div>
+
+        <%# Main info %>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-mono font-bold text-white text-sm"><%= t.trip_no %></span>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border <%= sc.cls %>">
+              <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= sc.dot %>"></span>
+              <%= lbl %>
+            </span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold
+              <%= dirTH ? 'bg-blue-500/12 text-blue-300' : 'bg-violet-500/12 text-violet-300' %>">
+              <%= dirTH ? '🇹🇭→🇱🇦' : '🇱🇦→🇹🇭' %>
+            </span>
+            <% if (Number(t.customs_count) > 0) { %>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-amber-500/10 text-amber-400">
+              <i class="fa-solid fa-stamp text-[9px]"></i> <%= t.customs_count %> ศุลกากร
+            </span>
+            <% } %>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 mt-1.5 text-[11px] text-slate-500">
+            <% if (t.driver_name) { %>
+            <span><i class="fa-solid fa-id-badge mr-1"></i><%= t.driver_name %></span>
+            <% } %>
+            <% if (t.vehicle) { %>
+            <span class="font-mono text-slate-400"><i class="fa-solid fa-car mr-1 text-slate-600"></i><%= t.vehicle %></span>
+            <% } %>
+            <span><i class="fa-regular fa-calendar mr-1"></i>
+              <%= new Date(t.trip_date).toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'2-digit' }) %>
+            </span>
+            <% if (t.order_count > 0) { %>
+            <span class="text-slate-400"><i class="fa-solid fa-boxes-stacked mr-1"></i><%= t.order_count %> ออเดอร์</span>
+            <% } %>
+            <% if (t.total_weight > 0) { %>
+            <span><i class="fa-solid fa-weight-hanging mr-1 text-slate-600"></i><%= weightFmt %> กก.</span>
+            <% } %>
+            <% if (can.viewRevenue && t.total_freight > 0) { %>
+            <span class="text-emerald-500">฿<%= freightFmt %></span>
+            <% } %>
+          </div>
+
+          <%# Capacity bar (only if max_weight set) %>
+          <% if (pct !== null) { %>
+          <div class="flex items-center gap-2 mt-2">
+            <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div class="h-full rounded-full <%= capColor(pct) %>" style="--w:<%= pct %>%;width:var(--w)"></div>
+            </div>
+            <span class="text-[10px] font-bold <%= capTextColor(pct) %> w-8 text-right"><%= pct %>%</span>
+          </div>
+          <% } %>
+        </div>
+
+        <%# Actions %>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a href="/trips/<%= t.id %>/manifest" target="_blank"
+             class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all" title="Manifest">
+            <i class="fa-solid fa-file-lines text-xs"></i>
+          </a>
+          <a href="/trips/<%= t.id %>"
+             class="w-8 h-8 flex items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-all" title="ดูรายละเอียด">
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </a>
+          <% if (t.order_count > 0) { %>
+          <button @click="expanded = !expanded"
+                  class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all"
+                  :title="expanded ? 'ซ่อน' : 'ดูออเดอร์'">
+            <i class="fa-solid text-xs transition-transform" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+          </button>
+          <% } %>
+        </div>
+      </div>
+
+      <%# Expandable mini order list %>
+      <% if (t.orders && t.orders.length > 0) { %>
+      <div x-show="expanded" x-cloak x-collapse class="border-t border-white/5 px-4 pb-4">
+        <div class="pt-3 space-y-1">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-2">ออเดอร์ใน Trip</div>
+          <% t.orders.slice(0, 8).forEach(o => { %>
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/3 hover:bg-white/5 transition-colors">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-white font-semibold"><%= o.job_no %></span>
+              <span class="text-xs text-slate-500"><%= o.sender_name %> → <%= o.receiver_name %></span>
+            </div>
+            <div class="flex items-center gap-2">
+              <% if (Number(o.cod_amount) > 0) { %>
+              <span class="text-amber-400 text-xs">COD ฿<%= Number(o.cod_amount).toLocaleString() %></span>
+              <% } %>
+              <a href="/orders/<%= o.id %>" class="text-slate-500 hover:text-cyan-400 transition-colors">
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </a>
+            </div>
+          </div>
+          <% }) %>
+          <% if (t.orders.length > 8) { %>
+          <p class="text-slate-600 text-xs text-center pt-1">+ อีก <%= t.orders.length - 8 %> รายการ — <a href="/trips/<%= t.id %>" class="text-cyan-400 hover:text-cyan-300">ดูทั้งหมด</a></p>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+
+    </div><%# /trip card %>
+    <% }) %>
+  </div>
+  <% } %>
+
+</div><%# /space-y-5 %>

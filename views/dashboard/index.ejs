@@ -1,0 +1,781 @@
+<%#
+  views/dashboard/index.ejs — Production Dashboard v3
+  
+  Two views:
+  1. Executive  — P&L, revenue, COD funnel, success rate, top customers
+  2. Operations — alerts, pipeline, trips, customs queue, WH pending, overdue
+
+  Data from: dashboardModel.getDashboardData()
+  Role gating: can.* from app.js middleware
+%>
+
+<%
+  // ─── Formatting helpers ──────────────────────────────────────
+  function fmtBaht(n, short) {
+    const num = Number(n || 0);
+    if (short && num >= 1000000) return '฿' + (num/1000000).toFixed(1) + 'M';
+    if (short && num >= 1000)    return '฿' + (num/1000).toFixed(0) + 'K';
+    return '฿' + num.toLocaleString('th-TH');
+  }
+  function fmtNum(n, short) {
+    const num = Number(n || 0);
+    if (short && num >= 1000) return (num/1000).toFixed(1) + 'K';
+    return num.toLocaleString('th-TH');
+  }
+  function hoursAgo(h) {
+    if (!h && h !== 0) return '–';
+    if (h < 1)  return 'เพิ่งเข้ามา';
+    if (h < 24) return h + ' ชม.';
+    return Math.floor(h/24) + ' วัน';
+  }
+  function ageClass(h, warn=24, crit=48) {
+    if (!h) return 'text-slate-500';
+    if (h >= crit) return 'text-red-400';
+    if (h >= warn) return 'text-amber-400';
+    return 'text-emerald-400';
+  }
+  function ageDot(h, warn=24, crit=48) {
+    if (!h && h !== 0) return 'bg-slate-600';
+    if (h >= crit) return 'bg-red-400 animate-pulse';
+    if (h >= warn) return 'bg-amber-400';
+    return 'bg-emerald-400';
+  }
+
+  // ─── Role defaults ───────────────────────────────────────────
+  const role = currentUser?.role || '';
+  const OPS_ROLES  = ['dispatcher','warehouse_th','warehouse_la','branch_operator','staff'];
+  const EXEC_ROLES = ['admin','manager','finance'];
+  const defaultView = OPS_ROLES.includes(role) ? 'ops' : 'exec';
+
+  // ─── Alert urgency ───────────────────────────────────────────
+  const alertTotal = alerts?.total || 0;
+
+  // ─── Pipeline columns ────────────────────────────────────────
+  const PIPE_COLS = [
+    { key:'NEW',               label:'ใหม่',          icon:'fa-bolt',        color:'blue' },
+    { key:'RECEIVED_WH_TH',   label:'คลังไทย',       icon:'fa-warehouse',   color:'orange' },
+    { key:'ON_TRUCK',          label:'ขึ้นรถ',         icon:'fa-truck',       color:'violet' },
+    { key:'CROSSING_BORDER',  label:'ข้ามแดน',       icon:'fa-globe',       color:'violet' },
+    { key:'CUSTOMS_HOLD',     label:'ศุลกากร',        icon:'fa-stamp',       color:'amber' },
+    { key:'AT_DEST_WH',       label:'คลังปลาย',      icon:'fa-boxes-stacked',color:'cyan' },
+    { key:'OUT_FOR_DELIVERY', label:'กำลังส่ง',       icon:'fa-person-biking',color:'indigo' },
+    { key:'DELIVERED',        label:'ส่งสำเร็จ',      icon:'fa-circle-check',color:'emerald' },
+  ];
+  const COL_CSS = {
+    blue:   'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    orange: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    violet: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    amber:  'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    cyan:   'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    emerald:'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    red:    'bg-red-500/10 text-red-400 border-red-500/20',
+  };
+
+  // ─── Trip status labels ──────────────────────────────────────
+  const TRIP_STATUS_LABELS = {
+    'PLANNED':'วางแผน','LOADING':'โหลดของ','DEPARTED':'ออกแล้ว',
+    'AT_BORDER':'ที่ด่าน','CROSSED':'ข้ามแล้ว','ARRIVED':'ถึงปลาย',
+    'UNLOADING':'ขนลง','COMPLETED':'เสร็จ','CANCELLED':'ยกเลิก',
+  };
+%>
+
+<div class="space-y-5" x-data="{ view: '<%= defaultView %>' }">
+
+  <%# ═══════════════════════════════════════════════════════
+      PAGE HEADER
+  ════════════════════════════════════════════════════════ %>
+  <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-white">
+        ภาพรวม
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">วันนี้</span>
+      </h2>
+      <p class="text-slate-400 text-sm mt-0.5">
+        <i class="fa-regular fa-calendar mr-1.5"></i>
+        <%= new Date().toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) %>
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2 flex-wrap">
+      <%# View toggle (exec/ops) — only for dual-role users %>
+      <% if (EXEC_ROLES.includes(role)) { %>
+      <div class="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
+        <button @click="view='exec'"
+                :class="view==='exec' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25' : 'text-slate-400 hover:text-white'"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-line"></i> ผู้บริหาร
+        </button>
+        <button @click="view='ops'"
+                :class="view==='ops' ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'text-slate-400 hover:text-white'"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-gears"></i> ปฏิบัติการ
+        </button>
+      </div>
+      <% } %>
+
+      <% if (can.useScanner) { %>
+      <a href="/scanner" class="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 text-white text-sm rounded-xl hover:bg-white/10 transition-all">
+        <i class="fa-solid fa-qrcode"></i><span class="hidden sm:inline">สแกน</span>
+      </a>
+      <% } %>
+      <% if (can.createOrder) { %>
+      <a href="/orders/new" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all">
+        <i class="fa-solid fa-plus"></i><span class="hidden sm:inline">สร้าง Order</span>
+      </a>
+      <% } %>
+      <button onclick="window.location.reload()" title="รีเฟรช"
+              class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+        <i class="fa-solid fa-rotate-right text-sm"></i>
+      </button>
+    </div>
+  </div>
+
+  <%# ═══════════════════════════════════════════════════════
+      GLOBAL ALERT BANNER (both views)
+  ════════════════════════════════════════════════════════ %>
+  <% if (alertTotal > 0) { %>
+  <div class="glass-panel-dark rounded-2xl p-4 border-l-4 border-red-500">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+        </span>
+        <span class="text-red-400 font-semibold text-sm">ต้องดำเนินการ <%= alertTotal %> รายการ</span>
+      </div>
+      <span class="text-slate-500 text-xs">SLA breach alerts</span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <% const ALERT_DEFS = [
+        { key:'NEW_STUCK',      label:'Order ใหม่ค้าง >24ชม.',    href:'/orders?status=NEW',           icon:'fa-inbox',              color:'red' },
+        { key:'RECEIVED_STUCK', label:'ค้างคลัง >48ชม.',          href:'/orders?status=RECEIVED_WH_TH',icon:'fa-warehouse',          color:'orange' },
+        { key:'CUSTOMS_STUCK',  label:'ศุลกากร >72ชม.',           href:'/customs',                     icon:'fa-stamp',              color:'amber' },
+        { key:'DELIVERY_FAILED',label:'ส่งไม่ได้ >12ชม.',         href:'/orders?status=DELIVERY_FAILED',icon:'fa-circle-xmark',     color:'red' },
+        { key:'COD_OVERDUE',    label:'COD ค้างโอน >72ชม.',       href:'/cod?tab=remittance',          icon:'fa-coins',              color:'amber' },
+      ]; %>
+      <% ALERT_DEFS.forEach(a => { const cnt = alerts?.[a.key] || 0; if (!cnt) return; %>
+      <a href="<%= a.href %>" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-<%= a.color %>-500/10 border border-<%= a.color %>-500/20 hover:bg-<%= a.color %>-500/20 transition-all group">
+        <i class="fa-solid <%= a.icon %> text-<%= a.color %>-400 text-sm flex-shrink-0"></i>
+        <div class="min-w-0">
+          <div class="text-white font-bold text-base leading-none"><%= cnt %></div>
+          <div class="text-<%= a.color %>-400/70 text-[10px] leading-tight mt-0.5 truncate"><%= a.label %></div>
+        </div>
+        <i class="fa-solid fa-arrow-right text-xs text-slate-600 group-hover:text-slate-400 flex-shrink-0 ml-auto transition-colors"></i>
+      </a>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+
+  <%# ═══════════════════════════════════════════════════════
+      VIEW 1: EXECUTIVE DASHBOARD
+  ════════════════════════════════════════════════════════ %>
+  <div x-show="view === 'exec'" x-cloak>
+
+    <%# ─── KPI Row 1: Financial ────────────────────────── %>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+
+      <%# Orders today %>
+      <div class="kpi-card-premium blue" style="--gradient: linear-gradient(90deg, #3b82f6, #06b6d4)">
+        <div class="flex items-start justify-between mb-4">
+          <div class="kpi-icon bg-blue-500/15 text-blue-400"><i class="fa-solid fa-box"></i></div>
+          <span class="text-xs text-slate-500">วันนี้</span>
+        </div>
+        <div class="kpi-value"><%= fmtNum(kpi.todayOrders) %></div>
+        <div class="kpi-label mt-1">Order ใหม่วันนี้</div>
+        <div class="text-[11px] text-slate-500 mt-1">เดือนนี้: <%= fmtNum(kpi.monthOrders) %> งาน</div>
+      </div>
+
+      <%# Revenue today (finance/manager only) %>
+      <% if (can.viewRevenue) { %>
+      <div class="kpi-card-premium purple" style="--gradient: linear-gradient(90deg, #a855f7, #8b5cf6)">
+        <div class="flex items-start justify-between mb-4">
+          <div class="kpi-icon bg-purple-500/15 text-purple-400"><i class="fa-solid fa-chart-line"></i></div>
+          <span class="text-xs text-slate-500">รายได้</span>
+        </div>
+        <div class="kpi-value text-2xl"><%= fmtBaht(kpi.todayRevenue, true) %></div>
+        <div class="kpi-label mt-1">รายได้วันนี้</div>
+        <div class="text-[11px] text-slate-500 mt-1">เดือนนี้: <%= fmtBaht(kpi.monthRevenue, true) %></div>
+      </div>
+      <% } else { %>
+      <%# In-transit (non-finance) %>
+      <div class="kpi-card-premium purple" style="--gradient: linear-gradient(90deg, #a855f7, #8b5cf6)">
+        <div class="flex items-start justify-between mb-4">
+          <div class="kpi-icon bg-purple-500/15 text-purple-400"><i class="fa-solid fa-truck-fast"></i></div>
+        </div>
+        <div class="kpi-value"><%= fmtNum(kpi.inTransit) %></div>
+        <div class="kpi-label mt-1">กำลังขนส่ง</div>
+      </div>
+      <% } %>
+
+      <%# Profit (finance only) %>
+      <% if (can.viewCostBreakdown) {
+           const profitPositive = (kpi.todayProfit || 0) >= 0;
+      %>
+      <div class="kpi-card-premium green" style="--gradient: linear-gradient(90deg, #10b981, #34d399)">
+        <div class="flex items-start justify-between mb-4">
+          <div class="kpi-icon bg-emerald-500/15 text-emerald-400"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+          <span class="text-xs <%= profitPositive ? 'text-emerald-400' : 'text-red-400' %> font-bold">
+            <%= profitPositive ? '↑' : '↓' %>
+          </span>
+        </div>
+        <div class="kpi-value text-2xl <%= profitPositive ? '' : 'text-red-400' %>">
+          <%= fmtBaht(kpi.todayProfit, true) %>
+        </div>
+        <div class="kpi-label mt-1">กำไรวันนี้</div>
+        <div class="text-[11px] text-slate-500 mt-1">เดือนนี้: <%= fmtBaht(kpi.monthProfit, true) %></div>
+      </div>
+      <% } else { %>
+      <%# Success rate (non-finance) %>
+      <div class="kpi-card-premium green" style="--gradient: linear-gradient(90deg, #10b981, #34d399)">
+        <div class="flex items-start justify-between mb-4">
+          <div class="kpi-icon bg-emerald-500/15 text-emerald-400"><i class="fa-solid fa-circle-check"></i></div>
+        </div>
+        <div class="kpi-value text-2xl <%= (kpi.successRate||0) >= 90 ? '' : (kpi.successRate||0) >= 75 ? 'text-amber-400' : 'text-red-400' %>">
+          <%= kpi.successRate !== null ? kpi.successRate + '%' : '–' %>
+        </div>
+        <div class="kpi-label mt-1">ส่งสำเร็จ (30 วัน)</div>
+      </div>
+      <% } %>
+
+      <%# COD pending %>
+      <div class="kpi-card-premium orange" style="--gradient: linear-gradient(90deg, #f59e0b, #f97316)">
+        <div class="flex items-start justify-between mb-4">
+          <div class="kpi-icon bg-amber-500/15 text-amber-400"><i class="fa-solid fa-coins"></i></div>
+          <% if (kpi.codOverdueCnt > 0) { %>
+          <span class="flex items-center gap-1 text-red-400 text-[10px] font-bold">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <%= kpi.codOverdueCnt %> ค้าง
+          </span>
+          <% } %>
+        </div>
+        <div class="kpi-value text-2xl text-amber-400"><%= fmtBaht(kpi.codPendingAmt, true) %></div>
+        <div class="kpi-label mt-1">COD รอเก็บ (<%= kpi.codPendingCnt %> ออเดอร์)</div>
+      </div>
+    </div>
+
+    <%# ─── KPI Row 2: Operations pulse ─────────────────── %>
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
+      <% const PULSE_CARDS = [
+        { label:'กำลังขนส่ง', val: kpi.inTransit,         icon:'fa-truck-fast',    color:'purple', href:'/orders?status=ON_TRUCK' },
+        { label:'รอศุลกากร',  val: kpi.customsHoldCnt,    icon:'fa-stamp',          color:'amber',  href:'/customs' },
+        { label:'ผ่านศุลกากร(เดือน)', val: kpi.customsClearedCnt, icon:'fa-circle-check', color:'emerald', href:'/orders?status=CUSTOMS_CLEARED' },
+        { label:'รอโอน COD',  val: kpi.codCollectedCnt,   icon:'fa-hand-holding-dollar', color:'cyan', href:'/cod?tab=remittance' },
+        { label:'ส่งไม่สำเร็จ', val: deliveryFailed?.length||0, icon:'fa-circle-xmark', color:'red', href:'/orders?status=DELIVERY_FAILED' },
+        { label:'Trip Active', val: activeTrips?.length||0, icon:'fa-truck',          color:'blue',  href:'/trips' },
+      ]; %>
+      <% PULSE_CARDS.forEach(c => { %>
+      <a href="<%= c.href %>" class="glass-panel-dark px-3 py-3 rounded-xl flex items-center gap-2 hover:bg-white/8 transition-all group">
+        <i class="fa-solid <%= c.icon %> text-<%= c.color %>-400 text-lg w-5 text-center flex-shrink-0"></i>
+        <div class="min-w-0">
+          <div class="text-white font-bold text-lg leading-none"><%= c.val %></div>
+          <div class="text-slate-500 text-[10px] mt-0.5 truncate"><%= c.label %></div>
+        </div>
+      </a>
+      <% }) %>
+    </div>
+
+    <%# ─── P&L + COD Funnel + Chart ────────────────────── %>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
+
+      <%# Revenue Chart (2/3) %>
+      <div class="xl:col-span-2 glass-panel-dark p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-chart-mixed text-cyan-400"></i>
+            รายได้ + จำนวน Order (30 วัน)
+          </h3>
+          <% if (!can.viewRevenue) { %>
+          <span class="text-slate-500 text-xs">จำนวน Order เท่านั้น</span>
+          <% } %>
+        </div>
+        <div class="h-56"><canvas id="revenueChart"></canvas></div>
+      </div>
+
+      <%# COD Funnel (1/3) %>
+      <div class="glass-panel-dark p-5">
+        <h3 class="text-white font-semibold text-sm flex items-center gap-2 mb-4">
+          <i class="fa-solid fa-filter text-amber-400"></i>
+          COD Funnel
+        </h3>
+        <div class="space-y-2.5">
+          <%
+            const COD_FUNNEL = [
+              { label:'รอเก็บ',      amt: kpi.codPendingAmt,   cnt: kpi.codPendingCnt,   color:'amber',   icon:'fa-clock', href:'/cod?tab=collection' },
+              { label:'เก็บแล้ว รอโอน', amt: kpi.codCollectedAmt, cnt: kpi.codCollectedCnt, color:'cyan',  icon:'fa-hand-holding-dollar', href:'/cod?tab=remittance' },
+              { label:'โอนแล้ว',    amt: kpi.codRemittedAmt,  cnt: kpi.codRemittedCnt,  color:'emerald', icon:'fa-circle-check', href:'/cod?tab=history' },
+            ];
+          %>
+          <% COD_FUNNEL.forEach(f => { %>
+          <a href="<%= f.href %>" class="flex items-center justify-between p-3 rounded-xl bg-<%= f.color %>-500/8 border border-<%= f.color %>-500/15 hover:bg-<%= f.color %>-500/15 transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid <%= f.icon %> text-<%= f.color %>-400 text-sm w-4 text-center"></i>
+              <span class="text-slate-300 text-sm"><%= f.label %></span>
+              <span class="text-<%= f.color %>-400/60 text-[10px]">(<%= f.cnt %>)</span>
+            </div>
+            <div class="text-right">
+              <div class="text-<%= f.color %>-400 font-bold text-sm font-mono"><%= fmtBaht(f.amt, true) %></div>
+            </div>
+          </a>
+          <% }) %>
+          <% if ((kpi.codOverdueCnt||0) > 0) { %>
+          <div class="flex items-center gap-2 mt-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+            <i class="fa-solid fa-triangle-exclamation text-red-400 text-xs"></i>
+            <span class="text-red-400 text-xs font-semibold">COD ค้างโอน <%= kpi.codOverdueCnt %> รายการ (<%= fmtBaht(kpi.codOverdueAmt, true) %>)</span>
+          </div>
+          <% } %>
+        </div>
+
+        <%# Success Rate gauge %>
+        <div class="mt-4 pt-4 border-t border-white/6">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-slate-400 text-xs">อัตราส่งสำเร็จ (30 วัน)</span>
+            <span class="font-bold text-sm <%= (kpi.successRate||0) >= 90 ? 'text-emerald-400' : (kpi.successRate||0) >= 75 ? 'text-amber-400' : 'text-red-400' %>">
+              <%= kpi.successRate !== null ? kpi.successRate + '%' : '–' %>
+            </span>
+          </div>
+          <% if (kpi.successRate !== null) { %>
+          <div class="w-full h-2 rounded-full bg-white/8 overflow-hidden">
+            <div class="h-full rounded-full transition-all <%= (kpi.successRate||0) >= 90 ? 'bg-emerald-500' : (kpi.successRate||0) >= 75 ? 'bg-amber-500' : 'bg-red-500' %>"
+                 style="width: <%= kpi.successRate %>%"></div>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <%# ─── P&L Timeline + Top Customers ────────────────── %>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
+
+      <%# P&L Monthly table (finance only) %>
+      <% if (can.viewCostBreakdown && plMonthly?.length > 0) { %>
+      <div class="glass-panel-dark p-5">
+        <h3 class="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-scale-balanced text-indigo-400"></i>
+          P&amp;L รายเดือน
+        </h3>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[10px] text-slate-500 uppercase">
+              <th class="text-left pb-2">เดือน</th>
+              <th class="text-right pb-2">รายได้</th>
+              <th class="text-right pb-2">ต้นทุน</th>
+              <th class="text-right pb-2">กำไร</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            <% plMonthly.forEach(mo => {
+                 const profit = Number(mo.profit||0);
+                 const profitPos = profit >= 0;
+            %>
+            <tr>
+              <td class="py-2 text-slate-400 text-xs"><%= mo.ym %></td>
+              <td class="py-2 text-right text-slate-200 font-mono text-xs"><%= fmtBaht(mo.revenue, true) %></td>
+              <td class="py-2 text-right text-red-400/80 font-mono text-xs"><%= fmtBaht(mo.cost, true) %></td>
+              <td class="py-2 text-right font-mono text-xs font-bold <%= profitPos ? 'text-emerald-400' : 'text-red-400' %>">
+                <%= profitPos ? '+' : '' %><%= fmtBaht(profit, true) %>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+
+      <%# Top Customers %>
+      <div class="glass-panel-dark p-5 <%= can.viewCostBreakdown && plMonthly?.length > 0 ? '' : 'xl:col-span-1' %>">
+        <h3 class="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-trophy text-amber-400"></i>
+          ลูกค้าสูงสุด (30 วัน)
+        </h3>
+        <% if (!topCustomers || topCustomers.length === 0) { %>
+        <p class="text-slate-500 text-sm text-center py-6">ยังไม่มีข้อมูล</p>
+        <% } else { %>
+        <div class="space-y-2.5">
+          <% topCustomers.forEach((c, idx) => { %>
+          <div class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0
+              <%= idx === 0 ? 'bg-amber-500/20 text-amber-400' : idx === 1 ? 'bg-slate-300/20 text-slate-300' : idx === 2 ? 'bg-orange-600/20 text-orange-500' : 'bg-white/5 text-slate-500' %>">
+              <%= idx + 1 %>
+            </span>
+            <div class="flex-1 min-w-0">
+              <div class="text-white text-sm font-medium truncate"><%= c.name %></div>
+              <div class="text-slate-500 text-xs"><%= c.order_count %> งาน</div>
+            </div>
+            <div class="text-cyan-400 font-bold text-sm font-mono flex-shrink-0"><%= fmtBaht(c.revenue, true) %></div>
+          </div>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+
+      <%# Latest Orders (2/3) %>
+      <div class="xl:col-span-2 glass-panel-dark overflow-hidden">
+        <div class="flex items-center justify-between p-5 border-b border-white/6">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+            Order ล่าสุด
+          </h3>
+          <a href="/orders" class="text-cyan-400/70 hover:text-cyan-400 text-xs transition-colors">ดูทั้งหมด →</a>
+        </div>
+        <%- include('../components/order-table', { latest }) %>
+      </div>
+    </div>
+
+  </div><%# /exec view %>
+
+
+  <%# ═══════════════════════════════════════════════════════
+      VIEW 2: OPERATIONS DASHBOARD
+  ════════════════════════════════════════════════════════ %>
+  <div x-show="view === 'ops'" x-cloak>
+
+    <%# ─── KPI: Quick ops counts ────────────────────────── %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+      <%
+        const OPS_KPIS = [
+          { label:'Order วันนี้',    val: fmtNum(kpi.todayOrders), icon:'fa-box',         color:'blue',   href:'/orders' },
+          { label:'กำลังขนส่ง',     val: fmtNum(kpi.inTransit),   icon:'fa-truck-fast',  color:'purple', href:'/orders?status=ON_TRUCK' },
+          { label:'รอรับที่คลัง',   val: fmtNum(whPending?.length||0), icon:'fa-inbox',  color:'orange', href:'/orders?status=NEW' },
+          { label:'ส่งสำเร็จ (30d)',val: (kpi.successRate !== null ? kpi.successRate+'%' : '–'), icon:'fa-circle-check', color:'emerald', href:'/orders?status=DELIVERED' },
+        ];
+      %>
+      <% OPS_KPIS.forEach(k => { %>
+      <a href="<%= k.href %>" class="kpi-card-premium <%= k.color %>" style="--gradient: linear-gradient(90deg, var(--tw-gradient-stops))">
+        <div class="flex items-start justify-between mb-3">
+          <div class="kpi-icon bg-<%= k.color %>-500/15 text-<%= k.color %>-400"><i class="fa-solid <%= k.icon %>"></i></div>
+        </div>
+        <div class="kpi-value text-2xl"><%= k.val %></div>
+        <div class="kpi-label mt-1"><%= k.label %></div>
+      </a>
+      <% }) %>
+    </div>
+
+    <%# ─── Pipeline Kanban ──────────────────────────────── %>
+    <div class="glass-panel-dark rounded-2xl p-5 mb-5">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2 mb-4">
+        <i class="fa-solid fa-bars-progress text-cyan-400"></i>
+        Pipeline — สถานะพัสดุทั้งหมด
+      </h3>
+      <div class="overflow-x-auto pb-2">
+        <div class="flex gap-3 min-w-max">
+          <% PIPE_COLS.forEach(col => {
+               const count = pipeline?.[col.key] || 0;
+               const css   = COL_CSS[col.color];
+               const isAlert = col.key === 'CUSTOMS_HOLD' && (alerts?.CUSTOMS_STUCK || 0) > 0;
+             %>
+          <a href="/orders?status=<%= col.key %>"
+             class="flex flex-col items-center gap-1.5 min-w-[90px] px-3 py-3 rounded-xl border transition-all hover:brightness-125 <%= css %>
+               <%= isAlert ? 'ring-2 ring-red-500/50' : '' %>">
+            <i class="fa-solid <%= col.icon %> text-base"></i>
+            <span class="text-white font-bold text-2xl"><%= count %></span>
+            <span class="text-[10px] font-medium text-center leading-tight"><%= col.label %></span>
+            <% if (isAlert) { %><span class="text-[9px] text-red-400 font-bold">⚠ SLA</span><% } %>
+          </a>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <%# ─── 3-Column: Trips | Customs | WH Pending ───────── %>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+
+      <%# Active Trips %>
+      <div class="glass-panel-dark rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-truck-fast text-blue-400"></i>
+            Trip Active
+          </h3>
+          <a href="/trips" class="text-xs text-blue-400/70 hover:text-blue-400 transition-colors">ดูทั้งหมด →</a>
+        </div>
+        <% if (!activeTrips || activeTrips.length === 0) { %>
+        <div class="flex flex-col items-center py-6 text-slate-500">
+          <i class="fa-solid fa-truck text-2xl opacity-30 mb-2"></i>
+          <span class="text-sm">ไม่มี Trip Active</span>
+          <% if (can.createTrip) { %>
+          <a href="/trips/new" class="text-xs text-cyan-400 hover:text-cyan-300 mt-1">+ สร้างรอบรถ</a>
+          <% } %>
+        </div>
+        <% } else { %>
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          <% activeTrips.forEach(t => { %>
+          <a href="/trips/<%= t.id %>" class="flex items-center justify-between p-2.5 rounded-xl bg-white/4 hover:bg-white/8 transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-truck text-blue-400 text-sm"></i>
+              <div>
+                <div class="text-white font-mono text-xs font-semibold"><%= t.trip_no %></div>
+                <div class="text-slate-500 text-[10px]">
+                  <%= t.driver_name || '–' %>
+                  <% if (t.direction === 'TH_TO_LA') { %>🇹🇭→🇱🇦<% } else if (t.direction === 'LA_TO_TH') { %>🇱🇦→🇹🇭<% } %>
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-slate-300 text-xs font-semibold"><%= TRIP_STATUS_LABELS[t.status] || t.status %></div>
+              <div class="text-slate-500 text-[10px]"><%= t.order_count %> งาน</div>
+            </div>
+          </a>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+
+      <%# Customs Queue %>
+      <div class="glass-panel-dark rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-stamp text-amber-400"></i>
+            ศุลกากร
+            <% if ((kpi.customsHoldCnt || 0) > 0) { %>
+            <span class="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold"><%= kpi.customsHoldCnt %></span>
+            <% } %>
+          </h3>
+          <a href="/customs" class="text-xs text-amber-400/70 hover:text-amber-400">จัดการ →</a>
+        </div>
+        <% if (!customsQueue || customsQueue.length === 0) { %>
+        <div class="flex flex-col items-center py-6 text-slate-500">
+          <i class="fa-solid fa-stamp text-2xl opacity-30 mb-2"></i>
+          <span class="text-sm">ไม่มีงานศุลกากร 🎉</span>
+        </div>
+        <% } else { %>
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          <% customsQueue.forEach(c => { %>
+          <a href="/orders/<%= c.id %>" class="block p-2.5 rounded-xl hover:brightness-110 transition-all
+            <%= (c.hours_held||0) >= 72 ? 'bg-red-500/10 border border-red-500/20' : (c.hours_held||0) >= 24 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-white/4' %>">
+            <div class="flex items-center justify-between">
+              <span class="text-white font-mono text-xs font-semibold"><%= c.job_no %></span>
+              <span class="text-xs font-semibold <%= ageClass(c.hours_held, 24, 72) %>"><%= hoursAgo(c.hours_held) %></span>
+            </div>
+            <div class="text-slate-400 text-[10px] mt-0.5 truncate"><%= c.sender_name %> → <%= c.receiver_name %></div>
+          </a>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+
+      <%# WH Pending Receive %>
+      <div class="glass-panel-dark rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-inbox text-orange-400"></i>
+            รอรับเข้าคลัง
+            <% if ((whPending?.length||0) > 0) { %>
+            <span class="px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-bold"><%= whPending.length %></span>
+            <% } %>
+          </h3>
+          <a href="/orders?status=NEW" class="text-xs text-orange-400/70 hover:text-orange-400">ดูทั้งหมด →</a>
+        </div>
+        <% if (!whPending || whPending.length === 0) { %>
+        <div class="flex flex-col items-center py-6 text-slate-500">
+          <i class="fa-solid fa-circle-check text-2xl text-emerald-500/40 mb-2"></i>
+          <span class="text-sm">ไม่มี Order รอรับ</span>
+        </div>
+        <% } else { %>
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          <% whPending.forEach(item => { %>
+          <a href="/orders/<%= item.id %>" class="flex items-center justify-between p-2.5 rounded-xl hover:brightness-110 transition-all
+            <%= (item.hours_waited||0) >= 24 ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-white/4' %>">
+            <div>
+              <div class="text-white font-mono text-xs font-semibold"><%= item.job_no %></div>
+              <div class="text-slate-400 text-[10px]"><%= item.sender_name || '–' %></div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs font-semibold <%= ageClass(item.hours_waited, 12, 24) %>">
+                <span class="w-1.5 h-1.5 rounded-full inline-block mr-1 <%= ageDot(item.hours_waited, 12, 24) %>"></span>
+                <%= hoursAgo(item.hours_waited) %>
+              </div>
+              <div class="text-[10px] text-slate-600"><%= item.direction === 'TH_TO_LA' ? '🇹🇭→🇱🇦' : '🇱🇦→🇹🇭' %></div>
+            </div>
+          </a>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <%# ─── Overdue Delivery + Delivery Failed ───────────── %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+
+      <%# Overdue Out-for-Delivery (> 24h) %>
+      <div class="glass-panel-dark rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-clock text-red-400"></i>
+            ส่งล่าช้า (out-for-delivery >24ชม.)
+            <% if ((overdueDelivery?.length||0) > 0) { %>
+            <span class="px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold"><%= overdueDelivery.length %></span>
+            <% } %>
+          </h3>
+        </div>
+        <% if (!overdueDelivery || overdueDelivery.length === 0) { %>
+        <div class="flex flex-col items-center py-6 text-slate-500">
+          <i class="fa-solid fa-circle-check text-2xl text-emerald-500/40 mb-2"></i>
+          <span class="text-sm">ไม่มีงานล่าช้า 🎉</span>
+        </div>
+        <% } else { %>
+        <div class="space-y-2 max-h-52 overflow-y-auto">
+          <% overdueDelivery.forEach(item => { %>
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-red-500/8 border border-red-500/15">
+            <div>
+              <a href="/orders/<%= item.id %>" class="text-white font-mono text-xs font-semibold hover:text-cyan-400 transition-colors"><%= item.job_no %></a>
+              <div class="text-slate-400 text-[10px]"><%= item.receiver_name %></div>
+              <% if ((item.cod_amount||0) > 0) { %>
+              <div class="text-amber-400 text-[10px] font-semibold">COD ฿<%= Number(item.cod_amount).toLocaleString() %></div>
+              <% } %>
+            </div>
+            <div class="text-right">
+              <div class="text-red-400 font-bold text-sm"><%= hoursAgo(item.hours_overdue) %></div>
+              <div class="text-slate-500 text-[10px]">ล่าช้า</div>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+
+      <%# Delivery Failed Queue %>
+      <div class="glass-panel-dark rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-circle-xmark text-red-400"></i>
+            ส่งไม่สำเร็จ
+            <% if ((deliveryFailed?.length||0) > 0) { %>
+            <span class="px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold"><%= deliveryFailed.length %></span>
+            <% } %>
+          </h3>
+          <a href="/orders?status=DELIVERY_FAILED" class="text-xs text-red-400/70 hover:text-red-400">ดูทั้งหมด →</a>
+        </div>
+        <% if (!deliveryFailed || deliveryFailed.length === 0) { %>
+        <div class="flex flex-col items-center py-6 text-slate-500">
+          <i class="fa-solid fa-circle-check text-2xl text-emerald-500/40 mb-2"></i>
+          <span class="text-sm">ไม่มีงานส่งไม่สำเร็จ</span>
+        </div>
+        <% } else { %>
+        <div class="space-y-2 max-h-52 overflow-y-auto">
+          <% deliveryFailed.forEach(item => { %>
+          <div class="p-2.5 rounded-xl bg-red-500/8 border border-red-500/15">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <a href="/orders/<%= item.id %>" class="text-white text-xs font-semibold hover:text-cyan-400 transition-colors font-mono"><%= item.job_no %></a>
+                <div class="text-slate-400 text-[10px]"><%= item.receiver_name %></div>
+                <% if (item.fail_reason) { %>
+                <div class="text-red-400/70 text-[10px] mt-0.5 truncate max-w-[160px]"><%= item.fail_reason %></div>
+                <% } %>
+              </div>
+              <span class="flex-shrink-0 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold">ครั้งที่ <%= item.fail_count %></span>
+            </div>
+            <% if (can.returnOrder) { %>
+            <div class="flex gap-1.5">
+              <form action="/orders/<%= item.id %>/delivery" method="POST" class="flex-1">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="w-full py-1 text-[10px] rounded-lg bg-cyan-500/15 border border-cyan-500/25 text-cyan-400 hover:bg-cyan-500/25 transition-all">ลองส่งใหม่</button>
+              </form>
+              <form action="/orders/<%= item.id %>/return" method="POST" class="flex-1">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="w-full py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">คืนผู้ส่ง</button>
+              </form>
+            </div>
+            <% } %>
+          </div>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <%# ─── Latest Orders (ops) ──────────────────────────── %>
+    <div class="glass-panel-dark rounded-2xl overflow-hidden">
+      <div class="flex items-center justify-between p-5 border-b border-white/6">
+        <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+          Order ล่าสุด
+        </h3>
+        <a href="/orders" class="text-cyan-400/70 hover:text-cyan-400 text-xs transition-colors">ดูทั้งหมด →</a>
+      </div>
+      <%- include('../components/order-table', { latest }) %>
+    </div>
+
+  </div><%# /ops view %>
+
+</div><%# /x-data %>
+
+
+<%# ═══════════════════════════════════════════════════════
+    Chart.js — Revenue + Orders 30-day
+════════════════════════════════════════════════════════ %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const ctx = document.getElementById('revenueChart');
+  if (!ctx) return;
+
+  const labels  = <%- JSON.stringify(charts.labels) %>;
+  const revenue = <%- JSON.stringify(charts.revenue30) %>;
+  const orders  = <%- JSON.stringify(charts.orders30) %>;
+  const canViewRevenue = <%= can.viewRevenue ? 'true' : 'false' %>;
+
+  const datasets = [];
+
+  if (canViewRevenue) {
+    datasets.push({
+      type: 'bar',
+      label: 'รายได้ (฿)',
+      data: revenue,
+      backgroundColor: 'rgba(6,182,212,0.2)',
+      borderColor: 'rgba(6,182,212,0.6)',
+      borderWidth: 1.5,
+      borderRadius: 4,
+      yAxisID: 'y',
+    });
+  }
+
+  datasets.push({
+    type: 'line',
+    label: 'จำนวน Order',
+    data: orders,
+    borderColor: '#a855f7',
+    backgroundColor: 'rgba(168,85,247,0.08)',
+    borderWidth: 2,
+    pointRadius: 3,
+    pointBackgroundColor: '#a855f7',
+    fill: true,
+    tension: 0.4,
+    yAxisID: canViewRevenue ? 'y2' : 'y',
+  });
+
+  new Chart(ctx, {
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11, family: 'Sarabun' } },
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15,15,20,0.95)',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          titleColor: '#fff',
+          bodyColor: 'rgba(255,255,255,0.6)',
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.dataset.yAxisID === 'y' && canViewRevenue)
+                return ' ฿' + Number(ctx.parsed.y).toLocaleString();
+              return ' ' + ctx.parsed.y + ' งาน';
+            }
+          },
+        },
+      },
+      scales: {
+        x:  { ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y:  { position: 'left',  ticks: { color: 'rgba(6,182,212,0.6)',  font: { size: 10 }, callback: v => canViewRevenue ? '฿'+Number(v).toLocaleString() : v }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        ...(canViewRevenue ? { y2: { position: 'right', ticks: { color: 'rgba(168,85,247,0.6)', font: { size: 10 } }, grid: { drawOnChartArea: false } } } : {}),
+      },
+    },
+  });
+});
+</script>

@@ -1,0 +1,307 @@
+<%#
+  views/scanner/index.ejs — Scanner Hub
+  Mode selector: Quick Scan | Batch Receive | Trip Handoff
+  Data: recentScans, todayExceptions, user
+%>
+<%
+  const role = user?.role || '';
+  const isTH = ['admin','manager','dispatcher','warehouse_th'].includes(role);
+  const isLA = ['admin','manager','dispatcher','warehouse_la'].includes(role);
+  const isDispatcher = ['admin','manager','dispatcher'].includes(role);
+
+  function fmtTime(d) {
+    if (!d) return '–';
+    return new Date(d).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  const STATUS_TH = {
+    'NEW':'ใหม่','RECEIVED_WH_TH':'รับคลังไทย','RECEIVED_WH_LA':'รับคลังลาว',
+    'ON_TRUCK':'ขึ้นรถ','CROSSING_BORDER':'ข้ามแดน','CUSTOMS_HOLD':'รอศุลกากร',
+    'CUSTOMS_CLEARED':'ผ่านศุลกากร','ARRIVED_BORDER_WH':'ถึงด่าน','AT_DEST_WH':'คลังปลาย',
+    'OUT_FOR_DELIVERY':'กำลังส่ง','DELIVERED':'ส่งสำเร็จ','DELIVERY_FAILED':'ส่งไม่สำเร็จ',
+    'CLOSED':'ปิดงาน',
+  };
+%>
+
+<div class="max-w-5xl mx-auto space-y-6">
+
+  <%# ── Header ──────────────────────────────────────────────────────────────── %>
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
+          <i class="fa-solid fa-barcode text-cyan-400"></i>
+        </div>
+        ศูนย์สแกน
+      </h2>
+      <p class="text-slate-400 text-sm mt-1">เลือกโหมดการทำงาน — <%= user?.username %> · <%= role %></p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span class="text-emerald-400 text-xs font-medium">Online</span>
+    </div>
+  </div>
+
+  <%# Exception alert today %>
+  <% if (todayExceptions > 0) { %>
+  <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
+    <i class="fa-solid fa-triangle-exclamation text-red-400 flex-shrink-0"></i>
+    <span class="text-red-300 text-sm">มี <strong><%= todayExceptions %></strong> Exception บันทึกไว้วันนี้ — ตรวจสอบที่รายงานพัสดุ</span>
+  </div>
+  <% } %>
+
+  <%# ── Mode Cards ──────────────────────────────────────────────────────────── %>
+  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <%# PDA Mode (Gprinter IT68) — ต้องอยู่ก่อนเลย %>
+    <a href="/scanner/pda" class="group glass-panel-dark rounded-2xl p-6 border border-orange-500/30 bg-orange-500/5 hover:border-orange-400/60 hover:bg-orange-500/10 transition-all cursor-pointer block relative overflow-hidden">
+      <%# Glow bg %>
+      <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none"></div>
+      <%# Badge %>
+      <div class="absolute top-3 right-3 flex items-center gap-1 bg-orange-500/20 border border-orange-500/30 rounded-full px-2 py-0.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+        <span class="text-orange-400 text-[9px] font-black tracking-wider">IT68</span>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-mobile-screen-button text-orange-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">PDA Scanner</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        โหมดพิเศษสำหรับ <strong class="text-orange-400">Gprinter IT68</strong> — จอสัมผัส ยิงบาร์โค้ดได้ทันที
+      </p>
+      <div class="mt-4 flex items-center gap-2 text-orange-400 text-xs font-semibold">
+        เปิดหน้า PDA <i class="fa-solid fa-arrow-right text-[10px]"></i>
+      </div>
+    </a>
+
+    <a href="/scanner/quick" class="group glass-panel-dark rounded-2xl p-6 border border-white/8 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all cursor-pointer block">
+      <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-bolt text-cyan-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">สแกนด่วน</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        สแกน Job No. ตัวเดียว — เพื่ออ่านสถานะหรืออัปเดตสถานะทันที
+      </p>
+      <div class="mt-4 flex items-center gap-2 text-cyan-400 text-xs font-semibold">
+        เข้าสู่โหมดนี้ <i class="fa-solid fa-arrow-right text-[10px]"></i>
+      </div>
+    </a>
+
+    <%# Auto Scan (High Speed) %>
+    <a href="/scanner/auto" class="group glass-panel-dark rounded-2xl p-6 border border-white/8 hover:border-yellow-500/30 hover:bg-yellow-500/5 transition-all cursor-pointer block">
+      <div class="w-12 h-12 rounded-xl bg-yellow-500/15 border border-yellow-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-bolt-lightning text-yellow-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">สแกนอัตโนมัติ (เร็ว)</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        เปลี่ยนสถานะทันทีแบบรัวๆ เลือกรอบรถได้ รองรับปืนยิงบาร์โค้ด
+      </p>
+      <div class="mt-4 flex items-center gap-2 text-yellow-400 text-xs font-semibold">
+        เข้าสู่โหมดนี้ <i class="fa-solid fa-arrow-right text-[10px]"></i>
+      </div>
+    </a>
+
+    <%# Batch Receive %>
+    <% if (isTH || isLA) { %>
+    <a href="/scanner/receive" class="group glass-panel-dark rounded-2xl p-6 border border-white/8 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all cursor-pointer block">
+      <div class="w-12 h-12 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-boxes-stacked text-indigo-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">รับพัสดุเข้าคลัง</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        รับพัสดุเป็นชุด — ตรวจสอบสภาพ บันทึกน้ำหนักจริง แจ้ง Exception
+      </p>
+      <div class="mt-4 flex items-center gap-2 text-indigo-400 text-xs font-semibold">
+        เข้าสู่โหมดนี้ <i class="fa-solid fa-arrow-right text-[10px]"></i>
+      </div>
+    </a>
+    <% } else { %>
+    <div class="glass-panel-dark rounded-2xl p-6 border border-white/8 opacity-40 cursor-not-allowed">
+      <div class="w-12 h-12 rounded-xl bg-slate-700/50 border border-white/8 flex items-center justify-center mb-4">
+        <i class="fa-solid fa-boxes-stacked text-slate-600 text-lg"></i>
+      </div>
+      <h3 class="text-slate-500 font-bold text-lg mb-2">รับพัสดุเข้าคลัง</h3>
+      <p class="text-slate-600 text-sm">ไม่มีสิทธิ์สำหรับ role นี้</p>
+    </div>
+    <% } %>
+
+    <%# Screening Panel %>
+    <% if (isTH || isLA) { %>
+    <a href="/scanner/screening" class="group glass-panel-dark rounded-2xl p-6 border border-white/8 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer block">
+      <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-shield-halved text-emerald-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">คัดกรองพัสดุ</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        ชั่งน้ำหนักจริง + ตรวจสภาพ + ผ่าน/ปฏิเสธ + ติด Flag
+      </p>
+      <div class="mt-4 flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+        เข้าสู่โหมดนี้ <i class="fa-solid fa-arrow-right text-[10px]"></i>
+      </div>
+    </a>
+    <% } else { %>
+    <div class="glass-panel-dark rounded-2xl p-6 border border-white/8 opacity-40 cursor-not-allowed">
+      <div class="w-12 h-12 rounded-xl bg-slate-700/50 border border-white/8 flex items-center justify-center mb-4">
+        <i class="fa-solid fa-shield-halved text-slate-600 text-lg"></i>
+      </div>
+      <h3 class="text-slate-500 font-bold text-lg mb-2">คัดกรองพัสดุ</h3>
+      <p class="text-slate-600 text-sm">ไม่มีสิทธิ์สำหรับ role นี้</p>
+    </div>
+    <% } %>
+
+    <%# Trip Handoff %>
+    <% if (isDispatcher) { %>
+    <div class="group glass-panel-dark rounded-2xl p-6 border border-white/8 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all"
+         x-data="{ open: false }">
+      <div class="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-truck-loading text-amber-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">Handoff รอบรถ</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        สแกนยืนยันพัสดุขึ้นรถก่อนออกเดินทาง — Proof of handoff
+      </p>
+      <div class="mt-4">
+        <button @click="open = !open"
+          class="text-amber-400 text-xs font-semibold flex items-center gap-2 hover:text-amber-300 transition-colors">
+          เลือกรอบรถ <i class="fa-solid fa-chevron-down text-[10px]" :class="open ? 'rotate-180' : ''" style="transition:transform 0.2s"></i>
+        </button>
+        <div x-show="open" x-cloak class="mt-3 space-y-1" id="handoff-trip-picker">
+          <%# Will be populated by JS or server after clicking %>
+          <div class="text-slate-500 text-xs">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <div class="glass-panel-dark rounded-2xl p-6 border border-white/8 opacity-40 cursor-not-allowed">
+      <div class="w-12 h-12 rounded-xl bg-slate-700/50 border border-white/8 flex items-center justify-center mb-4">
+        <i class="fa-solid fa-truck-loading text-slate-600 text-lg"></i>
+      </div>
+      <h3 class="text-slate-500 font-bold text-lg mb-2">Handoff รอบรถ</h3>
+      <p class="text-slate-600 text-sm">ไม่มีสิทธิ์สำหรับ role นี้</p>
+    </div>
+    <% } %>
+
+    <%# Unload Scanner (Lao Warehouse) %>
+    <% if (isLA || isDispatcher) { %>
+    <div class="group glass-panel-dark rounded-2xl p-6 border border-white/8 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all"
+         x-data="{ openUnload: false }">
+      <div class="w-12 h-12 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-truck-ramp-box text-blue-400 text-lg"></i>
+      </div>
+      <h3 class="text-white font-bold text-lg mb-2">รับลงคลัง (ลาว)</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">
+        สแกนสินค้ายืนยันลงคลังปลายทาง เข้าสู่ศูนย์คัดแยก
+      </p>
+      <div class="mt-4">
+        <button @click="openUnload = !openUnload"
+          class="text-blue-400 text-xs font-semibold flex items-center gap-2 hover:text-blue-300 transition-colors">
+          เลือกรอบรถเข้่าคลัง <i class="fa-solid fa-chevron-down text-[10px]" :class="openUnload ? 'rotate-180' : ''" style="transition:transform 0.2s"></i>
+        </button>
+        <div x-show="openUnload" x-cloak class="mt-3 space-y-1" id="unload-trip-picker">
+          <div class="text-slate-500 text-xs">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <div class="glass-panel-dark rounded-2xl p-6 border border-white/8 opacity-40 cursor-not-allowed">
+      <div class="w-12 h-12 rounded-xl bg-slate-700/50 border border-white/8 flex items-center justify-center mb-4">
+        <i class="fa-solid fa-truck-ramp-box text-slate-600 text-lg"></i>
+      </div>
+      <h3 class="text-slate-500 font-bold text-lg mb-2">รับลงคลัง (ลาว)</h3>
+      <p class="text-slate-600 text-sm">ไม่มีสิทธิ์สำหรับ role นี้</p>
+    </div>
+    <% } %>
+
+  </div>
+
+  <%# ── Recent Scans ─────────────────────────────────────────────────────────── %>
+  <div class="glass-panel-dark rounded-2xl border border-white/8 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/6">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+        อัปเดตล่าสุด
+      </h3>
+      <a href="/orders" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">ดูทั้งหมด →</a>
+    </div>
+
+    <% if (recentScans.length === 0) { %>
+    <div class="px-5 py-10 text-center text-slate-600 text-sm">
+      <i class="fa-solid fa-inbox text-3xl opacity-20 mb-3 block"></i>
+      ยังไม่มีกิจกรรม
+    </div>
+    <% } else { %>
+    <div class="divide-y divide-white/5">
+      <% recentScans.forEach(scan => { %>
+      <div class="flex items-center justify-between px-5 py-3 hover:bg-white/3 transition-colors">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-box text-slate-500 text-xs"></i>
+          </div>
+          <div>
+            <a href="/orders/<%= scan.id %>" class="font-mono font-bold text-white text-sm hover:text-indigo-300 transition-colors">
+              <%= scan.job_no %>
+            </a>
+            <div class="text-slate-500 text-[11px]">
+              <%= scan.sender_name %> → <%= scan.receiver_name %>
+            </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] text-slate-600"><%= fmtTime(scan.updated_at) %></div>
+          <div class="text-[10px] text-slate-500 mt-0.5"><%= STATUS_TH[scan.status] || scan.status %></div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+
+</div>
+
+<script>
+// Load active trips for handoff picker
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/trips/active')
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('handoff-trip-picker');
+      if (!el) return;
+      if (!data.trips || data.trips.length === 0) {
+        el.innerHTML = '<div class="text-slate-600 text-xs">ไม่มีรอบรถที่กำลังโหลด</div>';
+        return;
+      }
+      el.innerHTML = data.trips.map(t =>
+        `<a href="/scanner/handoff/${t.id}"
+            class="block p-2 rounded-lg bg-amber-500/8 border border-amber-500/15 text-amber-300 text-xs font-mono hover:bg-amber-500/15 transition-all">
+           ${t.trip_no} · ${t.order_count} ออเดอร์
+         </a>`
+      ).join('');
+    })
+    .catch(() => {
+      const el = document.getElementById('handoff-trip-picker');
+      if (el) el.innerHTML = '<a href="/trips" class="text-amber-400 text-xs">เลือกจากหน้ารอบรถ →</a>';
+    });
+
+  // Load arriving trips for unload picker
+  fetch('/api/trips/arriving')
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('unload-trip-picker');
+      if (!el) return;
+      if (!data.trips || data.trips.length === 0) {
+        el.innerHTML = '<div class="text-slate-600 text-xs">ไม่มีรอบรถที่กำลังลงของ</div>';
+        return;
+      }
+      el.innerHTML = data.trips.map(t =>
+        `<a href="/scanner/unload/${t.id}"
+            class="block p-2 rounded-lg bg-blue-500/8 border border-blue-500/15 text-blue-300 text-xs font-mono hover:bg-blue-500/15 transition-all">
+           ${t.trip_no} · ${t.order_count} ออเดอร์
+         </a>`
+      ).join('');
+    })
+    .catch(() => {
+      const el = document.getElementById('unload-trip-picker');
+      if (el) el.innerHTML = '<a href="/trips" class="text-blue-400 text-xs">เลือกจากหน้ารอบรถ →</a>';
+    });
+});
+</script>

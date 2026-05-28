@@ -1,0 +1,14 @@
+{
+    "python.terminal.activateEnvironment": false,
+    "github-actions.workflows.pinning.enabled": false,
+
+    // ─── EJS: suppress false-positive IDE errors ─────────────────────────────
+    // VS Code tries to validate <script> and <style> blocks inside .ejs files
+    // as pure JavaScript/CSS, which causes spurious errors on EJS tags (<%= %>).
+    // These are NOT real errors — EJS templates are processed server-side first.
+    "files.associations": {
+        "*.ejs": "html"
+    },
+    "html.validate.scripts": false,
+    "html.validate.styles": false
+}

@@ -1,0 +1,381 @@
+<%#
+  views/trips/new.ejs — Create Trip Wizard
+  - Direction selector → auto-filters available orders
+  - Inline order browser with weight totals and capacity
+  - Vehicle / driver fields
+  - Auto-suggested trip_no
+%>
+<div class="max-w-5xl mx-auto" x-data="tripWizard()" x-init="init()">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-6">
+    <a href="/trips" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div>
+      <h2 class="text-2xl font-bold text-white">สร้างรอบรถ</h2>
+      <p class="text-slate-400 text-sm">วางแผนการส่งสินค้าข้ามแดน</p>
+    </div>
+  </div>
+
+  <% if (error) { %>
+  <div class="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 flex items-center gap-3">
+    <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i> <%= error %>
+  </div>
+  <% } %>
+
+  <form method="POST" action="/trips" id="tripForm" data-direction="<%= direction || 'TH_TO_LA' %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <div class="grid lg:grid-cols-5 gap-6">
+
+      <!-- ────── LEFT PANEL: Trip Details ────── -->
+      <div class="lg:col-span-2 space-y-4">
+
+        <!-- Direction (controls which orders appear) -->
+        <div class="glass-panel-dark p-5 rounded-2xl space-y-4">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <i class="fa-solid fa-route text-indigo-400/70 mr-1"></i>
+            ทิศทางรอบรถ <span class="text-red-400">*</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <label :class="direction === 'TH_TO_LA'
+              ? 'border-cyan-500/50 bg-cyan-500/10 ring-1 ring-cyan-500/20'
+              : 'border-white/10 bg-white/5'"
+              class="flex items-center gap-2 p-3.5 rounded-xl border cursor-pointer hover:brightness-125 transition-all">
+              <input type="radio" name="direction" value="TH_TO_LA" x-model="direction" @change="filterOrders()" class="sr-only">
+              <span class="text-xl">🇹🇭</span>
+              <div>
+                <div class="text-xs font-bold text-white">ไทย → ลาว</div>
+                <div class="text-[10px] text-slate-500">TH → LA</div>
+              </div>
+              <template x-if="direction === 'TH_TO_LA'">
+                <i class="fa-solid fa-circle-check ml-auto text-cyan-400 text-xs"></i>
+              </template>
+            </label>
+            <label :class="direction === 'LA_TO_TH'
+              ? 'border-violet-500/50 bg-violet-500/10 ring-1 ring-violet-500/20'
+              : 'border-white/10 bg-white/5'"
+              class="flex items-center gap-2 p-3.5 rounded-xl border cursor-pointer hover:brightness-125 transition-all">
+              <input type="radio" name="direction" value="LA_TO_TH" x-model="direction" @change="filterOrders()" class="sr-only">
+              <span class="text-xl">🇱🇦</span>
+              <div>
+                <div class="text-xs font-bold text-white">ลาว → ไทย</div>
+                <div class="text-[10px] text-slate-500">LA → TH</div>
+              </div>
+              <template x-if="direction === 'LA_TO_TH'">
+                <i class="fa-solid fa-circle-check ml-auto text-violet-400 text-xs"></i>
+              </template>
+            </label>
+          </div>
+
+          <!-- Trip No -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              Trip No <span class="text-red-400">*</span>
+            </label>
+            <input type="text" name="trip_no" required
+              value="<%= suggestedTripNo %>"
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all text-sm uppercase"
+              placeholder="TR-YYMMDD-01">
+          </div>
+
+          <!-- Date -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              วันที่ออกเดินทาง <span class="text-red-400">*</span>
+            </label>
+            <input type="date" name="trip_date" required
+              value="<%= new Date().toISOString().slice(0,10) %>"
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-indigo-500/50 transition-all">
+          </div>
+
+          <!-- Border Points -->
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                จุดผ่านแดนหลัก <span class="text-red-400">*</span>
+              </label>
+              <select name="border_checkpoint" required
+                class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-indigo-500/50 transition-all text-sm appearance-none">
+                <option value="" class="bg-slate-800 text-slate-400">ระบุจุดผ่านแดน</option>
+                <option value="NONGKHAI" class="bg-slate-800 text-white" selected>ด่านหนองคาย - ท่านาแล้ง</option>
+                <option value="MUKDAHAN" class="bg-slate-800 text-white">ด่านมุกดาหาร - สะหวันนะเขต</option>
+                <option value="CHONGMEK" class="bg-slate-800 text-white">ด่านช่องเม็ก - วังเต่า</option>
+                <option value="OTHER" class="bg-slate-800 text-white">ด่านอื่นๆ</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">คลัง/สถานที่ต้นทาง (เช่น ลำลูกกา)</label>
+                <input type="text" name="origin_border"
+                  class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all text-sm"
+                  placeholder="Optional">
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">คลัง/สถานที่ปลายทาง (เช่น เวียงจันทน์)</label>
+                <input type="text" name="dest_border"
+                  class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all text-sm"
+                  placeholder="Optional">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vehicle & Driver -->
+        <div class="glass-panel-dark p-5 rounded-2xl space-y-4">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <i class="fa-solid fa-truck text-amber-400/70 mr-1"></i>
+            ยานพาหนะ &amp; คนขับ
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">ทะเบียนรถ</label>
+            <input type="text" name="vehicle"
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40 transition-all font-mono text-sm uppercase"
+              placeholder="กจ 1234 / ขขข-1234">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">ชื่อคนขับ</label>
+            <input type="text" name="driver_name"
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40 transition-all text-sm"
+              placeholder="นามสกุล ชื่อ / Name">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              น้ำหนักรับได้สูงสุด (กก.) — สำหรับแสดง capacity
+            </label>
+            <input type="number" name="max_weight" x-model.number="maxWeight" @input="updateCapacity()"
+              min="100" step="100"
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40 transition-all text-sm"
+              placeholder="5000">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">หมายเหตุ</label>
+            <textarea name="notes" rows="2"
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/40 transition-all text-sm resize-none"
+              placeholder="หมายเหตุเพิ่มเติม..."></textarea>
+          </div>
+        </div>
+
+        <!-- Capacity Summary -->
+        <div class="glass-panel-dark p-5 rounded-2xl">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <i class="fa-solid fa-weight-hanging text-emerald-400/70 mr-1"></i>
+            สรุปสินค้าที่เลือก
+          </div>
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="text-center p-3 rounded-xl bg-white/5 border border-white/8">
+              <div class="text-2xl font-black text-white" x-text="selectedCount">0</div>
+              <div class="text-[10px] text-slate-500 uppercase">ออเดอร์</div>
+            </div>
+            <div class="text-center p-3 rounded-xl bg-white/5 border border-white/8">
+              <div class="text-2xl font-black" :class="capacityPct > 90 ? 'text-red-400' : capacityPct > 70 ? 'text-amber-400' : 'text-emerald-400'"
+                   x-text="selWeight + ' กก.'">0 กก.</div>
+              <div class="text-[10px] text-slate-500 uppercase">น้ำหนัก</div>
+            </div>
+            <div class="text-center p-3 rounded-xl bg-white/5 border border-white/8">
+              <div class="text-2xl font-black text-amber-400" x-text="'฿' + selCod.toLocaleString()">฿0</div>
+              <div class="text-[10px] text-slate-500 uppercase">COD</div>
+            </div>
+          </div>
+          <!-- Capacity bar -->
+          <div x-show="maxWeight > 0">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-slate-500">Capacity</span>
+              <span :class="capacityPct > 90 ? 'text-red-400' : 'text-emerald-400'" x-text="capacityPct + '%'"></span>
+            </div>
+            <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-300"
+                   :class="capacityPct > 90 ? 'bg-red-500' : capacityPct > 70 ? 'bg-amber-500' : 'bg-emerald-500'"
+                   :style="'width:' + Math.min(capacityPct,100) + '%'"></div>
+            </div>
+          </div>
+          <div x-show="customsCount > 0"
+               class="mt-3 flex items-center gap-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <i class="fa-solid fa-stamp text-amber-400 text-xs"></i>
+            <span class="text-amber-300 text-xs">มี <span x-text="customsCount"></span> ออเดอร์ที่ต้องผ่านศุลกากร</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <a href="/trips" class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm text-center transition-all">
+            ยกเลิก
+          </a>
+          <button type="submit" :disabled="!direction || submitting"
+            :class="direction ? 'from-indigo-500 to-blue-600 hover:shadow-indigo-500/25 hover:shadow-lg' : 'from-slate-600 to-slate-700 opacity-50 cursor-not-allowed'"
+            class="flex-[2] px-6 py-3 bg-gradient-to-r text-white font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2">
+            <i class="fa-solid fa-save"></i>
+            <span x-text="submitting ? 'กำลังสร้าง...' : 'สร้างรอบรถ'">สร้างรอบรถ</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ────── RIGHT PANEL: Order Selector ────── -->
+      <div class="lg:col-span-3 glass-panel-dark rounded-2xl flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-white/8 flex items-center justify-between">
+          <div>
+            <div class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-inbox text-indigo-400"></i>
+              ออเดอร์ที่รอผูกรอบรถ
+            </div>
+            <div class="text-xs text-slate-500 mt-0.5" x-text="'แสดง ' + filteredOrders.length + ' รายการ'"></div>
+          </div>
+          <!-- Filter / Search -->
+          <div class="flex items-center gap-2">
+            <input type="text" x-model="search" placeholder="ค้นหา Job No..."
+              class="w-36 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-indigo-500/40 transition-all">
+            <button type="button" @click="selectAll()"
+              class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white text-xs transition-all">
+              เลือกทั้งหมด
+            </button>
+            <button type="button" @click="clearAll()"
+              class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white text-xs transition-all">
+              ล้าง
+            </button>
+          </div>
+        </div>
+
+        <!-- Order List -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-2" style="max-height: 520px;">
+          <template x-if="filteredOrders.length === 0">
+            <div class="flex flex-col items-center justify-center py-16 text-slate-600">
+              <i class="fa-solid fa-boxes-stacked text-4xl mb-3 opacity-20"></i>
+              <div class="text-sm" x-text="direction ? 'ไม่มีออเดอร์ที่รอรอบรถ (ทิศทาง ' + direction + ')' : 'เลือกทิศทางก่อน'"></div>
+            </div>
+          </template>
+
+          <template x-for="o in filteredOrders" :key="o.id">
+            <label :class="selectedIds.has(o.id)
+              ? 'border-indigo-500/50 bg-indigo-500/8 ring-1 ring-indigo-500/20'
+              : 'border-white/8 bg-white/3 hover:bg-white/5'"
+              class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all group">
+              <input type="checkbox" name="order_ids" :value="o.id"
+                :checked="selectedIds.has(o.id)"
+                @change="toggleOrder(o)"
+                class="mt-0.5 w-4 h-4 rounded border-slate-600 text-indigo-500 bg-slate-800 flex-shrink-0">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-mono font-bold text-sm" :class="selectedIds.has(o.id) ? 'text-indigo-300' : 'text-white'"
+                        x-text="o.job_no"></span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase"
+                        x-text="o.status"></span>
+                  <template x-if="o.requires_customs">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                      ศุลกากร
+                    </span>
+                  </template>
+                </div>
+                <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                  <span x-text="o.sender_name + ' → ' + o.receiver_name" class="truncate"></span>
+                </div>
+                <div class="flex items-center gap-3 mt-1">
+                  <template x-if="o.declared_weight > 0">
+                    <span class="text-[11px] text-slate-400">
+                      <i class="fa-solid fa-weight-scale text-slate-600 mr-0.5"></i>
+                      <span x-text="o.declared_weight + ' กก.'"></span>
+                    </span>
+                  </template>
+                  <span class="text-[11px] text-emerald-400 font-mono">
+                    ฿<span x-text="Number(o.price_amount).toLocaleString()"></span>
+                  </span>
+                  <template x-if="o.cod_amount > 0">
+                    <span class="text-[11px] text-amber-400 font-mono">
+                      COD ฿<span x-text="Number(o.cod_amount).toLocaleString()"></span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+            </label>
+          </template>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<script id="all-orders-data" type="application/json">
+  <%- JSON.stringify(availableOrders || []) %>
+</script>
+
+<script>
+const ALL_ORDERS = JSON.parse(document.getElementById('all-orders-data').textContent || '[]');
+
+function tripWizard() {
+  return {
+    direction: document.getElementById('tripForm').dataset.direction || 'TH_TO_LA',
+    maxWeight: 0,
+    search: '',
+    filteredOrders: [],
+    selectedIds: new Set(),
+
+    // computed
+    selectedCount: 0,
+    selWeight: 0,
+    selCod: 0,
+    customsCount: 0,
+    capacityPct: 0,
+    submitting: false,
+
+    init() {
+      this.filterOrders();
+    },
+
+    filterOrders() {
+      const dir = this.direction;
+      const q   = this.search.toLowerCase();
+      this.filteredOrders = ALL_ORDERS.filter(o =>
+        (!dir || o.direction === dir) &&
+        (!q   || o.job_no?.toLowerCase().includes(q) ||
+                 o.sender_name?.toLowerCase().includes(q) ||
+                 o.receiver_name?.toLowerCase().includes(q))
+      );
+      this.recalc();
+    },
+
+    toggleOrder(o) {
+      if (this.selectedIds.has(o.id)) {
+        this.selectedIds.delete(o.id);
+      } else {
+        this.selectedIds.add(o.id);
+      }
+      this.selectedIds = new Set(this.selectedIds); // trigger reactivity
+      this.recalc();
+    },
+
+    selectAll() {
+      this.filteredOrders.forEach(o => this.selectedIds.add(o.id));
+      this.selectedIds = new Set(this.selectedIds);
+      this.recalc();
+    },
+
+    clearAll() {
+      this.selectedIds = new Set();
+      this.recalc();
+    },
+
+    recalc() {
+      const selected = ALL_ORDERS.filter(o => this.selectedIds.has(o.id));
+      this.selectedCount = selected.length;
+      this.selWeight = Math.round(selected.reduce((s, o) => s + Number(o.declared_weight || 0), 0) * 10) / 10;
+      this.selCod    = selected.reduce((s, o) => s + Number(o.cod_amount || 0), 0);
+      this.customsCount = selected.filter(o => o.requires_customs).length;
+      this.updateCapacity();
+    },
+
+    updateCapacity() {
+      this.capacityPct = this.maxWeight > 0
+        ? Math.round(this.selWeight / this.maxWeight * 100)
+        : 0;
+    },
+  };
+}
+
+document.getElementById('tripForm').addEventListener('submit', function() {
+  const wiz = Alpine._data?.(document.querySelector('[x-data]'));
+  // fallback: just set button
+  document.querySelectorAll('[type=submit]').forEach(b => b.disabled = true);
+});
+</script>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="<%= lang || 'th' %>">
+
+<head>
+  <meta charset="utf-8">
+  <title><%= title || 'SNG Logistics | ขนส่งไทย-ลาว' %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SNG Logistics — ระบบจัดการขนส่งสินค้าไทย-ลาว">
+
+  <!-- Google Fonts: Noto Sans Thai + Lao + Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Noto Sans Lao ครอบคลุมอักษรลาวอัตโนมัติทุกหน้า -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=Noto+Sans+Lao:wght@300;400;500;600;700;800;900&family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind Play CDN with preflight DISABLED — keeps our dark theme intact -->
+  <script>
+    window.tailwind = { config: { corePlugins: { preflight: false } } };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Premium Design System — loads AFTER Tailwind utilities -->
+  <link rel="stylesheet" href="/css/luxury.css?v=<%= Date.now() %>">
+
+
+
+  <style>
+    /* Alpine.js cloak */
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+
+<body class="antialiased">
+  <% if (currentUser) { %>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Left Sidebar -->
+    <%- include('../components/sidebar') %>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <!-- Mobile Toggle -->
+            <button class="sidebar-toggle w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white flex-shrink-0"
+              onclick="toggleSidebar()" aria-label="เมนู">
+              <i class="fa-solid fa-bars text-sm"></i>
+            </button>
+            <!-- Page Title -->
+            <div class="min-w-0">
+              <h1 class="text-lg font-bold text-white leading-tight truncate">
+                <%= title || 'SNG Logistics' %>
+              </h1>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <!-- Scanner shortcut -->
+            <% if (can && can.useScanner) { %>
+            <a href="/scanner"
+              class="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/8 text-slate-400 hover:text-white hover:bg-white/8 text-sm transition-all"
+              title="<%= t('nav.scanner') %>">
+              <i class="fa-solid fa-barcode text-xs"></i>
+              <span class="text-xs font-medium"><%= t('nav.scanner') %></span>
+            </a>
+            <% } %>
+
+            <!-- Language Toggle -->
+            <a href="?lang=<%= otherLang %>"
+              class="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-white/5 border border-white/8 text-slate-400 hover:text-white hover:bg-white/8 text-sm transition-all"
+              title="<%= t('lang.switchTo') %>">
+              <span class="text-sm"><%= otherFlag %></span>
+              <span class="text-xs font-semibold hidden sm:inline"><%= otherLabel %></span>
+            </a>
+
+            <!-- New Order -->
+            <% if (can && can.createOrder) { %>
+            <a href="/orders/new"
+              class="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold rounded-lg hover:shadow-lg hover:shadow-cyan-500/25 transition-all">
+              <i class="fa-solid fa-plus text-xs"></i>
+              <span class="hidden sm:inline">สร้างออเดอร์</span>
+            </a>
+            <% } %>
+
+            <!-- User chip -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/8">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-user text-[9px] text-white"></i>
+              </div>
+              <div class="hidden sm:block">
+                <div class="text-white text-xs font-semibold leading-none"><%= currentUser?.username || '–' %></div>
+                <div class="text-slate-500 text-[10px] leading-none mt-0.5 capitalize"><%= currentUser?.role || '' %></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Flash Message -->
+      <% if (flash) { %>
+      <div class="mx-4 md:mx-6 lg:mx-8 mt-4">
+        <div class="flex items-center gap-3 p-4 rounded-xl
+          <%= flash.type === 'error'
+            ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+            : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' %>">
+          <i class="<%= flash.type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check' %> text-lg flex-shrink-0"></i>
+          <span class="font-medium text-sm"><%= flash.message %></span>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- Page Content -->
+      <main class="p-4 md:p-6 lg:p-8 flex-1">
+        <%- body %>
+      </main>
+
+      <!-- Mobile Bottom Nav (hidden ≥768px) -->
+      <nav class="mobile-bottom-nav">
+        <a href="/" class="<%= (!title || title.includes('Dashboard') || title.includes('ภาพรวม')) ? 'active' : '' %>">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>หน้าหลัก</span>
+        </a>
+        <a href="/orders" class="<%= title?.includes('Order') ? 'active' : '' %>">
+          <i class="fa-solid fa-boxes-stacked"></i>
+          <span>ออเดอร์</span>
+        </a>
+        <a href="/scanner" class="<%= title?.includes('สแกน') || title?.includes('Scanner') ? 'active' : '' %>">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>สแกน</span>
+        </a>
+        <a href="/scanner/screening" class="<%= title?.includes('คัดกรอง') ? 'active' : '' %>">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>คัดกรอง</span>
+        </a>
+        <a href="#" onclick="toggleSidebar(); return false;">
+          <i class="fa-solid fa-bars"></i>
+          <span>เมนู</span>
+        </a>
+      </nav>
+
+    </div><!-- /main-content -->
+
+  <% } else { %>
+    <!-- Login Page (No Sidebar) -->
+    <main class="min-h-screen flex items-center justify-center p-4">
+      <%- body %>
+    </main>
+  <% } %>
+
+  <script>
+    // Sidebar Toggle
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+  </script>
+</body>
+
+</html>

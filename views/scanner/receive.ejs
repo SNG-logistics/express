@@ -1,0 +1,438 @@
+<%#
+  views/scanner/receive.ejs — Batch Warehouse Receive Screen
+  Data: pendingOrders[], user
+  
+  Workflow:
+  1. Staff scans / types job_no into input
+  2. Order card appears with verification info
+  3. Staff selects condition (OK / DAMAGED / PARTIAL)
+  4. Optionally enters actual weight + note
+  5. Confirms → AJAX receive → status → RECEIVED_WH_TH/LA
+  6. Session tally updates in real time
+%>
+
+<div class="max-w-3xl mx-auto space-y-5" x-data="receiveApp()" x-init="init()">
+
+  <%# Header %>
+  <div class="flex items-center gap-3">
+    <a href="/scanner" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div class="flex-1">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-boxes-stacked text-indigo-400"></i>
+        รับพัสดุเข้าคลัง
+      </h2>
+      <p class="text-slate-400 text-xs mt-0.5">สแกน Job No. หรือพิมพ์แล้วกด Enter</p>
+    </div>
+    <%# Session tally %>
+    <div class="flex items-center gap-3">
+      <div class="text-center">
+        <div class="text-2xl font-black text-emerald-400" x-text="session.received">0</div>
+        <div class="text-[10px] text-slate-500 uppercase">รับแล้ว</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-black text-red-400" x-text="session.exceptions">0</div>
+        <div class="text-[10px] text-slate-500 uppercase">Exception</div>
+      </div>
+    </div>
+  </div>
+
+  <%# Scan Input %>
+  <div class="glass-panel-dark rounded-2xl p-5 border border-white/8">
+    <div class="relative">
+      <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xl"></i>
+      <input
+        type="text"
+        x-ref="scanInput"
+        x-model="query"
+        @keydown.enter.prevent="scan()"
+        :disabled="loading"
+        class="w-full pl-14 pr-28 py-4 rounded-xl bg-white/5 border-2 border-cyan-500/40 text-white text-lg font-mono placeholder-slate-600 focus:outline-none focus:border-cyan-400/70 transition-all"
+        placeholder="SNG-YYMMDD-XXXX"
+        autocomplete="off"
+        autofocus>
+      <button @click="scan()" :disabled="loading || !query"
+        class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold disabled:opacity-40 transition-all">
+        <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
+        <template x-if="!loading"><span>สแกน</span></template>
+      </button>
+    </div>
+    <div x-show="scanError" x-cloak class="mt-3 flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+      <i class="fa-solid fa-circle-xmark"></i>
+      <span x-text="scanError"></span>
+    </div>
+  </div>
+
+  <%# Verify + Confirm Panel %>
+  <div x-show="order" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 -translate-y-2"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       class="glass-panel-dark rounded-2xl overflow-hidden border border-indigo-500/20">
+
+    <%# Order header %>
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/6 bg-indigo-500/5">
+      <div>
+        <div class="font-mono font-black text-white text-xl" x-text="order?.job_no"></div>
+        <div class="text-slate-400 text-xs mt-0.5" x-text="order?.direction === 'TH_TO_LA' ? '🇹🇭 ไทย → ลาว 🇱🇦' : '🇱🇦 ลาว → ไทย 🇹🇭'"></div>
+      </div>
+      <div>
+        <span class="px-2.5 py-1 rounded-lg text-xs font-bold border bg-indigo-500/15 text-indigo-300 border-indigo-500/25"
+              x-text="statusTH(order?.status)"></span>
+      </div>
+    </div>
+
+    <%# Order verify info %>
+    <div class="px-5 py-4 grid grid-cols-2 gap-4 border-b border-white/5">
+      <div>
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">ผู้ส่ง</div>
+        <div class="text-white font-semibold text-sm" x-text="order?.sender_name || '–'"></div>
+        <div class="text-slate-500 text-xs" x-text="order?.sender_phone || ''"></div>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">ผู้รับ</div>
+        <div class="text-white font-semibold text-sm" x-text="order?.receiver_name || '–'"></div>
+        <div class="text-slate-500 text-xs" x-text="order?.receiver_phone || ''"></div>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">น้ำหนักประกาศ</div>
+        <div class="text-amber-400 font-bold text-sm" x-text="order?.declared_weight ? order.declared_weight + ' กก.' : '–'"></div>
+      </div>
+      <div x-show="order?.cod_amount > 0">
+        <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">COD</div>
+        <div class="text-amber-400 font-bold text-sm" x-text="'฿' + Number(order?.cod_amount || 0).toLocaleString()"></div>
+      </div>
+    </div>
+
+    <%# Condition selector %>
+    <div class="px-5 py-4 border-b border-white/5">
+      <div class="text-[10px] text-slate-500 uppercase font-bold mb-3">สภาพพัสดุ</div>
+      <div class="grid grid-cols-3 gap-2">
+        <template x-for="c in conditions" :key="c.value">
+          <button @click="condition = c.value"
+            :class="condition === c.value ? c.activeClass : 'bg-white/5 border-white/10 text-slate-400'"
+            class="py-3 rounded-xl border text-sm font-bold flex flex-col items-center gap-1 transition-all">
+            <span class="text-lg" x-text="c.icon"></span>
+            <span x-text="c.label"></span>
+          </button>
+        </template>
+      </div>
+
+      <%# Only show fields when not OK %>
+      <div x-show="condition !== 'OK'" x-cloak class="mt-4 space-y-3">
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">รายละเอียดความเสียหาย *</label>
+          <textarea x-model="exceptionNote" rows="2"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2 focus:ring-1 focus:ring-red-500 focus:outline-none resize-none"
+            placeholder="ระบุรายละเอียด เช่น กล่องบุบ มุมฉีก ของหาย..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <%# Actual weight input %>
+    <div class="px-5 py-4 border-b border-white/5">
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">น้ำหนักจริง (กก.) — ใส่ถ้าต่างจากที่ประกาศ</label>
+          <input type="number" step="0.01" x-model="actualWeight" placeholder="0.00"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">หมายเหตุเพิ่มเติม</label>
+          <input type="text" x-model="note" placeholder="Optional"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">รูปถ่ายสินค้าตอนรับเข้า (ใส่ได้หลายรูป)</label>
+        <div class="flex items-center gap-3">
+          <label class="cursor-pointer px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 text-sm hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2">
+            <i class="fa-solid fa-camera"></i> เลือกรูปภาพ
+            <input type="file" multiple accept="image/*" class="hidden" x-ref="photoInput" @change="handleFiles()">
+          </label>
+          <span class="text-xs text-slate-400" x-text="files.length > 0 ? files.length + ' รูปที่เลือกไว้' : 'ไม่ได้เลือก'"></span>
+        </div>
+        <div class="flex gap-2 mt-2 flex-wrap" x-show="previewUrls.length > 0">
+          <template x-for="(url, index) in previewUrls" :key="index">
+            <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 group">
+              <img :src="url" class="w-full h-full object-cover">
+              <button @click="removeFile(index)" class="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500">
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <%# Action buttons %>
+    <div class="px-5 py-4 flex gap-3">
+      <button @click="confirmReceive()" :disabled="receiving || !canReceive"
+        class="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+        :class="condition === 'OK' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-emerald-500/25 hover:shadow-lg' : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-amber-500/25 hover:shadow-lg'">
+        <template x-if="receiving"><i class="fa-solid fa-spinner fa-spin"></i></template>
+        <template x-if="!receiving">
+          <span x-text="condition === 'OK' ? '✓ รับเข้าคลัง' : '⚠ รับเข้า + บันทึก Exception'"></span>
+        </template>
+      </button>
+      <button @click="skipOrder()" :disabled="receiving"
+        class="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white text-sm transition-all">
+        ข้าม
+      </button>
+    </div>
+  </div>
+
+  <%# ── Pending Queue ──────────────────────────────────────────────────────── %>
+  <% if (pendingOrders && pendingOrders.length > 0) { %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/6">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-inbox text-slate-400"></i>
+        คิวพัสดุรอรับ
+      </h3>
+      <span class="text-xs text-slate-500"><%= pendingOrders.length %> รายการ</span>
+    </div>
+    <div class="divide-y divide-white/5 max-h-72 overflow-y-auto">
+      <% pendingOrders.forEach(o => { %>
+      <button onclick="document.querySelector('[x-ref=scanInput]').__x.$data.query='<%= o.job_no %>'; document.querySelector('[x-ref=scanInput]').__x.$data.scan()"
+        class="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-colors text-left group">
+        <div class="flex items-center gap-3">
+          <div class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-box text-slate-500 text-xs"></i>
+          </div>
+          <div>
+            <div class="font-mono font-bold text-white text-sm"><%= o.job_no %></div>
+            <div class="text-slate-500 text-[11px]"><%= o.sender_name %> → <%= o.receiver_name %></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <% if (o.declared_weight) { %>
+          <span class="text-[10px] text-slate-500"><%= o.declared_weight %> กก.</span>
+          <% } %>
+          <% if (o.cod_amount > 0) { %>
+          <span class="text-[10px] text-amber-400">COD</span>
+          <% } %>
+          <i class="fa-solid fa-arrow-right text-slate-700 group-hover:text-slate-400 text-xs transition-colors"></i>
+        </div>
+      </button>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <%# ── Session Log ───────────────────────────────────────────────────────── %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/6">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-list-check text-slate-400"></i>
+        บันทึกเซสชัน
+      </h3>
+      <button @click="sessionLog = []" x-show="sessionLog.length > 0"
+        class="text-slate-500 hover:text-slate-300 text-xs transition-colors">ล้าง</button>
+    </div>
+    <template x-if="sessionLog.length === 0">
+      <div class="px-5 py-8 text-center text-slate-600 text-sm">
+        <i class="fa-solid fa-clipboard text-2xl opacity-20 mb-2 block"></i>
+        ยังไม่มีรายการในเซสชันนี้
+      </div>
+    </template>
+    <div class="divide-y divide-white/5 max-h-56 overflow-y-auto">
+      <template x-for="log in sessionLog" :key="log.ts">
+        <div class="flex items-center justify-between px-5 py-3">
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full flex-shrink-0"
+                 :class="log.type === 'ok' ? 'bg-emerald-400' : log.type === 'exception' ? 'bg-red-400' : 'bg-amber-400'"></div>
+            <div>
+              <div class="font-mono text-white text-sm font-semibold" x-text="log.jobNo"></div>
+              <div class="text-slate-500 text-xs" x-text="log.msg"></div>
+            </div>
+          </div>
+          <div class="text-slate-600 text-[10px]" x-text="log.time"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <%# Toast %>
+  <div x-show="toast" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 translate-y-2"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       :class="toast?.type === 'error' ? 'bg-red-500/20 border-red-500/40 text-red-300' : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'"
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl border font-semibold shadow-xl backdrop-blur-lg text-sm">
+    <i class="fa-solid" :class="toast?.type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check'"></i>
+    <span x-text="toast?.msg"></span>
+  </div>
+
+</div>
+
+<script>
+const CSRF_TOKEN = '<%= csrfToken %>';
+
+const STATUS_TH = {
+  'NEW':'ใหม่','RECEIVED_WH_TH':'รับคลังไทยแล้ว','RECEIVED_WH_LA':'รับคลังลาวแล้ว',
+  'ON_TRUCK':'ขึ้นรถแล้ว','CROSSING_BORDER':'ข้ามแดน','CLOSED':'ปิดงาน',
+};
+
+function receiveApp() {
+  return {
+    query: '',
+    order: null,
+    loading: false,
+    receiving: false,
+    scanError: null,
+    condition: 'OK',
+    exceptionNote: '',
+    actualWeight: '',
+    note: '',
+    files: [],
+    previewUrls: [],
+    toast: null,
+    sessionLog: [],
+    session: { received: 0, exceptions: 0 },
+
+    conditions: [
+      { value: 'OK',      label: 'สมบูรณ์',   icon: '✅', activeClass: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' },
+      { value: 'DAMAGED', label: 'เสียหาย',   icon: '💥', activeClass: 'bg-red-500/20 border-red-500/40 text-red-300' },
+      { value: 'PARTIAL', label: 'ไม่ครบ',    icon: '⚠️', activeClass: 'bg-amber-500/20 border-amber-500/40 text-amber-300' },
+    ],
+
+    get canReceive() {
+      if (!this.order) return false;
+      if (this.order.status !== 'NEW') return false;
+      if (this.condition !== 'OK' && !this.exceptionNote.trim()) return false;
+      return true;
+    },
+
+    statusTH(s) { return STATUS_TH[s] || s || '–'; },
+
+    init() {
+      this.$nextTick(() => this.$refs.scanInput?.focus());
+    },
+
+    async scan() {
+      const q = this.query.trim();
+      if (!q) return;
+      this.loading = true;
+      this.scanError = null;
+      this.order = null;
+      this.condition = 'OK';
+      this.exceptionNote = '';
+      this.actualWeight = '';
+      this.note = '';
+      this.files = [];
+      this.previewUrls = [];
+      if (this.$refs.photoInput) this.$refs.photoInput.value = '';
+      try {
+        const res  = await fetch('/scanner/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ barcode: q }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (data.order.status !== 'NEW') {
+            this.scanError = `พัสดุนี้รับเข้าคลังไปแล้ว (${this.statusTH(data.order.status)})`;
+          } else {
+            this.order = data.order;
+          }
+        } else {
+          this.scanError = data.message || 'ไม่พบพัสดุ';
+        }
+      } catch {
+        this.scanError = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+      } finally {
+        this.loading = false;
+        this.$nextTick(() => this.order ? null : this.$refs.scanInput?.select());
+      }
+    },
+
+    async confirmReceive() {
+      if (!this.order || !this.canReceive || this.receiving) return;
+      this.receiving = true;
+      try {
+        const formData = new FormData();
+        formData.append('condition', this.condition);
+        formData.append('note', this.exceptionNote || this.note);
+        if (this.actualWeight) formData.append('weight_actual', this.actualWeight);
+        
+        // Append all selected photos
+        for (let i = 0; i < this.files.length; i++) {
+          formData.append('intake_photos', this.files[i]);
+        }
+
+        const res  = await fetch(`/scanner/receive/${this.order.id}`, {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': CSRF_TOKEN },
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          const isException = this.condition !== 'OK';
+          if (isException) this.session.exceptions++;
+          else this.session.received++;
+
+          this.sessionLog.unshift({
+            jobNo: data.jobNo,
+            msg:   data.message,
+            type:  isException ? 'exception' : 'ok',
+            ts:    Date.now(),
+            time:  new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+          });
+
+          this.showToast({ type: 'ok', msg: `✅ ${data.jobNo} — ${data.message}` });
+          setTimeout(() => {
+            this.order = null;
+            this.query = '';
+            this.$nextTick(() => this.$refs.scanInput?.focus());
+          }, 1500);
+        } else {
+          this.showToast({ type: 'error', msg: data.message });
+        }
+      } catch {
+        this.showToast({ type: 'error', msg: 'เกิดข้อผิดพลาดในการเชื่อมต่อ' });
+      } finally {
+        this.receiving = false;
+      }
+    },
+
+    skipOrder() {
+      this.order = null;
+      this.query = '';
+      this.scanError = null;
+      this.files = [];
+      this.previewUrls = [];
+      if (this.$refs.photoInput) this.$refs.photoInput.value = '';
+      this.$nextTick(() => this.$refs.scanInput?.focus());
+    },
+
+    handleFiles() {
+      const selected = Array.from(this.$refs.photoInput.files);
+      if (selected.length === 0) return;
+      
+      selected.forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        this.files.push(file);
+        this.previewUrls.push(URL.createObjectURL(file));
+      });
+      // reset input to allow re-selecting same files
+      this.$refs.photoInput.value = '';
+    },
+
+    removeFile(index) {
+      URL.revokeObjectURL(this.previewUrls[index]);
+      this.files.splice(index, 1);
+      this.previewUrls.splice(index, 1);
+    },
+
+    showToast(t) {
+      this.toast = t;
+      setTimeout(() => { this.toast = null; }, 3500);
+    },
+  };
+}
+</script>

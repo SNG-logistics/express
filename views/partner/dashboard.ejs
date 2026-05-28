@@ -1,0 +1,86 @@
+<%# Partner Dashboard %>
+<div class="max-w-6xl mx-auto">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-2xl font-black text-white flex items-center gap-3">
+        <span class="bg-amber-500 w-1.5 h-7 rounded-full"></span>
+        Partner Hub
+      </h1>
+      <p class="text-slate-500 text-sm mt-1 ml-5">ภาพรวมการตลาดสาขา 30 วันล่าสุด</p>
+    </div>
+    <a href="/partner/quotes/new"
+      class="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl shadow-lg shadow-amber-900/20 hover:shadow-amber-500/30 transition-all">
+      <i class="fa-solid fa-calculator"></i> คำนวณราคา
+    </a>
+  </div>
+
+  <%# Stats Grid %>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    <% const stats = [
+      { label:'ทั้งหมด',     val: totals.total,    cls:'text-white',       icon:'fa-file-invoice', bg:'bg-slate-800' },
+      { label:'Draft',       val: totals.drafts,   cls:'text-slate-400',   icon:'fa-pencil',       bg:'bg-slate-800' },
+      { label:'ส่งให้ลูกค้า', val: totals.sent,     cls:'text-blue-400',   icon:'fa-paper-plane',  bg:'bg-blue-500/5 border-blue-500/20' },
+      { label:'ยืนยันแล้ว',  val: totals.accepted, cls:'text-emerald-400', icon:'fa-circle-check', bg:'bg-emerald-500/5 border-emerald-500/20' },
+      { label:'สั่งซื้อแล้ว', val: totals.ordered,  cls:'text-amber-400',  icon:'fa-shopping-cart',bg:'bg-amber-500/5 border-amber-500/20' },
+    ]; %>
+    <% stats.forEach(st => { %>
+    <div class="glass-panel-dark rounded-2xl p-4 border border-white/5 <%= st.bg %>">
+      <div class="flex items-center gap-2 mb-2">
+        <i class="fa-solid <%= st.icon %> text-slate-600"></i>
+        <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider"><%= st.label %></span>
+      </div>
+      <div class="text-3xl font-black <%= st.cls %>"><%= st.val || 0 %></div>
+    </div>
+    <% }) %>
+  </div>
+
+  <%# Revenue Block %>
+  <div class="glass-panel-dark rounded-2xl p-6 border border-amber-500/20 bg-amber-500/5 mb-8">
+    <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">ยอด Ordered (30 วัน)</div>
+    <div class="text-5xl font-black text-white font-mono">
+      <%= Number(totals.revenue_lak || 0).toLocaleString('th') %>
+      <span class="text-amber-400 text-2xl"> ₭</span>
+    </div>
+  </div>
+
+  <%# Recent Quotes %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/5">
+    <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+      <h3 class="font-bold text-white text-sm">ใบเสนอราคาล่าสุด</h3>
+      <a href="/partner/quotes" class="text-amber-400 hover:text-amber-300 text-xs font-semibold">ดูทั้งหมด →</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% if (recent.length === 0) { %>
+          <tr><td colspan="5" class="py-10 text-center text-slate-600">ยังไม่มีข้อมูล</td></tr>
+          <% } %>
+          <% recent.forEach(q => { %>
+          <%
+            const sMap = { draft:'text-slate-400', sent:'text-blue-400', accepted:'text-emerald-400', ordered:'text-amber-400', cancelled:'text-red-400' };
+            const sLbl = { draft:'Draft', sent:'Sent', accepted:'ยืนยัน', ordered:'สั่งแล้ว', cancelled:'ยกเลิก' };
+          %>
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3 font-mono text-xs text-slate-500"><%= q.quote_no %></td>
+            <td class="px-5 py-3">
+              <div class="font-semibold text-white max-w-[200px] truncate"><%= q.product_name %></div>
+              <div class="text-[11px] text-slate-500"><%= q.branch_name || '—' %></div>
+            </td>
+            <td class="px-5 py-3 text-right font-mono font-bold text-amber-400">
+              <%= Number(q.total_lak).toLocaleString('th') %> ₭
+            </td>
+            <td class="px-5 py-3 text-center text-xs font-bold <%= sMap[q.status] || 'text-slate-400' %>">
+              <%= sLbl[q.status] || q.status %>
+            </td>
+            <td class="px-5 py-3">
+              <a href="/partner/quotes/<%= q.id %>" class="text-slate-500 hover:text-amber-400 transition-colors">
+                <i class="fa-solid fa-chevron-right"></i>
+              </a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

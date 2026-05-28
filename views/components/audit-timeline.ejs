@@ -1,0 +1,115 @@
+<%#
+  views/components/audit-timeline.ejs
+
+  Props:
+    logs  — array of order_status_logs rows, ordered by action_at DESC
+            Each row: { from_status, to_status, action_at, actor_name, actor_role, note }
+    
+  Usage:
+    <%- include('../components/audit-timeline', { logs: statusLogs }) %>
+%>
+<%
+  const STATUS_DOT_COLOR = {
+    'NEW':               '#60a5fa',
+    'RECEIVED_WH_TH':   '#fb923c',
+    'RECEIVED_WH_LA':   '#fb923c',
+    'ON_TRUCK':          '#c084fc',
+    'CROSSING_BORDER':  '#c084fc',
+    'CUSTOMS_HOLD':     '#fbbf24',
+    'CUSTOMS_CLEARED':  '#22d3ee',
+    'CUSTOMS_REJECTED': '#f87171',
+    'ARRIVED_BORDER_WH':'#22d3ee',
+    'AT_DEST_WH':       '#22d3ee',
+    'BRANCH_TRANSFER':  '#22d3ee',
+    'BRANCH_RECEIVED':  '#22d3ee',
+    'RIDER_ASSIGNED':   '#a78bfa',
+    'OUT_FOR_DELIVERY': '#f87171',
+    'DELIVERED':        '#34d399',
+    'DELIVERY_FAILED':  '#f87171',
+    'COD_COLLECTED':    '#34d399',
+    'COD_REMITTED':     '#34d399',
+    'RETURN_TO_SENDER': '#f87171',
+    'CLOSED':           '#94a3b8',
+  };
+
+  const ROLE_LABELS = {
+    'admin':            'ผู้ดูแลระบบ',
+    'manager':          'ผู้จัดการ',
+    'dispatcher':       'ยานพาหนะ',
+    'warehouse_th':     'คลังไทย',
+    'warehouse_la':     'คลังลาว',
+    'finance':          'การเงิน',
+    'customs':          'ศุลกากร',
+    'customer_service': 'ลูกค้าสัมพันธ์',
+    'driver_support':   'พนักงานขับรถ',
+    'branch_operator':  'สาขา',
+    'staff':            'พนักงาน',
+  };
+
+  function formatDateTime(dt) {
+    if (!dt) return '-';
+    return new Date(dt).toLocaleString('th-TH', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+%>
+
+<div class="audit-timeline" id="audit-timeline">
+  <% if (!logs || logs.length === 0) { %>
+    <div class="text-center py-8">
+      <i class="fa-solid fa-clock-rotate-left text-3xl text-white/20 mb-3 block"></i>
+      <p class="text-white/40 text-sm">ยังไม่มีประวัติการเปลี่ยนสถานะ</p>
+    </div>
+  <% } else { %>
+    <% logs.forEach(function(log, i) { %>
+      <%
+        const dotColor  = STATUS_DOT_COLOR[log.to_status] || '#06b6d4';
+        const roleLabel = ROLE_LABELS[log.actor_role] || log.actor_role || 'ระบบ';
+        const actorName = log.actor_name || 'ระบบ';
+        const isLatest  = i === 0;
+      %>
+      <div class="timeline-item <%= isLatest ? 'latest' : '' %>">
+        <!-- Timeline dot with status color -->
+        <div class="timeline-dot" style="--dot-color: <%= dotColor %>"></div>
+
+        <!-- Content card -->
+        <div class="glass-panel-dark p-4 ml-2">
+          <div class="flex items-start justify-between gap-3 flex-wrap">
+            <!-- Status pill -->
+            <%- include('status-pill', { status: log.to_status }) %>
+
+            <!-- Timestamp -->
+            <span class="text-xs text-white/35 whitespace-nowrap">
+              <i class="fa-regular fa-clock mr-1"></i>
+              <%= formatDateTime(log.action_at) %>
+            </span>
+          </div>
+
+          <!-- Actor -->
+          <p class="text-sm text-white/60 mt-2">
+            <i class="fa-solid fa-user-circle mr-1 text-white/30"></i>
+            <span class="text-white/80 font-medium"><%= actorName %></span>
+            <span class="text-white/40 text-xs ml-1">(<%= roleLabel %>)</span>
+          </p>
+
+          <!-- From → To transition label -->
+          <% if (log.from_status) { %>
+            <p class="text-xs text-white/30 mt-1">
+              <i class="fa-solid fa-arrow-right mr-1"></i>
+              เปลี่ยนจาก
+              <span class="font-mono text-white/50"><%= log.from_status %></span>
+            </p>
+          <% } %>
+
+          <!-- Optional note -->
+          <% if (log.note) { %>
+            <p class="text-xs text-white/45 mt-2 italic border-l-2 border-white/10 pl-2">
+              "<%= log.note %>"
+            </p>
+          <% } %>
+        </div>
+      </div>
+    <% }); %>
+  <% } %>
+</div>

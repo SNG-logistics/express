@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f172a">
+  <title>SNG PDA Scanner</title>
+  <script src="https://kit.fontawesome.com/fe5daaff3b.js" crossorigin="anonymous"></script>
+
+  <style>
+    /* ── Reset & Variables ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --yellow: #fbbf24;
+      --yellow-dark: #d97706;
+      --green:  #22c55e;
+      --red:    #ef4444;
+      --blue:   #3b82f6;
+      --bg:     #0f172a;
+      --panel:  #1e293b;
+      --border: #334155;
+      --text:   #f1f5f9;
+      --muted:  #94a3b8;
+      --radius: 14px;
+      --tap: 56px; /* min tap target */
+    }
+
+    html, body {
+      height: 100%; height: 100dvh;
+      font-family: 'Segoe UI', 'Noto Sans Thai', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+
+    /* ── Layout ── */
+    #app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── Top Bar ── */
+    #topbar {
+      background: var(--yellow);
+      display: flex; align-items: center;
+      padding: 10px 14px;
+      gap: 10px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+    #topbar .logo {
+      width: 36px; height: 36px;
+      border-radius: 50%; overflow: hidden;
+      background: #fff; border: 2px solid #fff;
+      flex-shrink: 0;
+    }
+    #topbar .logo img { width: 100%; height: 100%; object-fit: cover; }
+    #topbar .title {
+      flex: 1; min-width: 0;
+    }
+    #topbar .title h1 {
+      font-size: 15px; font-weight: 900;
+      color: #111; line-height: 1;
+    }
+    #topbar .title p {
+      font-size: 10px; color: #78350f;
+      font-weight: 600; margin-top: 1px;
+    }
+    #topbar .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%; flex-shrink: 0;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(34,197,94,.25);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Screen switcher (tab bar at top) ── */
+    #screens {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* ── Bottom Tab Bar ── */
+    #tabbar {
+      display: flex;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 8px 4px 10px;
+      gap: 3px;
+      cursor: pointer;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab i { font-size: 18px; color: var(--muted); transition: color .2s; }
+    .tab span { font-size: 9px; color: var(--muted); font-weight: 700; transition: color .2s; letter-spacing: .3px; text-transform: uppercase; }
+    .tab.active i, .tab.active span { color: var(--yellow); }
+    .tab.active::after {
+      content: '';
+      position: absolute; top: 0; left: 20%; right: 20%;
+      height: 2.5px; background: var(--yellow);
+      border-radius: 0 0 4px 4px;
+    }
+    .tab:active { background: rgba(251,191,36,.08); }
+
+    /* ── ══════════════════ SCREEN 1: QUICK SCAN ══════════════════ ── */
+    #scr-scan {
+      padding: 14px;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    /* Status Selector */
+    .status-sel-wrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .status-sel-label {
+      padding: 8px 14px 4px;
+      font-size: 10px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .5px;
+    }
+    #targetStatus {
+      display: block; width: 100%;
+      background: transparent;
+      border: none;
+      padding: 8px 14px 12px;
+      color: var(--text); font-size: 14px; font-weight: 700;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    #targetStatus option, #targetStatus optgroup { background: #1e293b; color: #f1f5f9; }
+    #tripWrap {
+      background: rgba(59,130,246,.1);
+      border: 1px solid rgba(59,130,246,.3);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    #tripWrap label { display: block; padding: 8px 14px 4px; font-size: 10px; font-weight: 700; color: var(--blue); text-transform: uppercase; }
+    #tripId { display: block; width: 100%; background: transparent; border: none; padding: 8px 14px 12px; color: var(--text); font-size: 13px; font-weight: 700; outline: none; -webkit-appearance: none; }
+    #tripId option { background: #1e293b; }
+
+    /* Scan Zone */
+    .scan-zone {
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      min-height: 120px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      transition: border-color .2s, background .2s;
+    }
+    .scan-zone.focused {
+      border-color: var(--yellow);
+      background: rgba(251,191,36,.06);
+    }
+    .scan-zone.focused .sz-icon { color: var(--yellow); }
+    .sz-icon { font-size: 36px; color: var(--muted); transition: color .2s; }
+    .sz-text { font-size: 13px; font-weight: 700; color: var(--text); }
+    .sz-sub  { font-size: 10px; color: var(--muted); }
+    .sz-corner {
+      position: absolute; width: 18px; height: 18px;
+      border-color: var(--yellow); border-style: solid; border-width: 0;
+    }
+    .sz-corner.tl { top: 8px; left: 8px; border-top-width: 2.5px; border-left-width: 2.5px; }
+    .sz-corner.tr { top: 8px; right: 8px; border-top-width: 2.5px; border-right-width: 2.5px; }
+    .sz-corner.bl { bottom: 8px; left: 8px; border-bottom-width: 2.5px; border-left-width: 2.5px; }
+    .sz-corner.br { bottom: 8px; right: 8px; border-bottom-width: 2.5px; border-right-width: 2.5px; }
+    #barcodeInput {
+      position: absolute; opacity: 0; width: 0; height: 0;
+      top: 0; left: 0; pointer-events: none;
+    }
+
+    /* Result Card */
+    #resultCard {
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      text-align: center;
+      transition: all .25s;
+      min-height: 90px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    }
+    #resultCard.ok  { border-color: var(--green);  background: rgba(34,197,94,.08); }
+    #resultCard.err { border-color: var(--red);    background: rgba(239,68,68,.08); }
+    #resultCard.loading { border-color: var(--blue); background: rgba(59,130,246,.08); }
+    #resIcon { font-size: 28px; }
+    #resTitle { font-size: 18px; font-weight: 900; color: var(--text); }
+    #resDesc  { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    /* Scan Log */
+    .log-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .log-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    #scanCount { font-size: 10px; font-weight: 800; background: var(--yellow); color: #111; padding: 2px 7px; border-radius: 99px; }
+    #logList {
+      display: flex; flex-direction: column; gap: 4px;
+      max-height: 180px; overflow-y: auto;
+    }
+    .log-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px;
+    }
+    .log-row.ok  { border-color: rgba(34,197,94,.3); }
+    .log-row.err { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
+    .log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .log-dot.ok  { background: var(--green); }
+    .log-dot.err { background: var(--red); }
+    .log-job  { font-family: monospace; font-size: 12px; font-weight: 800; color: var(--text); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-status { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .log-time   { font-size: 9px; color: var(--border); flex-shrink: 0; }
+
+    /* ── ══════════════════ SCREEN 2: LOOKUP ══════════════════ ── */
+    #scr-lookup {
+      padding: 14px;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    .search-bar {
+      display: flex; gap: 8px;
+    }
+    #lookupInput {
+      flex: 1; background: var(--panel); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 0 14px;
+      color: var(--text); font-size: 15px; font-weight: 700;
+      outline: none; height: var(--tap);
+    }
+    #lookupInput:focus { border-color: var(--yellow); }
+    #lookupInput::placeholder { color: var(--muted); font-weight: 400; }
+    .btn-search {
+      height: var(--tap); min-width: var(--tap);
+      background: var(--yellow); color: #111;
+      border: none; border-radius: var(--radius);
+      font-size: 18px; font-weight: 900; cursor: pointer;
+      padding: 0 16px;
+    }
+    #orderCard {
+      background: var(--panel); border: 1.5px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .oc-header {
+      background: rgba(251,191,36,.12); border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .oc-jobno { font-family: monospace; font-size: 15px; font-weight: 900; color: var(--yellow); }
+    .oc-status-badge {
+      font-size: 9px; font-weight: 800; padding: 3px 8px;
+      border-radius: 99px; text-transform: uppercase;
+    }
+    .oc-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .oc-row { display: flex; align-items: flex-start; gap: 10px; }
+    .oc-icon { width: 22px; text-align: center; color: var(--muted); font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+    .oc-lbl { font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+    .oc-val { font-size: 13px; font-weight: 800; color: var(--text); line-height: 1.2; }
+    .oc-divider { height: 1px; background: var(--border); margin: 2px 0; }
+    .oc-actions { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .btn-action {
+      flex: 1; min-height: 44px; border: none; border-radius: 10px;
+      font-size: 12px; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: opacity .15s; min-width: 80px;
+    }
+    .btn-action:active { opacity: .75; }
+    .btn-ok  { background: var(--green);  color: #fff; }
+    .btn-err { background: var(--red);    color: #fff; }
+    .btn-info { background: var(--blue);  color: #fff; }
+    #orderPlaceholder {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 180px; gap: 8px; color: var(--muted);
+    }
+    #orderPlaceholder i { font-size: 40px; opacity: .3; }
+    #orderPlaceholder p { font-size: 13px; font-weight: 600; }
+
+    /* ── ══════════════════ SCREEN 3: SESSION ══════════════════ ── */
+    #scr-session {
+      padding: 14px;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px; text-align: center;
+    }
+    .kpi-icon { font-size: 22px; margin-bottom: 4px; }
+    .kpi-val  { font-size: 28px; font-weight: 900; color: var(--text); line-height: 1; }
+    .kpi-lbl  { font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin-top: 3px; }
+    .session-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+    .session-row {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sr-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .sr-dot.err { background: var(--red); }
+    .sr-job { font-family: monospace; font-size: 12px; font-weight: 800; color: var(--text); flex: 1; }
+    .sr-meta { text-align: right; }
+    .sr-status { font-size: 9px; color: var(--muted); font-weight: 700; }
+    .sr-time   { font-size: 9px; color: var(--border); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: var(--text);
+      padding: 10px 20px; border-radius: 99px;
+      font-size: 12px; font-weight: 700;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s; z-index: 999; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+
+<%
+  const role = user?.role || '';
+  const isAdmin = ['admin','manager'].includes(role);
+  const canWH_TH = isAdmin || role === 'warehouse_th';
+  const canWH_LA = isAdmin || role === 'warehouse_la';
+  const canTruck  = isAdmin || ['dispatcher','driver_support'].includes(role);
+  const canDest   = isAdmin || ['warehouse_th','warehouse_la','branch_operator'].includes(role);
+%>
+<body>
+<div id="app">
+
+  <!-- ── TOP BAR ── -->
+  <div id="topbar">
+    <div class="logo"><img src="/images/snglogo.png" alt="SNG"></div>
+    <div class="title">
+      <h1>SNG PDA Scanner</h1>
+      <p>Gprinter IT68 Mode · <%= user?.username %></p>
+    </div>
+    <div class="status-dot" id="netDot" title="Online"></div>
+  </div>
+
+  <!-- ── SCREENS ── -->
+  <div id="screens">
+
+    <!-- ────── SCREEN 1: AUTO SCAN ────── -->
+    <div class="screen active" id="scr-scan">
+
+      <!-- Status target -->
+      <div class="status-sel-wrap">
+        <div class="status-sel-label">สถานะที่ต้องการอัปเดต</div>
+        <select id="targetStatus" onchange="onStatusChange()">
+          <option value="">── กรุณาเลือก ──</option>
+          <% if (canWH_TH) { %>
+          <optgroup label="คลังไทย">
+            <option value="RECEIVED_WH_TH">📦 รับเข้าคลังไทย</option>
+          </optgroup>
+          <% } %>
+          <% if (canWH_LA) { %>
+          <optgroup label="คลังลาว">
+            <option value="RECEIVED_WH_LA">📦 รับเข้าคลังลาว</option>
+            <option value="AT_DEST_WH">🏭 ถึงคลังปลายทาง</option>
+          </optgroup>
+          <% } %>
+          <% if (canTruck) { %>
+          <optgroup label="ขนส่ง">
+            <option value="ON_TRUCK">🚛 สแกนขึ้นรถ</option>
+            <option value="OUT_FOR_DELIVERY">🏃 ออกจ่าย</option>
+          </optgroup>
+          <% } %>
+          <% if (canDest) { %>
+          <optgroup label="ปลายทาง">
+            <option value="DELIVERED">✅ ส่งสำเร็จ</option>
+          </optgroup>
+          <% } %>
+        </select>
+      </div>
+
+      <!-- Trip selector (ON_TRUCK only) -->
+      <div id="tripWrap" style="display:none;">
+        <label><i class="fa-solid fa-truck"></i> เลือกรอบรถ</label>
+        <select id="tripId">
+          <option value="">── เลือกรอบรถ ──</option>
+          <% if (typeof trips !== 'undefined') { trips.forEach(t => { %>
+          <option value="<%= t.id %>"><%= t.trip_no %> · <%= t.driver_name || 'ไม่ระบุ' %></option>
+          <% }) } %>
+        </select>
+      </div>
+
+      <!-- Scan Zone -->
+      <div class="scan-zone" id="scanZone" onclick="focusScan()">
+        <div class="sz-corner tl"></div>
+        <div class="sz-corner tr"></div>
+        <div class="sz-corner bl"></div>
+        <div class="sz-corner br"></div>
+        <i class="fa-solid fa-barcode sz-icon" id="scanIcon"></i>
+        <div class="sz-text" id="scanText">แตะเพื่อโฟกัส แล้วยิงบาร์โค้ด</div>
+        <div class="sz-sub" id="scanSub">รองรับ Gprinter IT68 / ปืนเลเซอร์ทุกรุ่น</div>
+        <input type="text" id="barcodeInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
+
+      <!-- Result Card -->
+      <div id="resultCard">
+        <div id="resIcon"><i class="fa-solid fa-barcode" style="color:var(--muted); font-size:24px;"></i></div>
+        <div id="resTitle" style="color:var(--muted);">รอการสแกน...</div>
+        <div id="resDesc">เลือกสถานะ แล้วแตะช่องสแกน</div>
+      </div>
+
+      <!-- Log -->
+      <div class="log-header">
+        <div class="log-title">ประวัติวันนี้</div>
+        <span id="scanCount">0</span>
+      </div>
+      <div id="logList">
+        <div style="text-align:center; padding:20px; color:var(--muted); font-size:12px;">ยังไม่มีการสแกน</div>
+      </div>
+
+    </div><!-- /#scr-scan -->
+
+    <!-- ────── SCREEN 2: LOOKUP ────── -->
+    <div class="screen" id="scr-lookup">
+
+      <div class="search-bar">
+        <input type="text" id="lookupInput" placeholder="พิมพ์ / สแกน Job No..." autocomplete="off">
+        <button class="btn-search" onclick="doLookup()"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
+
+      <!-- Order Card -->
+      <div id="orderCard" style="display:none;">
+        <div class="oc-header">
+          <span class="oc-jobno" id="oc-jobno"></span>
+          <span class="oc-status-badge" id="oc-badge" style="background:rgba(251,191,36,.2); color:#fbbf24;"></span>
+        </div>
+        <div class="oc-body">
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-user-pen"></i></div>
+            <div>
+              <div class="oc-lbl">ผู้ฝาก</div>
+              <div class="oc-val" id="oc-sender"></div>
+            </div>
+          </div>
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-phone"></i></div>
+            <div>
+              <div class="oc-lbl">เบอร์ผู้ฝาก</div>
+              <div class="oc-val" id="oc-sender-ph"></div>
+            </div>
+          </div>
+          <div class="oc-divider"></div>
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-user-check"></i></div>
+            <div>
+              <div class="oc-lbl">ผู้รับ</div>
+              <div class="oc-val" id="oc-receiver"></div>
+            </div>
+          </div>
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-phone"></i></div>
+            <div>
+              <div class="oc-lbl">เบอร์ผู้รับ</div>
+              <div class="oc-val" id="oc-receiver-ph"></div>
+            </div>
+          </div>
+          <div class="oc-divider"></div>
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-location-arrow"></i></div>
+            <div>
+              <div class="oc-lbl">เส้นทาง</div>
+              <div class="oc-val" id="oc-route"></div>
+            </div>
+          </div>
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-weight-hanging"></i></div>
+            <div>
+              <div class="oc-lbl">น้ำหนัก / จำนวน</div>
+              <div class="oc-val" id="oc-weight"></div>
+            </div>
+          </div>
+          <div class="oc-row">
+            <div class="oc-icon"><i class="fa-solid fa-money-bill"></i></div>
+            <div>
+              <div class="oc-lbl">COD / ค่าส่ง</div>
+              <div class="oc-val" id="oc-cod"></div>
+            </div>
+          </div>
+        </div>
+        <div class="oc-actions" id="oc-actions"></div>
+      </div>
+
+      <!-- Placeholder -->
+      <div id="orderPlaceholder">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <p>สแกนหรือพิมพ์ Job No. เพื่อค้นหา</p>
+      </div>
+
+    </div><!-- /#scr-lookup -->
+
+    <!-- ────── SCREEN 3: SESSION SUMMARY ────── -->
+    <div class="screen" id="scr-session">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-val" id="kpi-ok">—</div>
+          <div class="kpi-lbl">สำเร็จวันนี้</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">❌</div>
+          <div class="kpi-val" id="kpi-err">—</div>
+          <div class="kpi-lbl">ผิดพลาดวันนี้</div>
+        </div>
+      </div>
+      <div class="log-header">
+        <div class="log-title">กิจกรรมล่าสุด</div>
+        <button onclick="loadSession()" style="background:none; border:none; color:var(--yellow); font-size:11px; font-weight:700; cursor:pointer;">รีเฟรช ↺</button>
+      </div>
+      <div class="session-list" id="sessionList">
+        <div style="text-align:center; padding:30px; color:var(--muted); font-size:12px;">กำลังโหลด...</div>
+      </div>
+    </div>
+
+  </div><!-- /#screens -->
+
+  <!-- ── BOTTOM TAB BAR ── -->
+  <div id="tabbar">
+    <div class="tab active" id="tab-scan" onclick="switchTab('scan')">
+      <i class="fa-solid fa-bolt-lightning"></i>
+      <span>สแกน</span>
+    </div>
+    <div class="tab" id="tab-lookup" onclick="switchTab('lookup')">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>ค้นหา</span>
+    </div>
+    <div class="tab" id="tab-session" onclick="switchTab('session')">
+      <i class="fa-solid fa-chart-simple"></i>
+      <span>สรุป</span>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- Toast -->
+<div id="toast"></div>
+<!-- Audio -->
+<audio id="sndOk"  src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+<audio id="sndErr" src="https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3" preload="auto"></audio>
+
+<script>
+// ─── State ─────────────────────────────────────────────────────
+let scanLog = [];
+let scanOk = 0, scanErr = 0;
+let isProcessing = false;
+const barcodeInput = document.getElementById('barcodeInput');
+const scanZone     = document.getElementById('scanZone');
+const resIcon      = document.getElementById('resIcon');
+const resTitle     = document.getElementById('resTitle');
+const resDesc      = document.getElementById('resDesc');
+const resultCard   = document.getElementById('resultCard');
+
+// ─── Tab Switch ─────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('scr-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'session') loadSession();
+  if (name === 'scan') setTimeout(() => focusScan(), 200);
+  if (name === 'lookup') document.getElementById('lookupInput').focus();
+}
+
+// ─── Status Selector ────────────────────────────────────────────
+function onStatusChange() {
+  const v = document.getElementById('targetStatus').value;
+  document.getElementById('tripWrap').style.display = v === 'ON_TRUCK' ? '' : 'none';
+  if (v) focusScan();
+}
+
+// ─── Scan Zone Focus ────────────────────────────────────────────
+function focusScan() {
+  barcodeInput.focus();
+}
+
+barcodeInput.addEventListener('focus', () => {
+  scanZone.classList.add('focused');
+  document.getElementById('scanIcon').style.color = 'var(--yellow)';
+  document.getElementById('scanText').textContent  = '🟢 พร้อมรับสัญญาณ — ยิงบาร์โค้ดได้เลย';
+  document.getElementById('scanSub').textContent   = 'กดปุ่มสแกนบน IT68';
+});
+barcodeInput.addEventListener('blur', () => {
+  scanZone.classList.remove('focused');
+  document.getElementById('scanIcon').style.color = '';
+  document.getElementById('scanText').textContent = 'แตะเพื่อโฟกัส แล้วยิงบาร์โค้ด';
+  document.getElementById('scanSub').textContent  = 'รองรับ Gprinter IT68 / ปืนเลเซอร์ทุกรุ่น';
+});
+
+// ─── Barcode Input Handler ───────────────────────────────────────
+// IT68 sends barcode text + Enter key
+barcodeInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    this.value = '';
+    if (val) processAutoScan(val);
+  }
+});
+
+// Also catch on input (some scanners send fast without keydown)
+let inputBuffer = '';
+let inputTimer  = null;
+barcodeInput.addEventListener('input', function() {
+  clearTimeout(inputTimer);
+  inputBuffer = this.value;
+  // If contains Enter-like pattern or 3s no new input
+  inputTimer = setTimeout(() => {
+    const val = inputBuffer.trim();
+    if (val && val.length >= 5) {
+      this.value = '';
+      inputBuffer = '';
+      processAutoScan(val);
+    }
+  }, 200);
+});
+
+// ─── Auto Scan ──────────────────────────────────────────────────
+async function processAutoScan(barcode) {
+  if (isProcessing) return;
+  const targetStatus = document.getElementById('targetStatus').value;
+  const tripId       = document.getElementById('tripId').value;
+
+  if (!targetStatus) {
+    flashResult('err', '⚠️', 'กรุณาเลือกสถานะก่อน', barcode);
+    playErr(); return;
+  }
+  if (targetStatus === 'ON_TRUCK' && !tripId) {
+    flashResult('err', '🚛', 'กรุณาเลือกรอบรถ', barcode);
+    playErr(); return;
+  }
+
+  isProcessing = true;
+  flashResult('loading', '<i class="fa-solid fa-spinner fa-spin" style="color:var(--blue)"></i>', 'กำลังประมวลผล...', barcode);
+
+  try {
+    const res  = await fetch('/scanner/auto-update', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ barcode, target_status: targetStatus, trip_id: tripId })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      flashResult('ok', '✅', data.message, data.jobNo);
+      addLog(data.jobNo, data.newStatus, true);
+      playOk();
+      scanOk++;
+    } else {
+      flashResult('err', '❌', data.message, barcode);
+      addLog(barcode, targetStatus, false);
+      playErr();
+      scanErr++;
+    }
+  } catch (err) {
+    flashResult('err', '📡', 'ไม่สามารถเชื่อมต่อได้', barcode);
+    addLog(barcode, '?', false);
+    playErr();
+    scanErr++;
+  } finally {
+    setTimeout(() => {
+      isProcessing = false;
+      focusScan();
+    }, 600);
+  }
+}
+
+function flashResult(type, icon, title, desc) {
+  resultCard.className = 'ok err loading'.split(' ').reduce((c,t)=>c.replace(t,''), resultCard.className).trim();
+  resultCard.classList.add(type);
+  resIcon.innerHTML  = icon;
+  resTitle.textContent = title;
+  resDesc.textContent  = desc;
+}
+
+// ─── Log ────────────────────────────────────────────────────────
+let logCount = 0;
+function addLog(jobNo, status, ok) {
+  logCount++;
+  document.getElementById('scanCount').textContent = logCount;
+  const list = document.getElementById('logList');
+  if (logCount === 1) list.innerHTML = '';
+  const now = new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const row = document.createElement('div');
+  row.className = 'log-row ' + (ok ? 'ok' : 'err');
+  row.innerHTML = `
+    <div class="log-dot ${ok?'ok':'err'}"></div>
+    <div class="log-job">${jobNo}</div>
+    <div class="log-status">${status}</div>
+    <div class="log-time">${now}</div>
+  `;
+  list.insertBefore(row, list.firstChild);
+}
+
+// ─── Lookup ─────────────────────────────────────────────────────
+document.getElementById('lookupInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); doLookup(); }
+});
+
+const STATUS_TH = {
+  'NEW':'ใหม่','RECEIVED_WH_TH':'รับคลังไทย','RECEIVED_WH_LA':'รับคลังลาว',
+  'ON_TRUCK':'ขึ้นรถ','CROSSING_BORDER':'ข้ามแดน','CUSTOMS_HOLD':'รอศุลกากร',
+  'CUSTOMS_CLEARED':'ผ่านพาสี','ARRIVED_BORDER_WH':'ถึงด่าน','AT_DEST_WH':'คลังปลาย',
+  'OUT_FOR_DELIVERY':'กำลังส่ง','DELIVERED':'ส่งสำเร็จ','DELIVERY_FAILED':'ส่งไม่สำเร็จ','CLOSED':'ปิดงาน',
+};
+const STATUS_COLOR = {
+  'NEW':'#94a3b8','RECEIVED_WH_TH':'#3b82f6','RECEIVED_WH_LA':'#6366f1','ON_TRUCK':'#f59e0b',
+  'DELIVERED':'#22c55e','DELIVERY_FAILED':'#ef4444','CLOSED':'#475569',
+};
+
+async function doLookup() {
+  const q = document.getElementById('lookupInput').value.trim();
+  if (!q) return;
+  showToast('กำลังค้นหา...');
+  try {
+    const res  = await fetch('/scanner/scan', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ barcode: q })
+    });
+    const data = await res.json();
+    if (data.success && data.order) {
+      renderOrderCard(data.order);
+      playOk();
+    } else {
+      showToast('❌ ไม่พบพัสดุ: ' + q);
+      document.getElementById('orderCard').style.display = 'none';
+      document.getElementById('orderPlaceholder').style.display = '';
+      playErr();
+    }
+  } catch(e) {
+    showToast('📡 เชื่อมต่อไม่ได้');
+    playErr();
+  }
+}
+
+function renderOrderCard(o) {
+  document.getElementById('orderPlaceholder').style.display = 'none';
+  const card = document.getElementById('orderCard');
+  card.style.display = '';
+  document.getElementById('oc-jobno').textContent    = o.job_no;
+  const st = o.status || '';
+  const badge = document.getElementById('oc-badge');
+  badge.textContent = STATUS_TH[st] || st;
+  badge.style.background = (STATUS_COLOR[st]||'#94a3b8') + '33';
+  badge.style.color       = STATUS_COLOR[st] || '#94a3b8';
+  document.getElementById('oc-sender').textContent     = o.sender_name || '—';
+  document.getElementById('oc-sender-ph').textContent  = o.sender_phone || '—';
+  document.getElementById('oc-receiver').textContent   = o.receiver_name || '—';
+  document.getElementById('oc-receiver-ph').textContent= o.receiver_phone || '—';
+  document.getElementById('oc-route').textContent      = (o.origin_branch||'?') + ' → ' + (o.destination_branch||'?');
+  document.getElementById('oc-weight').textContent     = (o.actual_weight||o.declared_weight||'?') + ' kg · ' + (o.item_count||1) + ' ชิ้น';
+  document.getElementById('oc-cod').textContent        = 'COD ₭' + Number(o.cod_amount||0).toLocaleString() + ' · ค่าส่ง ₭' + Number((o.price_amount||0)*700).toLocaleString();
+  // Quick action buttons
+  const acts = document.getElementById('oc-actions');
+  acts.innerHTML = `
+    <button class="btn-action btn-info" onclick="window.open('/orders/${o.id}','_blank')">
+      <i class="fa-solid fa-eye"></i> ดูรายละเอียด
+    </button>
+    <button class="btn-action btn-ok" onclick="quickUpdate(${o.id}, 'DELIVERED')">
+      <i class="fa-solid fa-check"></i> ส่งสำเร็จ
+    </button>
+  `;
+}
+
+async function quickUpdate(id, status) {
+  showToast('กำลังอัปเดต...');
+  try {
+    const res  = await fetch('/scanner/update/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    showToast(data.success ? '✅ อัปเดตสำเร็จ' : '❌ ' + data.message);
+    if (data.success) { playOk(); doLookup(); }
+    else playErr();
+  } catch(e) { showToast('📡 เชื่อมต่อไม่ได้'); playErr(); }
+}
+
+// ─── Session Summary ─────────────────────────────────────────────
+async function loadSession() {
+  try {
+    const res  = await fetch('/scanner/session');
+    const data = await res.json();
+    document.getElementById('kpi-ok').textContent  = data.todayScanned || 0;
+    document.getElementById('kpi-err').textContent = data.todayExceptions || 0;
+    const list = document.getElementById('sessionList');
+    if (!data.recent || data.recent.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">ยังไม่มีกิจกรรม</div>';
+      return;
+    }
+    list.innerHTML = data.recent.map(r => `
+      <div class="session-row">
+        <div class="sr-dot"></div>
+        <div class="sr-job">${r.job_no}</div>
+        <div class="sr-meta">
+          <div class="sr-status">${STATUS_TH[r.status]||r.status}</div>
+          <div class="sr-time">${new Date(r.updated_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('sessionList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">โหลดไม่ได้</div>';
+  }
+}
+
+// ─── Audio ───────────────────────────────────────────────────────
+function playOk()  { try { document.getElementById('sndOk').currentTime=0; document.getElementById('sndOk').play(); } catch(e){} }
+function playErr() { try { document.getElementById('sndErr').currentTime=0; document.getElementById('sndErr').play(); } catch(e){} }
+
+// ─── Toast ───────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─── Network indicator ───────────────────────────────────────────
+window.addEventListener('online',  () => { document.getElementById('netDot').style.background = 'var(--green)'; });
+window.addEventListener('offline', () => { document.getElementById('netDot').style.background = 'var(--red)'; });
+
+// ─── Init ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Keep focus on barcode input when on scan screen
+  document.addEventListener('click', (e) => {
+    if (document.getElementById('scr-scan').classList.contains('active') &&
+        !e.target.closest('select') && !e.target.closest('.tab')) {
+      setTimeout(() => focusScan(), 50);
+    }
+  });
+  focusScan();
+});
+</script>
+
+</body>
+</html>

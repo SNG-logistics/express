@@ -1,0 +1,272 @@
+<%#
+  views/orders/list.ejs — Redesigned v2
+  Clean, role-aware order list with:
+  - Quick-filter status tabs
+  - Inline status-pill component
+  - Proper pagination
+  - Empty state
+  - can.* role gating on create button
+%>
+
+<%
+  const STATUS_LABELS_TH = {
+    'NEW':'ใหม่','RECEIVED_WH_TH':'รับที่คลังไทย','RECEIVED_WH_LA':'รับที่คลังลาว',
+    'ON_TRUCK':'ขึ้นรถ','CROSSING_BORDER':'ข้ามแดน','CUSTOMS_HOLD':'รอศุลกากร',
+    'CUSTOMS_CLEARED':'ผ่านศุลกากร','CUSTOMS_REJECTED':'ศุลกากรกัก',
+    'ARRIVED_BORDER_WH':'ถึงคลังชายแดน','AT_DEST_WH':'ถึงคลังปลายทาง',
+    'BRANCH_TRANSFER':'ส่งไปสาขา','BRANCH_RECEIVED':'สาขารับแล้ว',
+    'RIDER_ASSIGNED':'ไรเดอร์รับงาน','OUT_FOR_DELIVERY':'กำลังส่ง',
+    'DELIVERED':'ส่งสำเร็จ','DELIVERY_FAILED':'ส่งไม่สำเร็จ',
+    'COD_COLLECTED':'เก็บ COD แล้ว','COD_REMITTED':'โอน COD แล้ว',
+    'RETURN_TO_SENDER':'คืนผู้ส่ง','CLOSED':'ปิดงาน',
+  };
+  const STATUS_CSS = {
+    'NEW':'new','RECEIVED_WH_TH':'received','RECEIVED_WH_LA':'received',
+    'ON_TRUCK':'crossing','CROSSING_BORDER':'crossing','CUSTOMS_HOLD':'customs',
+    'CUSTOMS_CLEARED':'transit','CUSTOMS_REJECTED':'failed',
+    'ARRIVED_BORDER_WH':'warehouse','AT_DEST_WH':'warehouse',
+    'BRANCH_TRANSFER':'transit','BRANCH_RECEIVED':'warehouse','RIDER_ASSIGNED':'delivery',
+    'OUT_FOR_DELIVERY':'delivery','DELIVERED':'completed','DELIVERY_FAILED':'failed',
+    'COD_COLLECTED':'completed','COD_REMITTED':'completed',
+    'RETURN_TO_SENDER':'failed','CLOSED':'closed',
+  };
+  const PULSE = ['CUSTOMS_HOLD','OUT_FOR_DELIVERY'];
+  const currentStatus = query?.status || '';
+  const currentQ      = query?.q      || '';
+  const currentDir    = query?.direction || '';
+%>
+
+<div class="space-y-5">
+
+  <%# ── Page Header ──────────────────────────────────────── %>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-white">ออเดอร์ขนส่ง</h2>
+      <p class="text-slate-400 text-sm mt-0.5">
+        <%= orders.length %> รายการ
+        <% if (currentStatus) { %> · กรอง: <span class="text-cyan-400"><%= STATUS_LABELS_TH[currentStatus] || currentStatus %></span><% } %>
+        <% if (currentQ) { %> · ค้นหา: "<span class="text-cyan-400"><%= currentQ %></span>"<% } %>
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if (can.useScanner) { %>
+      <a href="/scanner" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 text-sm transition-all">
+        <i class="fa-solid fa-qrcode"></i>
+        <span class="hidden sm:inline">สแกน</span>
+      </a>
+      <% } %>
+      <% if (can.createOrder) { %>
+      <a href="/orders/new" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all">
+        <i class="fa-solid fa-plus"></i>
+        <span>สร้างออเดอร์</span>
+      </a>
+      <% } %>
+    </div>
+  </div>
+
+  <%# ── Quick Status Filter Tabs ─────────────────────────── %>
+  <div class="overflow-x-auto pb-1">
+    <div class="flex gap-2 min-w-max">
+      <%
+        const TAB_GROUPS = [
+          { label: 'ทั้งหมด',         value: '',              icon: 'fa-list' },
+          { label: 'ใหม่',            value: 'NEW',           icon: 'fa-bolt' },
+          { label: 'ในคลัง',         value: 'RECEIVED_WH_TH',icon: 'fa-warehouse' },
+          { label: 'กำลังขนส่ง',     value: 'ON_TRUCK',      icon: 'fa-truck-fast' },
+          { label: 'ข้ามแดน',        value: 'CROSSING_BORDER',icon: 'fa-globe' },
+          { label: 'รอศุลกากร',      value: 'CUSTOMS_HOLD',  icon: 'fa-stamp' },
+          { label: 'ถึงปลายทาง',     value: 'AT_DEST_WH',    icon: 'fa-boxes-stacked' },
+          { label: 'กำลังส่ง',       value: 'OUT_FOR_DELIVERY',icon: 'fa-person-biking' },
+          { label: 'ส่งสำเร็จ',      value: 'DELIVERED',     icon: 'fa-circle-check' },
+          { label: 'ส่งไม่สำเร็จ',   value: 'DELIVERY_FAILED',icon: 'fa-circle-xmark' },
+          { label: 'ปิดงาน',          value: 'CLOSED',        icon: 'fa-lock' },
+        ];
+      %>
+      <% TAB_GROUPS.forEach(tab => { %>
+        <a href="/orders?status=<%= tab.value %><%= currentQ ? '&q='+encodeURIComponent(currentQ) : '' %><%= currentDir ? '&direction='+currentDir : '' %>"
+           class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all
+             <%= currentStatus === tab.value ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-400' : 'bg-white/5 border border-white/8 text-slate-400 hover:text-white hover:bg-white/10' %>">
+          <i class="fa-solid <%= tab.icon %>"></i>
+          <%= tab.label %>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+
+  <%# ── Search + Direction Filter ───────────────────────── %>
+  <div class="glass-panel-dark p-4 rounded-2xl">
+    <form action="/orders" method="get" class="flex flex-col sm:flex-row gap-3">
+      <input type="hidden" name="status" value="<%= currentStatus %>">
+
+      <%# Search %>
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+        <input type="text" name="q" value="<%= currentQ %>"
+               placeholder="ค้นหา Job No, ชื่อลูกค้า, เบอร์..."
+               class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 text-sm transition-all">
+      </div>
+
+      <%# Direction %>
+      <div class="relative sm:w-40">
+        <select name="direction"
+                class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 focus:outline-none focus:border-cyan-500/50 text-sm appearance-none cursor-pointer">
+          <option value="">ทุกทิศทาง</option>
+          <option value="TH_TO_LA" <%= currentDir==='TH_TO_LA' ? 'selected' : '' %>>🇹🇭 → 🇱🇦</option>
+          <option value="LA_TO_TH" <%= currentDir==='LA_TO_TH' ? 'selected' : '' %>>🇱🇦 → 🇹🇭</option>
+        </select>
+        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none"></i>
+      </div>
+
+      <button type="submit"
+              class="px-5 py-2.5 rounded-xl bg-white/8 border border-white/12 text-slate-300 hover:text-white hover:bg-white/15 text-sm transition-all font-medium">
+        <i class="fa-solid fa-filter mr-1.5"></i>กรอง
+      </button>
+      <% if (currentQ || currentStatus || currentDir) { %>
+      <a href="/orders"
+         class="px-5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-sm transition-all">
+        <i class="fa-solid fa-xmark mr-1.5"></i>ล้าง
+      </a>
+      <% } %>
+    </form>
+  </div>
+
+  <%# ── Table ────────────────────────────────────────────── %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden">
+
+    <% if (orders.length === 0) { %>
+      <%- include('../components/empty-state', {
+        icon: currentQ || currentStatus ? 'fa-magnifying-glass' : 'fa-box-open',
+        title: currentQ || currentStatus ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีออเดอร์',
+        subtitle: currentQ || currentStatus ? 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง' : 'สร้างออเดอร์แรกได้เลย',
+        ctaLabel: can.createOrder && !currentQ && !currentStatus ? '+ สร้างออเดอร์' : null,
+        ctaHref: '/orders/new',
+      }) %>
+    <% } else { %>
+    <div class="overflow-x-auto">
+      <table class="table-premium w-full">
+        <thead>
+          <tr>
+            <th class="pl-6">Job No</th>
+            <th>ทิศทาง</th>
+            <th>ผู้ส่ง → ผู้รับ</th>
+            <th>สถานะ</th>
+            <th class="text-right">ค่าขนส่ง / COD</th>
+            <th class="text-right pr-6">วันที่</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(o => {
+               const statusCss   = STATUS_CSS[o.status] || 'default';
+               const statusLabel = STATUS_LABELS_TH[o.status] || o.status;
+               const isPulse     = PULSE.includes(o.status);
+               const directionTH = o.direction === 'TH_TO_LA';
+             %>
+          <tr class="hover:bg-white/3 transition-colors cursor-pointer"
+              onclick="window.location='/orders/<%= o.id %>'">
+
+            <%# Job No %>
+            <td class="pl-6">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-box text-cyan-400 text-xs"></i>
+                </div>
+                <div>
+                  <div class="font-mono font-bold text-white text-sm tracking-wide"><%= o.job_no %></div>
+                  <div class="text-[10px] text-slate-500 mt-0.5">
+                    #<%= o.id %>
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <%# Direction %>
+            <td>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold
+                <%= directionTH ? 'bg-blue-500/12 text-blue-300 border border-blue-500/20' : 'bg-violet-500/12 text-violet-300 border border-violet-500/20' %>">
+                <%= directionTH ? '🇹🇭 TH' : '🇱🇦 LA' %>
+                <i class="fa-solid fa-arrow-right text-[9px] opacity-50"></i>
+                <%= directionTH ? '🇱🇦 LA' : '🇹🇭 TH' %>
+              </span>
+            </td>
+
+            <%# Sender → Receiver %>
+            <td>
+              <div class="flex items-center gap-1.5 text-sm text-white max-w-[220px]">
+                <span class="truncate max-w-[90px]" title="<%= o.sender_name %>">
+                  <%= o.sender_name || '–' %>
+                </span>
+                <i class="fa-solid fa-arrow-right text-slate-500 text-[10px] flex-shrink-0"></i>
+                <span class="truncate max-w-[90px]" title="<%= o.receiver_name %>">
+                  <%= o.receiver_name || '–' %>
+                </span>
+              </div>
+            </td>
+
+            <%# Status Pill %>
+            <td>
+              <span class="status-pill <%= statusCss %> inline-flex items-center gap-1.5">
+                <% if (isPulse) { %>
+                  <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse flex-shrink-0"></span>
+                <% } %>
+                <%= statusLabel %>
+              </span>
+            </td>
+
+            <%# Price / COD %>
+            <td class="text-right">
+              <div class="font-bold text-white text-sm">฿<%= Number(o.price_amount || 0).toLocaleString() %></div>
+              <% if (Number(o.cod_amount) > 0) { %>
+              <div class="text-[10px] text-amber-400 font-semibold mt-0.5">COD ฿<%= Number(o.cod_amount).toLocaleString() %></div>
+              <% } %>
+            </td>
+
+            <%# Date %>
+            <td class="text-right pr-6">
+              <div class="text-sm text-slate-400">
+                <%= new Date(o.created_at).toLocaleDateString('th-TH', { day:'2-digit', month:'short' }) %>
+              </div>
+              <div class="text-[10px] text-slate-600 mt-0.5">
+                <%= new Date(o.created_at).toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' }) %>
+              </div>
+            </td>
+
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <%# ── Pagination ─────────────────────────────────── %>
+    <% if (pagination && pagination.pages > 1) { %>
+    <div class="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+      <span class="text-slate-500 text-xs">
+        หน้า <%= pagination.page %> / <%= pagination.pages %> · <%= pagination.total %> รายการ
+      </span>
+      <div class="flex gap-2">
+        <% if (pagination.page > 1) { %>
+        <a href="?<%= new URLSearchParams({...query, page: pagination.page-1}).toString() %>"
+           class="px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+          <i class="fa-solid fa-chevron-left"></i>
+        </a>
+        <% } %>
+        <% for (let p = Math.max(1, pagination.page-2); p <= Math.min(pagination.pages, pagination.page+2); p++) { %>
+        <a href="?<%= new URLSearchParams({...query, page: p}).toString() %>"
+           class="px-3 py-1.5 text-xs rounded-lg transition-all
+             <%= p === pagination.page ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-400' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white' %>">
+          <%= p %>
+        </a>
+        <% } %>
+        <% if (pagination.page < pagination.pages) { %>
+        <a href="?<%= new URLSearchParams({...query, page: pagination.page+1}).toString() %>"
+           class="px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+          <i class="fa-solid fa-chevron-right"></i>
+        </a>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+
+  </div><%# /table panel %>
+
+</div><%# /space-y-5 %>

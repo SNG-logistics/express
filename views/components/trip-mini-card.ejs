@@ -1,0 +1,49 @@
+<%#
+  trip-mini-card.ejs
+  Props: trip (object with trip fields)
+%>
+<%
+const tripStatusMap = {
+  PLANNED:   { label: 'วางแผน',     color: 'text-slate-400',  bg: 'bg-slate-500/15',  border: 'border-slate-500/25',  stripe: 'bg-slate-500' },
+  LOADING:   { label: 'กำลังโหลด', color: 'text-amber-400',  bg: 'bg-amber-500/15',  border: 'border-amber-500/25',  stripe: 'bg-amber-500' },
+  DEPARTED:  { label: 'ออกเดินทาง',color: 'text-blue-400',   bg: 'bg-blue-500/15',   border: 'border-blue-500/25',   stripe: 'bg-blue-500' },
+  AT_BORDER: { label: 'ชายแดน',    color: 'text-orange-400', bg: 'bg-orange-500/15', border: 'border-orange-500/25', stripe: 'bg-orange-500' },
+  CROSSED:   { label: 'ข้ามแดนแล้ว',color:'text-purple-400', bg: 'bg-purple-500/15', border: 'border-purple-500/25', stripe: 'bg-purple-500' },
+  ARRIVED:   { label: 'ถึงปลายทาง',color: 'text-cyan-400',   bg: 'bg-cyan-500/15',   border: 'border-cyan-500/25',   stripe: 'bg-cyan-500' },
+  UNLOADING: { label: 'ขนถ่าย',    color: 'text-teal-400',   bg: 'bg-teal-500/15',   border: 'border-teal-500/25',   stripe: 'bg-teal-500' },
+  CLOSED:    { label: 'ปิดแล้ว',   color: 'text-gray-400',   bg: 'bg-gray-500/15',   border: 'border-gray-500/25',   stripe: 'bg-gray-500' },
+};
+const s = tripStatusMap[trip.status] || tripStatusMap['PLANNED'];
+const tripDate = trip.trip_date ? new Date(trip.trip_date).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) : '–';
+%>
+<a href="/trips/<%= trip.id %>" class="flex items-stretch rounded-xl <%= s.bg %> border <%= s.border %> hover:brightness-125 transition-all overflow-hidden group">
+  <!-- Status stripe -->
+  <div class="w-1 flex-shrink-0 <%= s.stripe %>"></div>
+  <div class="flex-1 p-3">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-white font-bold text-sm"><%= trip.trip_no %></span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold <%= s.bg %> <%= s.color %> border <%= s.border %>"><%= s.label %></span>
+        </div>
+        <div class="<%= s.color %> text-xs font-medium mb-1">
+          <i class="fa-solid fa-location-dot mr-1"></i>
+          <%= trip.origin_border || '–' %> → <%= trip.dest_border || '–' %>
+        </div>
+        <div class="flex items-center gap-3 text-slate-400 text-xs">
+          <span><i class="fa-regular fa-calendar mr-1"></i><%= tripDate %></span>
+          <% if (trip.driver_name) { %>
+          <span><i class="fa-solid fa-user mr-1"></i><%= trip.driver_name %></span>
+          <% } %>
+        </div>
+      </div>
+      <div class="flex flex-col items-end gap-1 flex-shrink-0">
+        <div class="flex items-center gap-1 text-white/70 text-xs">
+          <i class="fa-solid fa-box text-cyan-400/70"></i>
+          <span class="font-bold text-white"><%= trip.order_count || 0 %></span>
+        </div>
+        <i class="fa-solid fa-chevron-right text-xs text-white/20 group-hover:text-white/50 transition-colors"></i>
+      </div>
+    </div>
+  </div>
+</a>

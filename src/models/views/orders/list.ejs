@@ -1,0 +1,183 @@
+<div class="max-w-8xl mx-auto">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 animate-fade-in">
+    <div>
+      <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+        <span class="bg-amber-500 w-1.5 h-8 rounded-full inline-block"></span>
+        รายการออเดอร์
+      </h1>
+      <p class="text-slate-400 mt-2 ml-6 text-sm">จัดการและตรวจสอบสถานะพัสดุทั้งหมด</p>
+    </div>
+    <a href="/orders/new"
+      class="cta-primary text-sm inline-flex items-center gap-2 group shadow-xl hover:shadow-amber-500/20 px-6 py-3 rounded-full font-semibold transition-transform hover:scale-105 active:scale-95">
+      <i class="fa-solid fa-plus group-hover:rotate-90 transition-transform"></i> สร้างออเดอร์ใหม่
+    </a>
+  </div>
+
+  <!-- Search & Filter Card -->
+  <div class="glass-panel-dark card-elevated p-6 rounded-3xl shadow-xl border border-white/5 mb-8 animate-fade-in"
+    style="animation-delay: 0.1s;">
+    <form action="/orders" method="get" class="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
+
+      <!-- Search Input -->
+      <div class="md:col-span-5">
+        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">ค้นหา (Search)</label>
+        <div class="search-bar-dark">
+          <input type="text" name="q" value="<%= query.q || '' %>" placeholder="เลขงาน, ชื่อลูกค้า, เบอร์โทร...">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="md:col-span-3">
+        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">สถานะ (Status)</label>
+        <div class="relative">
+          <i class="fa-solid fa-circle-notch absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 z-10 text-xs"></i>
+          <select name="status"
+            class="w-full bg-slate-900/50 border border-white/10 rounded-xl pl-9 pr-8 py-2.5 text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer hover:bg-slate-800/50 transition-colors">
+            <option value="">ทั้งหมด (All)</option>
+            <option value="NEW" <%=query.status==='NEW' ? 'selected' : '' %>>New</option>
+            <option value="RECEIVED_WH_TH" <%=query.status==='RECEIVED_WH_TH' ? 'selected' : '' %>>Received TH</option>
+            <option value="ON_TRUCK_BORDER" <%=query.status==='ON_TRUCK_BORDER' ? 'selected' : '' %>>On Truck</option>
+            <option value="CROSSING_BORDER" <%=query.status==='CROSSING_BORDER' ? 'selected' : '' %>>Crossing</option>
+            <option value="ARRIVED_BORDER_WH" <%=query.status==='ARRIVED_BORDER_WH' ? 'selected' : '' %>>Arrived Border
+            </option>
+            <option value="AT_DEST_WH" <%=query.status==='AT_DEST_WH' ? 'selected' : '' %>>At Dest WH</option>
+            <option value="OUT_FOR_DELIVERY" <%=query.status==='OUT_FOR_DELIVERY' ? 'selected' : '' %>>Out for Delivery
+            </option>
+            <option value="DELIVERED" <%=query.status==='DELIVERED' ? 'selected' : '' %>>Delivered</option>
+            <option value="CLOSED" <%=query.status==='CLOSED' ? 'selected' : '' %>>Closed</option>
+          </select>
+          <i
+            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+        </div>
+      </div>
+
+      <!-- Direction Filter -->
+      <div class="md:col-span-3">
+        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">ทิศทาง
+          (Direction)</label>
+        <div class="relative">
+          <i
+            class="fa-solid fa-location-arrow absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 z-10 text-xs"></i>
+          <select name="direction"
+            class="w-full bg-slate-900/50 border border-white/10 rounded-xl pl-9 pr-8 py-2.5 text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer hover:bg-slate-800/50 transition-colors">
+            <option value="">ทั้งหมด (All)</option>
+            <option value="TH_TO_LA" <%=query.direction==='TH_TO_LA' ? 'selected' : '' %>>TH → LA</option>
+            <option value="LA_TO_TH" <%=query.direction==='LA_TO_TH' ? 'selected' : '' %>>LA → TH</option>
+          </select>
+          <i
+            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+        </div>
+      </div>
+
+      <div class="md:col-span-1">
+        <button type="submit"
+          class="w-full h-[42px] bg-slate-800 hover:bg-slate-700 border border-white/10 text-white rounded-xl text-sm transition-all shadow-lg flex items-center justify-center hover:shadow-slate-700/20 active:scale-95">
+          <i class="fa-solid fa-filter"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div
+    class="glass-panel-dark card-elevated rounded-3xl overflow-hidden shadow-2xl border border-white/5 animate-fade-in"
+    style="animation-delay: 0.2s;">
+    <div class="overflow-x-auto">
+      <table class="table-premium w-full text-left">
+        <thead class="text-xs text-slate-400 uppercase bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="py-4 px-6 font-semibold tracking-wider">Job No</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Direction</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Sender</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Receiver</th>
+            <th class="py-4 px-6 font-semibold tracking-wider">Status</th>
+            <th class="py-4 px-6 font-semibold tracking-wider text-right">Price / COD</th>
+            <th class="py-4 px-6 font-semibold tracking-wider text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% if (orders.length===0) { %>
+            <tr>
+              <td colspan="7" class="py-16 text-center text-slate-500">
+                <i class="fa-solid fa-box-open text-5xl mb-4 opacity-20 block"></i>
+                <span class="text-sm">ไม่พบรายการที่ค้นหา</span>
+              </td>
+            </tr>
+            <% } %>
+              <% orders.forEach(o=> { %>
+                <tr class="group hover:bg-white/5 transition-colors">
+                  <td class="py-4 px-6">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-box"></i>
+                      </div>
+                      <div>
+                        <div
+                          class="font-mono font-bold text-white tracking-wide group-hover:text-amber-400 transition-colors">
+                          <%= o.job_no %>
+                        </div>
+                        <div class="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <i class="fa-regular fa-clock"></i>
+                          <%= new Date(o.created_at).toLocaleString('th-TH') %>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-4 px-6">
+                    <% if(o.direction==='TH_TO_LA' ) { %>
+                      <span
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shadow-sm">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+                        TH <i class="fa-solid fa-arrow-right text-[9px] opacity-70"></i> LA
+                      </span>
+                      <% } else { %>
+                        <span
+                          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 shadow-sm">
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
+                          LA <i class="fa-solid fa-arrow-right text-[9px] opacity-70"></i> TH
+                        </span>
+                        <% } %>
+                  </td>
+                  <td class="py-4 px-6">
+                    <div class="font-medium text-slate-300 truncate max-w-[140px]" title="<%= o.sender_name %>">
+                      <%= o.sender_name || '-' %>
+                    </div>
+                  </td>
+                  <td class="py-4 px-6">
+                    <div class="font-medium text-slate-300 truncate max-w-[140px]" title="<%= o.receiver_name %>">
+                      <%= o.receiver_name || '-' %>
+                    </div>
+                  </td>
+                  <td class="py-4 px-6">
+                    <span
+                      class="inline-flex px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                      <% if(o.status==='NEW' ) { %><i class="fa-solid fa-bolt text-xs mr-1 text-amber-400"></i>
+                        <% } %>
+                          <%= o.status %>
+                    </span>
+                  </td>
+                  <td class="py-4 px-6 text-right">
+                    <div class="font-bold text-white text-sm">฿<%= Number(o.price_amount).toLocaleString() %>
+                    </div>
+                    <% if (Number(o.cod_amount)> 0) { %>
+                      <div class="text-[10px] text-emerald-400 font-bold mt-0.5">+COD <%=
+                          Number(o.cod_amount).toLocaleString() %>
+                      </div>
+                      <% } %>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <a href="/orders/<%= o.id %>" class="btn-icon-glass transition-colors group/edit"
+                      title="ดูรายละเอียด">
+                      <i class="fa-solid fa-eye group-hover/edit:text-white"></i>
+                    </a>
+                  </td>
+                </tr>
+                <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

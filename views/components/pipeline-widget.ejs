@@ -1,0 +1,58 @@
+<%#
+  pipeline-widget.ejs
+  Props: pipeline (object { STATUS: count })
+%>
+<%
+const stages = [
+  { key: 'NEW',               label: 'ใหม่',         icon: 'fa-inbox',            color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20' },
+  { key: 'RECEIVED_WH_TH',   label: 'รับ(ไทย)',    icon: 'fa-warehouse',        color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  { key: 'RECEIVED_WH_LA',   label: 'รับ(ลาว)',    icon: 'fa-warehouse',        color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  { key: 'ON_TRUCK',          label: 'บนรถ',         icon: 'fa-truck',            color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  { key: 'CROSSING_BORDER',   label: 'ข้ามแดน',     icon: 'fa-route',            color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+  { key: 'CUSTOMS_HOLD',      label: 'ศุลกากร',     icon: 'fa-stamp',            color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/20' },
+  { key: 'ARRIVED_BORDER_WH', label: 'ถึงชายแดน',  icon: 'fa-flag-checkered',   color: 'text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20' },
+  { key: 'AT_DEST_WH',        label: 'ถึงคลัง',     icon: 'fa-boxes-stacked',    color: 'text-teal-400',   bg: 'bg-teal-500/10',   border: 'border-teal-500/20' },
+  { key: 'OUT_FOR_DELIVERY',  label: 'ออกส่ง',      icon: 'fa-motorcycle',       color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/20' },
+  { key: 'DELIVERED',         label: 'ส่งแล้ว',     icon: 'fa-circle-check',     color: 'text-emerald-400',bg: 'bg-emerald-500/10',border: 'border-emerald-500/20' },
+];
+
+// Merge TH/LA received
+const mergedPipeline = { ...pipeline };
+const receivedTotal = (pipeline['RECEIVED_WH_TH'] || 0) + (pipeline['RECEIVED_WH_LA'] || 0);
+const filteredStages = stages.filter(s => s.key !== 'RECEIVED_WH_LA');
+if (filteredStages.find(s => s.key === 'RECEIVED_WH_TH')) {
+  mergedPipeline['RECEIVED_WH_TH'] = receivedTotal;
+}
+%>
+
+<div class="glass-panel-dark p-4">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-white font-semibold flex items-center gap-2 text-sm">
+      <i class="fa-solid fa-chart-gantt text-cyan-400"></i>
+      Pipeline สถานะปัจจุบัน
+    </h3>
+    <a href="/orders" class="text-xs text-slate-400 hover:text-cyan-400 transition-colors">ดูทั้งหมด →</a>
+  </div>
+
+  <!-- Scrollable pipeline on mobile -->
+  <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+    <% filteredStages.forEach((stage, idx) => {
+      const cnt = stage.key === 'RECEIVED_WH_TH' ? receivedTotal : (mergedPipeline[stage.key] || 0);
+      const stageLabel = stage.key === 'RECEIVED_WH_TH' ? 'รับของ' : stage.label;
+    %>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <!-- Stage box -->
+      <a href="/orders?status=<%= stage.key %>"
+         class="flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl <%= stage.bg %> border <%= stage.border %> hover:brightness-125 transition-all cursor-pointer min-w-[72px]">
+        <i class="<%= stage.icon %> <%= stage.color %> text-base"></i>
+        <span class="text-white font-bold text-lg leading-none"><%= cnt %></span>
+        <span class="<%= stage.color %> text-[10px] font-medium text-center leading-tight"><%= stageLabel %></span>
+      </a>
+      <!-- Arrow connector (not after last) -->
+      <% if (idx < filteredStages.length - 1) { %>
+      <i class="fa-solid fa-chevron-right text-white/20 text-xs flex-shrink-0"></i>
+      <% } %>
+    </div>
+    <% }) %>
+  </div>
+</div>

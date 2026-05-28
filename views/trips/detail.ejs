@@ -1,0 +1,516 @@
+<%#
+  views/trips/detail.ejs — Dispatch Board
+  Data available:
+    trip          — trip record
+    tripOrders    — orders in this trip (with customer names)
+    totals        — { freight, cod, weight, count, capacityPct, customs }
+    availableOrders — orders with same direction not yet in active trip
+    tripLogs      — recent order status logs in this trip
+    nextStatuses  — allowed next trip statuses
+    STATUS_LABELS — { status_code: label_th }
+%>
+
+<%
+  const TRIP_STATUS_COLORS = {
+    PLANNED:   'text-slate-400 border-slate-500/30 bg-slate-500/10',
+    LOADING:   'text-amber-400  border-amber-400/30  bg-amber-400/10',
+    DEPARTED:  'text-blue-400   border-blue-400/30   bg-blue-400/10',
+    AT_BORDER: 'text-orange-400 border-orange-400/30 bg-orange-400/10',
+    CROSSED:   'text-purple-400 border-purple-400/30 bg-purple-400/10',
+    ARRIVED:   'text-cyan-400   border-cyan-400/30   bg-cyan-400/10',
+    UNLOADING: 'text-indigo-400 border-indigo-400/30 bg-indigo-400/10',
+    COMPLETED: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10',
+    CANCELLED: 'text-red-400    border-red-400/30    bg-red-400/10',
+  };
+
+  const ORDER_STATUS_TH = {
+    'NEW':              'ใหม่',
+    'RECEIVED_WH_TH':  'รับคลังไทย',
+    'RECEIVED_WH_LA':  'รับคลังลาว',
+    'ON_TRUCK':        'ขึ้นรถแล้ว',
+    'ON_TRUCK_BORDER': 'มุ่งสู่ด่าน',
+    'CROSSING_BORDER': 'ข้ามแดน',
+    'ARRIVED_BORDER_WH':'ถึงด่าน',
+    'CUSTOMS_HOLD':    'รอศุลกากร',
+    'CUSTOMS_CLEARED': 'ผ่านศุลกากร',
+    'CUSTOMS_REJECTED':'ศุลกากรปฏิเสธ',
+    'AT_DEST_WH':      'คลังปลาย',
+    'OUT_FOR_DELIVERY':'กำลังส่ง',
+    'DELIVERED':       'ส่งสำเร็จ',
+    'DELIVERY_FAILED': 'ส่งไม่สำเร็จ',
+    'COD_COLLECTED':   'เก็บเงินแล้ว',
+    'RETURN_TO_SENDER':'คืนผู้ส่ง',
+    'CLOSED':          'ปิดงาน',
+  };
+
+  const TRIP_STEPS = ['PLANNED','LOADING','DEPARTED','AT_BORDER','CROSSED','ARRIVED','UNLOADING','COMPLETED'];
+  const curStepIdx = TRIP_STEPS.indexOf(trip.status);
+
+  const NEXT_BTN = {
+    LOADING:   { label: 'ออกรถ (Depart)', icon: 'fa-truck-arrow-right', color: 'from-amber-500 to-orange-500' },
+    DEPARTED:  { label: 'ถึงด่าน', icon: 'fa-flag-checkered', color: 'from-orange-500 to-amber-600' },
+    AT_BORDER: { label: 'ผ่านด่านแล้ว', icon: 'fa-stamp', color: 'from-purple-500 to-indigo-600' },
+    CROSSED:   { label: 'ถึงคลังปลาย', icon: 'fa-warehouse', color: 'from-cyan-500 to-blue-600' },
+    ARRIVED:   { label: 'เริ่มขนลง', icon: 'fa-boxes-packing', color: 'from-indigo-500 to-blue-600' },
+    UNLOADING: { label: 'ปิดรอบ (Complete)', icon: 'fa-circle-check', color: 'from-emerald-500 to-teal-600' },
+    PLANNED:   { label: 'เริ่มโหลดสินค้า', icon: 'fa-boxes-stacked', color: 'from-indigo-500 to-blue-600' },
+  };
+
+  const isLocked = ['COMPLETED','CANCELLED'].includes(trip.status);
+%>
+
+
+<div class="max-w-7xl mx-auto space-y-5" x-data="{ addingOrders: false, editingTrip: false }">
+
+  <!-- ─── Exception Banner ──────────────────────────────────────────────────── -->
+  <% if (totals.customs > 0 && !['COMPLETED','CANCELLED'].includes(trip.status)) { %>
+  <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+    <i class="fa-solid fa-stamp text-amber-400 flex-shrink-0"></i>
+    <span class="text-amber-300 text-sm font-medium">
+      มี <strong><%= totals.customs %></strong> ออเดอร์ที่ต้องผ่านศุลกากร — ตรวจสอบเอกสารให้ครบก่อนออกรถ
+    </span>
+  </div>
+  <% } %>
+
+  <!-- ─── Top Bar ────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <a href="/trips" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+        <i class="fa-solid fa-arrow-left text-sm"></i>
+      </a>
+      <div>
+        <h1 class="text-2xl font-black text-white flex items-center gap-3">
+          <span class="font-mono text-indigo-300"><%= trip.trip_no %></span>
+          <span class="px-2.5 py-1 rounded-xl text-xs font-bold border <%= TRIP_STATUS_COLORS[trip.status] || 'text-slate-400 border-slate-600 bg-slate-800' %>">
+            <%= STATUS_LABELS[trip.status] || trip.status %>
+          </span>
+        </h1>
+        <p class="text-slate-500 text-sm mt-0.5">
+          <%= trip.direction === 'TH_TO_LA' ? '🇹🇭 ไทย → ลาว 🇱🇦' : '🇱🇦 ลาว → ไทย 🇹🇭' %>
+          · <span class="font-mono text-slate-400"><%= trip.trip_date?.toISOString?.()?.slice(0,10) || trip.trip_date %></span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <!-- Manifest print -->
+      <a href="/trips/<%= trip.id %>/manifest" target="_blank"
+         class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-file-invoice"></i> Manifest
+      </a>
+
+      <!-- Record Expense -->
+      <a href="/expenses/new?trip_id=<%= trip.id %>"
+         class="px-4 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 text-sm flex items-center gap-2 transition-all font-bold">
+        <i class="fa-solid fa-wallet"></i> บันทึกรายจ่าย
+      </a>
+
+      <!-- Quick edit -->
+      <% if (!isLocked && can.createTrip) { %>
+      <button type="button" @click="editingTrip = !editingTrip"
+        class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-pen"></i> แก้ไข
+      </button>
+      <% } %>
+
+      <% if (['PLANNED','LOADING'].includes(trip.status) && availableOrders.length > 0) { %>
+      <button type="button" @click="addingOrders = !addingOrders"
+        class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-plus"></i> เพิ่มออเดอร์
+      </button>
+      <% } %>
+
+      <!-- Next status button -->
+      <% if (nextStatuses.length > 0 && NEXT_BTN[trip.status]) {
+           const nb = NEXT_BTN[trip.status]; %>
+      <form action="/trips/<%= trip.id %>/update-status" method="POST" class="inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="status" value="<%= nextStatuses[0] %>">
+        <button type="submit"
+          class="px-5 py-2.5 bg-gradient-to-r <%= nb.color %> text-white font-bold rounded-xl text-sm flex items-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+          <i class="fa-solid <%= nb.icon %>"></i>
+          <%= nb.label %>
+        </button>
+      </form>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- ─── Flash ─────────────────────────────────────────────────────── -->
+  <% if (locals.flash) { %>
+  <div class="px-4 py-3 rounded-xl border text-sm flex items-center gap-2
+    <%= flash.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-red-500/10 border-red-500/20 text-red-300' %>">
+    <i class="fa-solid <%= flash.type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation' %>"></i>
+    <%= flash.message %>
+  </div>
+  <% } %>
+
+  <!-- ─── Status Stepper ─────────────────────────────────────────────── -->
+  <div class="glass-panel-dark px-5 py-4 rounded-2xl overflow-x-auto">
+    <div class="flex items-center min-w-max gap-0">
+      <% TRIP_STEPS.forEach((s, i) => {
+           const done    = i < curStepIdx;
+           const current = i === curStepIdx;
+           const future  = i > curStepIdx;
+         %>
+      <div class="flex items-center">
+        <div class="flex flex-col items-center">
+          <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-all
+            <%= done    ? 'bg-emerald-500 border-emerald-500 text-white' : '' %>
+            <%= current ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : '' %>
+            <%= future  ? 'bg-white/5 border-white/15 text-slate-600' : '' %>">
+            <% if (done) { %><i class="fa-solid fa-check text-xs"></i><% } else { %><%= i + 1 %><% } %>
+          </div>
+          <div class="text-[10px] mt-1 whitespace-nowrap
+            <%= done ? 'text-emerald-400' : current ? 'text-white font-semibold' : 'text-slate-600' %>">
+            <%= STATUS_LABELS[s] || s %>
+          </div>
+        </div>
+        <% if (i < TRIP_STEPS.length - 1) { %>
+        <div class="w-10 h-0.5 mx-1 mb-4 <%= done ? 'bg-emerald-500/60' : 'bg-white/10' %>"></div>
+        <% } %>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- ─── Info Cards Row ─────────────────────────────────────────────── -->
+  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+    <div class="glass-panel-dark p-4 rounded-2xl">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider">ออเดอร์</div>
+      <div class="text-2xl font-black text-white mt-1"><%= totals.count %></div>
+    </div>
+    <div class="glass-panel-dark p-4 rounded-2xl">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider">น้ำหนัก</div>
+      <div class="text-2xl font-black text-white mt-1"><%= totals.weight.toFixed(1) %> <span class="text-sm text-slate-500">กก.</span></div>
+    </div>
+    <div class="glass-panel-dark p-4 rounded-2xl">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider">ค่าขนส่งรวม</div>
+      <div class="text-xl font-black text-emerald-400 mt-1 font-mono">฿<%= totals.freight.toLocaleString() %></div>
+    </div>
+    <div class="glass-panel-dark p-4 rounded-2xl">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider">COD รวม</div>
+      <div class="text-xl font-black text-amber-400 mt-1 font-mono">฿<%= totals.cod.toLocaleString() %></div>
+    </div>
+    <div class="glass-panel-dark p-4 rounded-2xl">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider">ทะเบียน</div>
+      <div class="text-base font-black text-indigo-300 mt-1 font-mono"><%= trip.vehicle || '—' %></div>
+    </div>
+    <div class="glass-panel-dark p-4 rounded-2xl">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider">คนขับ</div>
+      <div class="text-base font-bold text-white mt-1 truncate"><%= trip.driver_name || '—' %></div>
+    </div>
+  </div>
+
+  <!-- Capacity bar (if max_weight set) -->
+  <% if (trip.max_weight > 0) { %>
+  <div class="glass-panel-dark px-5 py-3 rounded-2xl flex items-center gap-4">
+    <span class="text-xs text-slate-500 whitespace-nowrap">Capacity (<%= trip.max_weight %> กก.)</span>
+    <div class="flex-1 h-2.5 bg-white/10 rounded-full overflow-hidden">
+      <div class="h-full rounded-full <%= totals.capacityPct > 90 ? 'bg-red-500' : totals.capacityPct > 70 ? 'bg-amber-500' : 'bg-emerald-500' %>"
+           style="width: <%= Math.min(100, totals.capacityPct) %>%"></div>
+    </div>
+    <span class="text-xs font-bold <%= totals.capacityPct > 90 ? 'text-red-400' : totals.capacityPct > 70 ? 'text-amber-400' : 'text-emerald-400' %>">
+      <%= totals.capacityPct %>%
+    </span>
+  </div>
+  <% } %>
+
+  <!-- ─── Quick Edit Panel (collapsible) ───────────────────────────── -->
+  <% if (!isLocked && can.createTrip) { %>
+  <div x-show="editingTrip" x-cloak class="glass-panel-dark rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+      <div class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-pen text-indigo-400"></i> แก้ไขข้อมูลรอบรถ
+      </div>
+      <button @click="editingTrip = false" class="text-slate-500 hover:text-white transition-colors">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form method="POST" action="/trips/<%= trip.id %>/edit" class="p-4">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">คนขับ</label>
+          <input type="text" name="driver_name" value="<%= trip.driver_name || '' %>"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">ทะเบียนรถ</label>
+          <input type="text" name="vehicle" value="<%= trip.vehicle || '' %>"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">จุดผ่านแดน</label>
+          <select name="border_checkpoint"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2.5 focus:ring-1 focus:ring-indigo-500 focus:outline-none appearance-none">
+            <option value="NONGKHAI" <%= trip.border_checkpoint === 'NONGKHAI' ? 'selected' : '' %>>ด่านหนองคาย - ท่านาแล้ง</option>
+            <option value="MUKDAHAN" <%= trip.border_checkpoint === 'MUKDAHAN' ? 'selected' : '' %>>ด่านมุกดาหาร - สะหวันนะเขต</option>
+            <option value="CHONGMEK" <%= trip.border_checkpoint === 'CHONGMEK' ? 'selected' : '' %>>ด่านช่องเม็ก - วังเต่า</option>
+            <option value="OTHER" <%= trip.border_checkpoint === 'OTHER' ? 'selected' : '' %>>ด่านอื่นๆ</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">น้ำหนักสูงสุด (กก.)</label>
+          <input type="number" name="max_weight" step="0.1" value="<%= trip.max_weight || '' %>"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2.5 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="0">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">หมายเหตุ</label>
+          <input type="text" name="notes" value="<%= trip.notes || '' %>"
+            class="w-full bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+        </div>
+      </div>
+      <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all flex items-center gap-2">
+        <i class="fa-solid fa-check"></i> บันทึก
+      </button>
+    </form>
+  </div>
+  <% } %>
+
+  <!-- ─── Add Orders Panel (collapsible) ───────────────────────────── -->
+  <% if (['PLANNED','LOADING'].includes(trip.status)) { %>
+  <div x-show="addingOrders" x-cloak class="glass-panel-dark rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+      <div class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-plus text-indigo-400"></i>
+        เพิ่มออเดอร์เข้ารอบรถ
+        <span class="px-2 py-0.5 rounded-full bg-white/10 text-xs text-slate-400"><%= availableOrders.length %> รายการ</span>
+      </div>
+      <button type="button" @click="addingOrders = false" class="text-slate-500 hover:text-white transition-colors">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <% if (availableOrders.length > 0) { %>
+    <form method="POST" action="/trips/<%= trip.id %>/orders">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="p-4 grid md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+        <% availableOrders.forEach(o => { %>
+        <label class="flex items-start gap-2.5 p-3 rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 cursor-pointer transition-all group">
+          <input type="checkbox" name="order_ids" value="<%= o.id %>"
+            class="mt-0.5 w-4 h-4 rounded border-slate-600 text-indigo-500 bg-slate-800 flex-shrink-0">
+          <div class="min-w-0">
+            <div class="font-mono font-bold text-sm text-white group-hover:text-indigo-300 transition-colors"><%= o.job_no %></div>
+            <div class="text-[11px] text-slate-500 truncate"><%= o.sender_name %> → <%= o.receiver_name %></div>
+            <div class="flex gap-2 mt-0.5">
+              <% if (o.declared_weight) { %>
+              <span class="text-[10px] text-slate-400"><%= o.declared_weight %> กก.</span>
+              <% } %>
+              <% if (o.cod_amount > 0) { %>
+              <span class="text-[10px] text-amber-400">COD ฿<%= Number(o.cod_amount).toLocaleString() %></span>
+              <% } %>
+            </div>
+          </div>
+        </label>
+        <% }) %>
+      </div>
+      <div class="px-4 pb-4">
+        <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:shadow-indigo-500/25 hover:shadow-lg transition-all">
+          <i class="fa-solid fa-paperclip"></i> บันทึกรายการที่เลือก
+        </button>
+      </div>
+    </form>
+    <% } else { %>
+    <div class="p-8 text-center text-slate-600">
+      <i class="fa-solid fa-box-open text-3xl mb-2 opacity-20"></i>
+      <div class="text-sm">ไม่มีออเดอร์ที่รอผูกรอบรถ (ทิศทาง <%= trip.direction %>)</div>
+    </div>
+    <% } %>
+  </div>
+  <% } %>
+
+  <!-- ─── Cargo Table ────────────────────────────────────────────────── -->
+  <div class="glass-panel-dark rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+      <div class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-boxes-stacked text-indigo-400"></i>
+        รายการสินค้าในรอบรถ
+      </div>
+      <div class="flex items-center gap-3">
+        <% if (totals.customs > 0) { %>
+        <span class="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+          <i class="fa-solid fa-stamp mr-1"></i><%= totals.customs %> ศุลกากร
+        </span>
+        <% } %>
+        <span class="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-slate-400 text-xs">
+          <%= totals.count %> รายการ
+        </span>
+      </div>
+    </div>
+
+    <% if (tripOrders.length === 0) { %>
+    <div class="flex flex-col items-center justify-center py-16 text-slate-600">
+      <i class="fa-solid fa-truck-ramp-box text-5xl mb-3 opacity-15"></i>
+      <p class="text-sm">ยังไม่มีสินค้าในรอบรถนี้</p>
+      <% if (['PLANNED','LOADING'].includes(trip.status)) { %>
+      <button @click="addingOrders = true" class="mt-3 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs hover:bg-indigo-500/20 transition-all">
+        + เพิ่มออเดอร์
+      </button>
+      <% } %>
+    </div>
+    <% } else { %>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead class="text-[10px] text-slate-500 uppercase bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-5 py-3 font-semibold tracking-wider">Job No</th>
+            <th class="px-5 py-3 font-semibold tracking-wider">ผู้ส่ง → ผู้รับ</th>
+            <th class="px-5 py-3 font-semibold tracking-wider">รายการสินค้า</th>
+            <th class="px-5 py-3 font-semibold tracking-wider">สถานะ</th>
+            <th class="px-5 py-3 font-semibold tracking-wider text-right">น้ำหนัก</th>
+            <th class="px-5 py-3 font-semibold tracking-wider text-right">ค่าขนส่ง</th>
+            <th class="px-5 py-3 font-semibold tracking-wider text-right">COD</th>
+            <th class="px-5 py-3 font-semibold tracking-wider text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <% tripOrders.forEach(o => {
+               const statusColors = {
+                 ON_TRUCK:           'text-blue-400   bg-blue-400/10   border-blue-400/20',
+                 CROSSING_BORDER:    'text-purple-400 bg-purple-400/10 border-purple-400/20',
+                 ARRIVED_BORDER_WH:  'text-cyan-400   bg-cyan-400/10   border-cyan-400/20',
+                 AT_DEST_WH:         'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+                 OUT_FOR_DELIVERY:   'text-amber-400  bg-amber-400/10  border-amber-400/20',
+                 DELIVERED:          'text-emerald-400 bg-emerald-500/15 border-emerald-500/20',
+               };
+               const sc = statusColors[o.status] || 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+             %>
+          <tr class="hover:bg-white/3 transition-colors group">
+            <td class="px-5 py-3">
+              <a href="/orders/<%= o.id %>" class="font-mono font-bold text-sm text-white hover:text-indigo-300 transition-colors">
+                <%= o.job_no %>
+              </a>
+              <% if (o.requires_customs) { %>
+              <div class="text-[10px] text-amber-400 mt-0.5"><i class="fa-solid fa-stamp mr-0.5"></i>ศุลกากร</div>
+              <% } %>
+            </td>
+            <td class="px-5 py-3">
+              <div class="text-xs text-white"><%= o.sender_name %></div>
+              <div class="text-[10px] text-slate-500">→ <%= o.receiver_name %></div>
+              <% if (o.sender_phone) { %>
+              <div class="text-[10px] text-slate-600"><%= o.sender_phone %></div>
+              <% } %>
+            </td>
+            <td class="px-5 py-3">
+              <div class="text-xs text-slate-300 max-w-[140px] truncate">
+                <%= o.item_description || '—' %>
+              </div>
+            </td>
+            <td class="px-5 py-3">
+              <% const oTH = ORDER_STATUS_TH[o.status] || o.status;
+                 const isCustomsHold = o.status === 'CUSTOMS_HOLD';
+                 const isFailed = o.status === 'DELIVERY_FAILED';
+              %>
+              <span class="px-2 py-1 rounded-lg border text-[10px] font-bold uppercase
+                <%= isCustomsHold ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+                    isFailed ? 'text-red-400 bg-red-500/10 border-red-500/20' :
+                    statusColors[o.status] || 'text-slate-400 bg-slate-500/10 border-slate-500/20' %>">
+                <%= oTH %>
+              </span>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-sm font-mono text-slate-300"><%= o.declared_weight ? Number(o.declared_weight).toFixed(1) + ' กก.' : '—' %></span>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-sm font-mono text-emerald-400">฿<%= Number(o.price_amount).toLocaleString() %></span>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <% if (o.cod_amount > 0) { %>
+              <span class="text-sm font-mono font-bold text-amber-400">฿<%= Number(o.cod_amount).toLocaleString() %></span>
+              <% } else { %>
+              <span class="text-slate-700 text-xs">—</span>
+              <% } %>
+            </td>
+            <td class="px-5 py-3 text-center">
+              <div class="flex items-center justify-center gap-2">
+                <!-- WH Receive button -->
+                <% if (o.status === 'ARRIVED_BORDER_WH') { %>
+                <form method="POST" action="/orders/<%= o.id %>/at-dest" class="inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-check text-[10px]"></i> รับเข้าคลัง
+                  </button>
+                </form>
+                <% } %>
+                <!-- Detach button (PLANNED or LOADING only) -->
+                <% if (['PLANNED','LOADING'].includes(trip.status) && can.createTrip) { %>
+                <form method="POST" action="/trips/<%= trip.id %>/orders/<%= o.id %>/detach"
+                      onsubmit="return confirm('ถอด <%= o.job_no %> ออกจากรอบรถนี้?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="w-7 h-7 rounded-lg bg-red-500/8 border border-red-500/15 text-red-400/70 hover:text-red-400 hover:bg-red-500/15 transition-all flex items-center justify-center text-xs"
+                          title="ถอดออกจากรอบ">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </form>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+        <!-- Totals row -->
+        <tfoot class="border-t border-white/10 bg-white/3">
+          <tr>
+            <td colspan="4" class="px-5 py-3 text-xs text-slate-500 font-semibold uppercase">รวมทั้งหมด</td>
+            <td class="px-5 py-3 text-right text-sm font-bold text-white font-mono"><%= totals.weight.toFixed(1) %> กก.</td>
+            <td class="px-5 py-3 text-right text-sm font-bold text-emerald-400 font-mono">฿<%= totals.freight.toLocaleString() %></td>
+            <td class="px-5 py-3 text-right text-sm font-bold text-amber-400 font-mono">฿<%= totals.cod.toLocaleString() %></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- ─── Activity Log ──────────────────────────────────────────────── -->
+  <% if (tripLogs && tripLogs.length > 0) { %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/8">
+      <div class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-timeline text-slate-400"></i> Activity Log
+      </div>
+    </div>
+    <div class="divide-y divide-white/5 max-h-64 overflow-y-auto">
+      <% tripLogs.forEach(log => { %>
+      <div class="px-5 py-3 flex items-start gap-3 hover:bg-white/3 transition-colors">
+        <div class="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5 flex-shrink-0"></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-mono text-xs text-indigo-300"><%= log.job_no %></span>
+            <span class="text-[10px] text-slate-500"><%= log.from_status || '—' %> → <%= log.to_status %></span>
+            <% if (log.note) { %><span class="text-[10px] text-slate-400"><%= log.note %></span><% } %>
+          </div>
+          <div class="text-[10px] text-slate-600 mt-0.5">
+            <%= log.action_by_name || 'ระบบ' %>
+            · <%= new Date(log.action_at).toLocaleString('th-TH', { dateStyle:'short', timeStyle:'short' }) %>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Mobile Sticky Bottom Action Bar -->
+  <% if (!isLocked && nextStatuses.length > 0 && NEXT_BTN[trip.status]) { 
+       const nb = NEXT_BTN[trip.status]; 
+  %>
+  <div class="md:hidden fixed bottom-6 left-4 right-4 z-50">
+    <form action="/trips/<%= trip.id %>/update-status" method="POST" class="w-full">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="status" value="<%= nextStatuses[0] %>">
+      <button type="submit"
+        class="w-full py-4 bg-gradient-to-r <%= nb.color %> text-white font-black tracking-wide rounded-2xl text-lg flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-white/20">
+        <i class="fa-solid <%= nb.icon %>"></i>
+        <%= nb.label %>
+      </button>
+    </form>
+  </div>
+  <% } %>
+
+  <!-- Spacer to prevent content getting covered by fixed footer on mobile -->
+  <div class="h-24 md:hidden"></div>
+
+</div>

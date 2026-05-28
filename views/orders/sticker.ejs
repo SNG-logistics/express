@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %></title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <style>
+    /* ─── PAGE ─── */
+    @page { margin: 0; size: 75mm 100mm; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Noto Sans Thai', 'Noto Sans Lao', Arial, sans-serif;
+      background: #fff; color: #111;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ─── Screen wrapper ─── */
+    .shell {
+      background: #1e293b;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; padding: 20px; gap: 14px;
+    }
+    .ctrl-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 10px; padding: 9px 14px; width: 283px;
+    }
+    .ctrl-bar p { font-size: 11px; font-family: monospace; color: #94a3b8; }
+    .ctrl-bar p b { color: #e2e8f0; }
+    .btn-print {
+      background: #f59e0b; color: #000; border: none;
+      padding: 6px 14px; border-radius: 7px;
+      font-weight: 800; font-size: 12px; cursor: pointer;
+    }
+    @media print {
+      .shell { background: #fff; padding: 0; min-height: auto; }
+      .ctrl-bar { display: none; }
+    }
+
+    /* ═══════════════════════════════════════════
+       STICKER — 75mm × 100mm
+       Height budget (approximate mm):
+         hdr      : 11
+         bc-zone  : 19
+         sep      : 0.5
+         route    : 10
+         sep      : 0.5
+         people   : 12
+         sep      : 0.5
+         svc-row  : 6
+         divider  : 0.3
+         d × 5    : 5 × 5.8 = 29
+         ─────────────────
+         total    ≈ 89  (+padding overhead ≈ 100)
+    ═══════════════════════════════════════════ */
+    .sticker {
+      width: 75mm; height: 100mm;
+      background: #fff;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      border: 1px solid #d1d5db;
+      border-radius: 2.5mm;
+      box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    }
+    @media print { .sticker { border: none; border-radius: 0; box-shadow: none; } }
+
+    /* ─── HEADER  11mm ─── */
+    .hdr {
+      background: #fbbf24;
+      display: flex; align-items: center;
+      padding: 1.8mm 2.5mm 1.5mm;
+      gap: 2mm; flex-shrink: 0;
+    }
+    .hdr-logo {
+      width: 8.5mm; height: 8.5mm;
+      border-radius: 50%; overflow: hidden;
+      background: #fff; flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,.2);
+    }
+    .hdr-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .hdr-text { flex: 1; min-width: 0; }
+    .hdr-brand {
+      font-size: 11pt; font-weight: 900;
+      color: #dc2626; line-height: 1; letter-spacing: .3px;
+    }
+    .hdr-sub {
+      font-size: 5pt; color: #92400e;
+      font-weight: 700; margin-top: .3mm; letter-spacing: .3px;
+    }
+    .hdr-right { text-align: right; flex-shrink: 0; }
+    .hdr-svc { font-size: 6pt; font-weight: 800; color: #1c1917; }
+    .hdr-tel {
+      display: flex; align-items: center;
+      justify-content: flex-end; gap: .8mm; margin-top: .4mm;
+    }
+    .tel-bubble {
+      background: #111; color: #fbbf24;
+      border-radius: 50%; width: 4.5mm; height: 4.5mm;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 6pt; flex-shrink: 0;
+    }
+    .hdr-num { font-size: 8pt; font-weight: 900; color: #111; }
+
+    /* ─── BARCODE ZONE  19mm ─── */
+    .bc-zone {
+      padding: 1.5mm 2.5mm 0.8mm;
+      flex-shrink: 0;
+    }
+    .bc-top {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; margin-bottom: .5mm;
+    }
+    .bc-lbl { font-size: 5.5pt; color: #6b7280; font-weight: 600; }
+    .bc-num {
+      font-size: 12pt; font-weight: 900; color: #dc2626;
+      line-height: 1; letter-spacing: .2px;
+      display: flex; align-items: center; gap: 1mm;
+    }
+    .bc-copy { font-size: 8pt; color: #dc2626; cursor: pointer; }
+    #barcode { width: 100%; display: block; }
+
+    /* ─── DASHED SEPARATOR ─── */
+    .sep { border: none; border-top: 1.2px dashed #fbbf24; flex-shrink: 0; }
+    .sep-light { border: none; border-top: 1px solid #e5e7eb; flex-shrink: 0; }
+
+    /* ─── ROUTE  10mm ─── */
+    .route {
+      display: flex; align-items: center;
+      padding: 1.5mm 2.5mm; gap: 1.5mm; flex-shrink: 0;
+    }
+    .r-col { flex: 1; min-width: 0; }
+    .r-col.right { text-align: right; }
+    .r-lbl {
+      font-size: 5.5pt; color: #6b7280; font-weight: 600;
+      display: flex; align-items: center; gap: .5mm; margin-bottom: .3mm;
+    }
+    .r-lbl.right { justify-content: flex-end; }
+    .r-lbl-icon { font-size: 6pt; }
+    .r-name {
+      font-size: 9.5pt; font-weight: 900; color: #111;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .r-arrow { color: #9ca3af; font-size: 11pt; flex-shrink: 0; }
+
+    /* ─── PEOPLE  12mm ─── */
+    .people {
+      display: flex;
+      padding: 1.5mm 2.5mm 1mm;
+      gap: 2mm; flex-shrink: 0;
+    }
+    .divider-v { width: 1px; background: #e5e7eb; flex-shrink: 0; }
+    .person { flex: 1; min-width: 0; }
+    .person.right { text-align: right; }
+    .p-hd {
+      display: flex; align-items: center; gap: .8mm;
+      margin-bottom: .4mm;
+    }
+    .p-hd.right { justify-content: flex-end; }
+    .p-icon { font-size: 7pt; color: #6b7280; }
+    .p-lbl { font-size: 5.5pt; color: #6b7280; font-weight: 700; }
+    .p-name {
+      font-size: 9.5pt; font-weight: 900; color: #111;
+      line-height: 1.1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .p-phone {
+      display: flex; align-items: center; gap: .6mm;
+      margin-top: .4mm;
+    }
+    .p-phone.right { justify-content: flex-end; }
+    .ph-icon { font-size: 7pt; color: #374151; }
+    .ph-num { font-size: 8pt; font-weight: 700; color: #111; letter-spacing: .1px; }
+
+    /* ─── SERVICE TYPE  6mm ─── */
+    .svc-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2mm 2.5mm; flex-shrink: 0;
+    }
+    .svc-left { display: flex; align-items: center; gap: 1.5mm; }
+    .svc-icon { font-size: 9pt; }
+    .svc-lbl { font-size: 6pt; color: #6b7280; font-weight: 600; }
+    .svc-val { font-size: 8pt; font-weight: 800; color: #111; }
+
+    /* ─── DETAIL ROWS  5 × 5.8mm = 29mm ─── */
+    .detail-list { flex: 1; display: flex; flex-direction: column; }
+
+    .drow {
+      display: flex; align-items: center;
+      padding: 0 2.5mm; flex: 1;
+      border-top: 1px solid #f3f4f6;
+      min-height: 0;
+    }
+    .d-ico {
+      width: 5mm; height: 5mm;
+      background: #fbbf24; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 6pt; flex-shrink: 0;
+      margin-right: 2mm; font-weight: 900; color: #78350f;
+    }
+    .d-ico.sm { font-size: 5pt; letter-spacing: -.3px; }
+    .d-label { font-size: 7.5pt; font-weight: 700; color: #111; flex: 1; min-width: 0; }
+    .d-sub { font-size: 5.5pt; color: #6b7280; font-weight: 500; display: block; }
+    .d-val { font-size: 8pt; font-weight: 800; color: #111; text-align: right; flex-shrink: 0; }
+    .d-val.red { color: #dc2626; font-size: 9pt; }
+  </style>
+</head>
+
+<%
+  const isLa = lang === 'la';
+  const t = {
+    service:    isLa ? 'ບໍລິການສົ່ງພັດສະດຸ' : 'บริการส่งพัสดุ',
+    tracking:   isLa ? 'ເລກພັດສະດຸ' : 'เลขพัสดุ',
+    from:       isLa ? 'ຈາກ (ຕົ້ນທາງ)' : 'จาก (ต้นทาง)',
+    to:         isLa ? 'ໄປ (ປາຍທາງ)' : 'ไป (ปลายทาง)',
+    sender:     isLa ? 'ຜູ້ຝາກ' : 'ผู้ฝาก',
+    receiver:   isLa ? 'ຜູ້ຮັບ' : 'ผู้รับ',
+    svcLbl:     isLa ? 'ປະເພດພັດສະດຸ' : 'ประเภทพัสดุ',
+    svcDefault: isLa ? 'ເຄື່ອງໃຊ້ທົ່ວໄປ' : 'เถ้องทั่วไป',
+    weight:     isLa ? 'ນ້ຳໜັກ' : 'น้ำหนัก',
+    qty:        isLa ? 'ຈຳນວນ' : 'จำนวน',
+    size:       isLa ? 'ຂະໜາດ' : 'ขนาด',
+    cod:        'COD',
+    fee:        isLa ? 'ຄ່າສົ່ງ' : 'ค่าส่ง',
+    nk:         isLa ? 'ໜອງຄາຍ' : 'หนองคาย',
+    vte:        isLa ? 'ວຽງຈັນ' : 'เวียงจันทน์',
+    unk:        isLa ? 'ບໍ່ລະບຸ' : 'ไม่ระบุ',
+  };
+
+  // Payment method with bracket
+  const payBracket = (() => {
+    const m = String(order.payment_method || '').toUpperCase();
+    if (m === 'DESTINATION') return isLa ? '(ເກັບປາຍທາງ)' : '(เก็บปลายทาง)';
+    if (m === 'CREDIT' || m === 'BILLING') return isLa ? '(ວາງບິນ)' : '(วางบิล)';
+    return isLa ? '(ເກັບຕົ້ນທາງ)' : '(เก็บต้นทาง)';
+  })();
+
+  const xr  = typeof exchangeRate !== 'undefined' ? exchangeRate : 700;
+  const d   = new Date(order.created_at);
+  const pad = n => String(n).padStart(2,'0');
+  const dtStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const feeKip = Number((order.price_amount||0) * xr).toLocaleString();
+%>
+<body>
+<div class="shell">
+
+  <!-- Screen controls -->
+  <div class="ctrl-bar">
+    <p>สติกเกอร์ <b>75×100mm</b> · <%= order.job_no %></p>
+    <button class="btn-print" onclick="window.print()">🖨 ปริ้น</button>
+  </div>
+
+  <!-- ═══ STICKER ═══ -->
+  <div class="sticker">
+
+    <!-- ① YELLOW HEADER — 11mm -->
+    <div class="hdr">
+      <div class="hdr-logo">
+        <img src="/images/snglogo.png" alt="SNG">
+      </div>
+      <div class="hdr-text">
+        <div class="hdr-brand">SNG EXPRESS</div>
+        <div class="hdr-sub">FAST &amp; SAFE DELIVERY</div>
+      </div>
+      <div class="hdr-right">
+        <div class="hdr-svc"><%= t.service %></div>
+        <div class="hdr-tel">
+          <div class="tel-bubble">📞</div>
+          <div class="hdr-num">020 59531230</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② BARCODE ZONE — 19mm -->
+    <div class="bc-zone">
+      <div class="bc-top">
+        <span class="bc-lbl"><%= t.tracking %></span>
+        <div class="bc-num">
+          <%= order.job_no %>
+          <span class="bc-copy" onclick="navigator.clipboard&&navigator.clipboard.writeText('<%= order.job_no %>')">🗐</span>
+        </div>
+      </div>
+      <svg id="barcode"></svg>
+    </div>
+
+    <hr class="sep">
+
+    <!-- ③ ROUTE — 10mm -->
+    <div class="route">
+      <div class="r-col">
+        <div class="r-lbl"><span class="r-lbl-icon">📍</span><%= t.from %></div>
+        <div class="r-name"><%= order.origin_branch || t.nk %></div>
+      </div>
+      <div class="r-arrow">→</div>
+      <div class="r-col right">
+        <div class="r-lbl right"><%= t.to %><span class="r-lbl-icon"> 📍</span></div>
+        <div class="r-name"><%= order.destination_branch || t.vte %></div>
+      </div>
+    </div>
+
+    <hr class="sep">
+
+    <!-- ④ PEOPLE — 12mm -->
+    <div class="people">
+      <!-- Sender -->
+      <div class="person">
+        <div class="p-hd">
+          <span class="p-icon">👤</span>
+          <span class="p-lbl"><%= t.sender %></span>
+        </div>
+        <div class="p-name"><%= order.sender_name || t.unk %></div>
+        <div class="p-phone">
+          <span class="ph-icon">📞</span>
+          <span class="ph-num"><%= order.sender_phone || '-' %></span>
+        </div>
+      </div>
+      <div class="divider-v"></div>
+      <!-- Receiver -->
+      <div class="person right">
+        <div class="p-hd right">
+          <span class="p-icon">👤</span>
+          <span class="p-lbl"><%= t.receiver %></span>
+        </div>
+        <div class="p-name"><%= order.receiver_name || t.unk %></div>
+        <div class="p-phone right">
+          <span class="ph-icon">📞</span>
+          <span class="ph-num"><%= order.receiver_phone || '-' %></span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="sep-light">
+
+    <!-- ⑤ SERVICE TYPE — 6mm -->
+    <div class="svc-row">
+      <div class="svc-left">
+        <span class="svc-icon">📦</span>
+        <span class="svc-lbl"><%= t.svcLbl %></span>
+      </div>
+      <span class="svc-val"><%= order.service_type || t.svcDefault %></span>
+    </div>
+
+    <hr class="sep-light">
+
+    <!-- ⑥ DETAIL ROWS — flex-grow fills rest -->
+    <div class="detail-list">
+
+      <div class="drow">
+        <div class="d-ico">⚖</div>
+        <div class="d-label"><%= t.weight %></div>
+        <div class="d-val"><%= order.actual_weight || order.declared_weight || '0' %> Kg</div>
+      </div>
+
+      <div class="drow">
+        <div class="d-ico">📦</div>
+        <div class="d-label"><%= t.qty %></div>
+        <div class="d-val"><%= order.item_count || '1' %></div>
+      </div>
+
+      <div class="drow">
+        <div class="d-ico">📏</div>
+        <div class="d-label"><%= t.size %></div>
+        <div class="d-val"><%= order.actual_size || order.declared_size || '—' %> Cm</div>
+      </div>
+
+      <div class="drow">
+        <div class="d-ico sm">COD</div>
+        <div class="d-label"><%= t.cod %></div>
+        <div class="d-val">₭ <%= Number(order.cod_amount||0).toLocaleString() %></div>
+      </div>
+
+      <div class="drow">
+        <div class="d-ico">💰</div>
+        <div class="d-label">
+          <%= t.fee %>
+          <span class="d-sub"><%= payBracket %></span>
+        </div>
+        <div class="d-val red">₭ <%= feeKip %></div>
+      </div>
+
+    </div>
+    <!-- /.detail-list -->
+
+  </div><!-- /.sticker -->
+</div><!-- /.shell -->
+
+<script>
+  JsBarcode("#barcode", "<%= order.job_no %>", {
+    format:       "CODE128",
+    width:        2.7,
+    height:       46,
+    displayValue: false,
+    margin:       0,
+    background:   "#ffffff",
+    lineColor:    "#000000"
+  });
+</script>
+</body>
+</html>

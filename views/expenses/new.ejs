@@ -1,0 +1,192 @@
+<div class="max-w-2xl mx-auto space-y-6" x-data="expenseForm()">
+
+  <div class="flex items-center gap-3">
+    <% if (selectedTrip) { %>
+      <a href="/trips/<%= selectedTrip.id %>" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+        <i class="fa-solid fa-arrow-left text-sm"></i>
+      </a>
+    <% } else { %>
+      <a href="/expenses" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+        <i class="fa-solid fa-arrow-left text-sm"></i>
+      </a>
+    <% } %>
+    <div>
+      <h1 class="text-2xl font-black text-white flex items-center gap-2">
+        <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i> บันทึกรายจ่ายใหม่
+      </h1>
+      <p class="text-slate-400 text-sm mt-0.5">เพิ่มรายการบัญชี รายจ่าย หรือยอดเงินลงทุน</p>
+    </div>
+  </div>
+
+  <% if (flash && flash.message) { %>
+    <div class="p-4 rounded-xl <%= flash.type === 'error' ? 'bg-red-500/10 text-red-200 border-red-500/20' : 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' %> border flex items-center gap-3">
+      <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check' %>"></i>
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <form action="/expenses/create?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" class="glass-panel-dark rounded-2xl border border-white/10 p-6 space-y-6">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (selectedTrip) { %>
+      <input type="hidden" name="return_to" value="trip">
+    <% } %>
+
+    <!-- 1. Category -->
+    <div>
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">หมวดหมู่รายจ่าย (Category) *</label>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label class="relative cursor-pointer">
+          <input type="radio" name="category" value="TRIP" x-model="category" class="peer sr-only">
+          <div class="p-4 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:bg-purple-500/20 peer-checked:border-purple-500/50 peer-checked:text-purple-300 transition-all">
+            <i class="fa-solid fa-truck-moving text-xl mb-1 block"></i>
+            <span class="font-bold text-sm">รายจ่ายรอบรถ</span>
+          </div>
+        </label>
+        
+        <label class="relative cursor-pointer">
+          <input type="radio" name="category" value="CAPITAL" x-model="category" class="peer sr-only">
+          <div class="p-4 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500/50 peer-checked:text-emerald-300 transition-all">
+            <i class="fa-solid fa-building text-xl mb-1 block"></i>
+            <span class="font-bold text-sm">เงินลงทุน/ก่อตั้ง</span>
+          </div>
+        </label>
+        
+        <label class="relative cursor-pointer">
+          <input type="radio" name="category" value="ADMIN" x-model="category" class="peer sr-only">
+          <div class="p-4 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:bg-blue-500/20 peer-checked:border-blue-500/50 peer-checked:text-blue-300 transition-all">
+            <i class="fa-solid fa-building-user text-xl mb-1 block"></i>
+            <span class="font-bold text-sm">รายจ่ายออฟฟิศ</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- 2. Trip Selection (only for TRIP) -->
+    <div x-show="category === 'TRIP'" x-collapse>
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">รอบรถที่เกี่ยวข้อง *</label>
+      <select name="trip_id" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all" :required="category === 'TRIP'">
+        <option value="">-- เลือกรอบรถ --</option>
+        <% if (selectedTrip) { %>
+          <option value="<%= selectedTrip.id %>" selected><%= selectedTrip.trip_no %></option>
+        <% } %>
+        <% activeTrips.forEach(t => { %>
+          <% if (!selectedTrip || t.id !== selectedTrip.id) { %>
+            <option value="<%= t.id %>"><%= t.trip_no %> (<%= t.direction === 'TH_TO_LA' ? 'ไทย->ลาว' : 'ลาว->ไทย' %>)</option>
+          <% } %>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- 3. Type -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ประเภทรายจ่าย *</label>
+        <input type="text" name="type" required placeholder="เช่น ค่าน้ำมัน, ค่าผ่านทาง, ดาวน์รถ" list="typeSuggestions"
+               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+        <datalist id="typeSuggestions">
+          <option value="ค่าน้ำมัน">
+          <option value="ค่าผ่านทาง / ทางด่วน">
+          <option value="ค่าเบี้ยเลี้ยงคนขับ">
+          <option value="ค่าใบผ่านแดน / ศุลกากร">
+          <option value="ค่าก่อสร้างออฟฟิศ">
+          <option value="ค่าตกแต่งภายใน">
+          <option value="ดาวน์รถ / ซื้อรถ">
+          <option value="ค่างวดรถ (USD)">
+          <option value="ค่าดัดแปลงรถ (เสริมแหนบ)">
+          <option value="ค่าซ่อมบำรุง / ปะยาง">
+          <option value="ค่าจดทะเบียนบริษัท (USD)">
+          <option value="ค่าต่อใบอนุญาตธุรกิจ (USD)">
+          <option value="ค่าซอฟต์แวร์ / SaaS (USD)">
+          <option value="ค่าโดเมน / Hosting (USD)">
+        </datalist>
+      </div>
+
+      <!-- 4. Amount -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ยอดเงิน *</label>
+        <div class="flex gap-3">
+          <select name="currency" 
+                  id="currencySelect"
+                  onchange="onCurrencyChange(this.value)"
+                  class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-amber-500 font-bold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all w-32 shrink-0">
+            <option value="THB">THB ฿</option>
+            <option value="LAK">LAK ₭</option>
+            <option value="USD">USD $</option>
+          </select>
+          <div class="relative flex-grow">
+            <input type="number" step="0.01" min="0" name="amount" required placeholder="0.00"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-mono font-bold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+            <span id="currencySymbol" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">฿</span>
+          </div>
+        </div>
+        <!-- USD note -->
+        <p id="usdNote" class="hidden text-xs text-blue-400 mt-2 flex items-center gap-1">
+          <i class="fa-solid fa-circle-info"></i> ระบบจะแปลงเป็น THB โดยอัตโนมัติเมื่อคำนวณยอดรวม
+        </p>
+      </div>
+    </div>
+
+    <!-- 5. Date & Paid By -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">วันที่จ่ายเงิน *</label>
+        <input type="date" name="expense_date" required x-model="todayDate"
+               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ผู้จ่ายเงิน / ผู้ลงทุน</label>
+        <input type="text" name="paid_by" placeholder="เช่น พี่เก่ง, พี่ตุ้ย, บัญชีกลาง, คนขับ" list="payerSuggestions"
+               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+        <datalist id="payerSuggestions">
+          <option value="พี่เก่ง">
+          <option value="พี่ตุ้ย">
+          <option value="คนขับรถ (สำรองจ่าย)">
+          <option value="บัญชีกลาง (ออฟฟิศ)">
+        </datalist>
+      </div>
+    </div>
+
+    <!-- 6. Description -->
+    <div>
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">รายละเอียดเพิ่มเติม</label>
+      <textarea name="description" rows="2" placeholder="รายละเอียดรายการ..."
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"></textarea>
+    </div>
+
+    <!-- 7. Receipt Image -->
+    <div>
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">หลักฐาน (สลิปโอนเงิน / บิลเงินสด)</label>
+      <input type="file" name="receipt_image" accept="image/*,application/pdf"
+             class="w-full text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all">
+      <p class="text-xs text-slate-500 mt-2">รองรับไฟล์ภาพ JPG, PNG หรือ PDF (ขนาดไม่เกิน 5MB)</p>
+    </div>
+
+    <!-- Submit -->
+    <div class="pt-4 border-t border-white/10 flex justify-end gap-3">
+      <% if (selectedTrip) { %>
+        <a href="/trips/<%= selectedTrip.id %>" class="px-5 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 font-semibold transition-all">ยกเลิก</a>
+      <% } else { %>
+        <a href="/expenses" class="px-5 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 font-semibold transition-all">ยกเลิก</a>
+      <% } %>
+      <button type="submit" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-all">
+        <i class="fa-solid fa-save mr-2"></i> บันทึกข้อมูล
+      </button>
+    </div>
+  </form>
+
+</div>
+
+<script>
+function expenseForm() {
+  return {
+    category: '<%= selectedTrip ? "TRIP" : "CAPITAL" %>',
+    todayDate: new Date().toISOString().split('T')[0]
+  }
+}
+
+function onCurrencyChange(val) {
+  const symbols = { THB: '฿', LAK: '₭', USD: '$' };
+  document.getElementById('currencySymbol').textContent = symbols[val] || '฿';
+  document.getElementById('usdNote').classList.toggle('hidden', val !== 'USD');
+}
+</script>

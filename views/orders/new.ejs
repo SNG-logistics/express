@@ -1,0 +1,1051 @@
+<%#
+  views/orders/new.ejs — Order Creation Wizard v3
+  
+  Step 1: Direction + Sender/Receiver
+  Step 2: Parcel details (weight/dims/volumetric/COD/customs/price/notes/image)
+
+  Features:
+  - Duplicate detection warning banner with "force" bypass
+  - Volumetric weight auto-calculated & displayed
+  - Item description field (what's inside)
+  - COD vs declared value sanity warning
+  - Pricing from shipping rates (auto + manual override)
+  - Full summary panel before submit
+  - Field-level error highlighting from session flash
+%>
+
+<%
+  // flash is passed from controller (not from req directly)
+  const _flash      = typeof flash !== 'undefined' ? flash : null;
+  const fieldErrors = _flash?.fields || {};
+  const isDupWarning = _flash?.force_needed === true;
+  const dupJobNo    = _flash?.dup_job_no || draft?._dup_job || null;
+  const dupOrderId  = _flash?.dup_order_id || draft?._dup_id || null;
+%>
+
+<div class="max-w-3xl mx-auto" x-data="orderWizard()" x-init="init()">
+
+  <!-- Page Header -->
+  <div class="flex items-center gap-3 mb-6">
+    <a href="/orders" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div>
+      <h2 class="text-2xl font-bold text-white">สร้าง Order ใหม่</h2>
+      <p class="text-slate-400 text-sm">กรอกข้อมูลให้ครบ 2 ขั้นตอน</p>
+    </div>
+  </div>
+
+  <!-- ── Duplicate Warning Banner ───────────────────────────────────────── -->
+  <% if (isDupWarning && dupJobNo) { %>
+  <div class="mb-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+    <i class="fa-solid fa-triangle-exclamation text-amber-400 text-lg mt-0.5 flex-shrink-0"></i>
+    <div class="flex-1">
+      <div class="text-amber-300 font-semibold text-sm">⚠ พบ Order ที่คล้ายกัน</div>
+      <div class="text-amber-200/70 text-xs mt-1">
+        Order
+        <a href="/orders/<%= dupOrderId %>" target="_blank" class="underline font-mono font-bold"><%= dupJobNo %></a>
+        ถูกสร้างด้วยผู้ส่ง-ผู้รับเดิม ทิศทางเดิม ภายใน 2 ชั่วโมงที่ผ่านมา
+      </div>
+      <div class="flex gap-2 mt-3">
+        <a href="/orders/<%= dupOrderId %>" class="px-4 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold hover:bg-amber-500/30 transition-all">
+          ดู Order นั้น
+        </a>
+        <span class="text-amber-200/50 text-xs self-center">หรือ</span>
+        <span class="text-amber-300 text-xs self-center">กด "สร้าง Order" เพื่อยืนยันสร้างใหม่ต่อไป</span>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- ── Step Indicator ─────────────────────────────────────────────────── -->
+  <div class="flex items-center gap-0 mb-6">
+    <div class="flex items-center gap-3 flex-1">
+      <div :class="step >= 1 ? 'bg-cyan-500 text-white' : 'bg-white/10 text-slate-400'"
+           class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all">1</div>
+      <div>
+        <div :class="step >= 1 ? 'text-cyan-400' : 'text-slate-500'" class="text-xs font-semibold transition-all">ขั้นตอนที่ 1</div>
+        <div :class="step >= 1 ? 'text-white' : 'text-slate-500'" class="text-sm font-medium transition-all">ผู้ส่ง / ผู้รับ</div>
+      </div>
+    </div>
+    <div class="flex-1 h-px mx-4" :class="step >= 2 ? 'bg-cyan-500/50' : 'bg-white/10'"></div>
+    <div class="flex items-center gap-3 flex-1">
+      <div :class="step >= 2 ? 'bg-cyan-500 text-white' : 'bg-white/10 text-slate-400'"
+           class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all">2</div>
+      <div>
+        <div :class="step >= 2 ? 'text-cyan-400' : 'text-slate-500'" class="text-xs font-semibold transition-all">ขั้นตอนที่ 2</div>
+        <div :class="step >= 2 ? 'text-white' : 'text-slate-500'" class="text-sm font-medium transition-all">รายละเอียดพัสดุ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FORM ─────────────────────────────────────────────────────────── -->
+  <form id="orderForm" action="/orders?_csrf=<%= encodeURIComponent(csrfToken) %>" method="POST" enctype="multipart/form-data" novalidate>
+    <%# pass force_duplicate if this is a confirmed bypass %>
+    <% if (isDupWarning) { %>
+    <input type="hidden" name="force_duplicate" value="1">
+    <% } %>
+
+    <% if (typeof quoteData !== 'undefined' && quoteData) { %>
+    <input type="hidden" name="quotation_id" value="<%= quoteData.id %>">
+    <% } %>
+
+    <input type="hidden" name="is_fragile" :value="isFragile ? '1' : ''">
+
+    <input type="hidden" name="chargeable_kg" :value="chargeableWeight">
+
+    <!-- ════════════════════════════ STEP 1 ════════════════════════════════ -->
+    <div x-show="step === 1" x-cloak>
+      <div class="glass-panel-dark p-6 space-y-6">
+
+        <!-- Direction Toggle -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            ทิศทางขนส่ง <span class="text-red-400">*</span>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label :class="direction === 'TH_TO_LA'
+                ? 'border-cyan-500/50 bg-cyan-500/10 ring-1 ring-cyan-500/25'
+                : 'border-white/10 bg-white/5'"
+                   class="flex items-center gap-3 p-4 rounded-xl border cursor-pointer hover:brightness-125 transition-all">
+              <input type="radio" name="direction" value="TH_TO_LA" x-model="direction" class="sr-only">
+              <span class="text-2xl">🇹🇭</span>
+              <div>
+                <div class="font-bold text-sm text-white">ไทย → ลาว</div>
+                <div class="text-xs text-slate-500">TH to LA</div>
+              </div>
+              <template x-if="direction === 'TH_TO_LA'">
+                <i class="fa-solid fa-circle-check ml-auto text-cyan-400"></i>
+              </template>
+            </label>
+            <label :class="direction === 'LA_TO_TH'
+                ? 'border-violet-500/50 bg-violet-500/10 ring-1 ring-violet-500/25'
+                : 'border-white/10 bg-white/5'"
+                   class="flex items-center gap-3 p-4 rounded-xl border cursor-pointer hover:brightness-125 transition-all">
+              <input type="radio" name="direction" value="LA_TO_TH" x-model="direction" class="sr-only">
+              <span class="text-2xl">🇱🇦</span>
+              <div>
+                <div class="font-bold text-sm text-white">ลาว → ไทย</div>
+                <div class="text-xs text-slate-500">LA to TH</div>
+              </div>
+              <template x-if="direction === 'LA_TO_TH'">
+                <i class="fa-solid fa-circle-check ml-auto text-violet-400"></i>
+              </template>
+            </label>
+          </div>
+          <% if (fieldErrors.direction) { %>
+          <p class="mt-1.5 text-red-400 text-xs"><%= fieldErrors.direction %></p>
+          <% } %>
+        </div>
+
+        <!-- Sender -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <i class="fa-solid fa-user-tie text-cyan-400/70 mr-1"></i>
+              ผู้ส่ง <span class="text-red-400">*</span>
+            </label>
+            <a href="/customers/new?role=sender" target="_blank"
+               class="text-xs text-cyan-400/60 hover:text-cyan-400 transition-colors">
+              + ลูกค้าใหม่
+            </a>
+          </div>
+
+          <!-- Phone Lookup row -->
+          <div class="relative mb-2" x-data="phoneLookupWidget('sender')">
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <i class="fa-solid fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="sender_phone_lookup"
+                  x-model="phone"
+                  @input.debounce.400ms="lookup()"
+                  @keydown.enter.prevent="lookup()"
+                  placeholder="ค้นหาจากเบอร์โทร..."
+                  maxlength="15" inputmode="tel"
+                  class="w-full pl-8 pr-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-500/40 transition-all">
+              </div>
+              <button type="button" @click="lookup()"
+                :disabled="phone.length < 6"
+                :class="phone.length >= 6 ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-white/5 opacity-40 cursor-not-allowed'"
+                class="px-3 py-2.5 rounded-xl text-white text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                ค้นหา
+              </button>
+            </div>
+            <!-- Lookup result toast -->
+            <div x-show="status === 'found'" x-cloak
+                 class="mt-1.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>พบลูกค้า — กรอกข้อมูลอัตโนมัติแล้ว</span>
+            </div>
+            <div x-show="status === 'not_found'" x-cloak
+                 class="mt-1.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 text-xs">
+              <i class="fa-solid fa-user-xmark"></i>
+              <span>ไม่พบลูกค้า — กรุณาค้นหาหรือสร้างใหม่</span>
+            </div>
+            <div x-show="status === 'loading'" x-cloak
+                 class="mt-1.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-slate-500 text-xs">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <span>กำลังค้นหา...</span>
+            </div>
+          </div>
+
+          <div class="relative" x-data="customerSearch('sender', <%= JSON.stringify(draft?.sender_id || null) %>, <%= JSON.stringify(draft?.sender_name || '') %>)" @click.away="close()">
+            <input type="hidden" name="sender_id" :value="selectedId">
+            <input type="text" id="sender_search"
+              x-model="query"
+              @input.debounce.250ms="search()"
+              @focus="search()"
+              @keydown.escape="close()"
+              @keydown.arrow-down.prevent="moveDown()"
+              @keydown.arrow-up.prevent="moveUp()"
+              @keydown.enter.prevent="selectFocused()"
+              @blur="setTimeout(() => autoSelectFirst(), 200)"
+              :class="[
+                selectedId ? 'border-cyan-500/40 bg-cyan-500/5' : 'border-white/10 bg-white/5',
+                '<%= fieldErrors.sender_id ? "border-red-500/50 bg-red-500/5" : "" %>'
+              ]"
+              class="w-full px-4 py-3 rounded-xl border text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+              placeholder="ค้นหาชื่อ, เบอร์โทร..."
+              autocomplete="off"
+              value="<%= draft?.sender_name || '' %>">
+            <template x-if="selectedId && selectedName">
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <span class="text-cyan-400 text-xs font-semibold">
+                  <i class="fa-solid fa-circle-check mr-1"></i><span x-text="selectedName"></span>
+                </span>
+                <button type="button" @click="clear()" class="text-slate-500 hover:text-red-400 transition-colors">
+                  <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+              </div>
+            </template>
+            <div x-show="(results.length > 0 || noResults) && !selectedId"
+                 x-cloak
+                 class="absolute z-50 w-full mt-1 bg-slate-900 border border-white/10 rounded-xl overflow-hidden shadow-xl">
+              <template x-for="(c, idx) in results" :key="c.id">
+                <button type="button" @click="select(c)"
+                  :class="focused === idx ? 'bg-white/8' : ''"
+                  class="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left">
+                  <div class="w-8 h-8 rounded-full bg-cyan-500/15 flex items-center justify-center flex-shrink-0 text-xs font-bold text-cyan-400"
+                       x-text="c.name?.charAt(0) || '?'"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-sm font-medium" x-text="c.name"></div>
+                    <div class="text-slate-400 text-xs">
+                      <span x-text="c.phone || '–'"></span>
+                      <span x-show="c.country" class="ml-2 opacity-60" x-text="c.country"></span>
+                    </div>
+                  </div>
+                </button>
+              </template>
+              <div x-show="noResults" class="px-4 py-3 flex items-center justify-between">
+                <p class="text-slate-500 text-sm">ไม่พบลูกค้า "<span x-text="query"></span>"</p>
+                <a href="/customers/new" target="_blank" class="text-cyan-400 text-xs hover:text-cyan-300">+ สร้างใหม่ →</a>
+              </div>
+            </div>
+          </div>
+          <% if (fieldErrors.sender_id) { %>
+          <p class="mt-1.5 text-red-400 text-xs flex items-center gap-1">
+            <i class="fa-solid fa-triangle-exclamation"></i> <%= fieldErrors.sender_id %>
+          </p>
+          <% } %>
+        </div>
+
+        <!-- Receiver -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <i class="fa-solid fa-user text-purple-400/70 mr-1"></i>
+              ผู้รับ <span class="text-red-400">*</span>
+            </label>
+            <a href="/customers/new?role=receiver" target="_blank"
+               class="text-xs text-purple-400/60 hover:text-purple-400 transition-colors">
+              + ลูกค้าใหม่
+            </a>
+          </div>
+          <%
+            let initRcvrId = draft?.receiver_id || null;
+            if (!initRcvrId && typeof quoteReceiverId !== 'undefined') initRcvrId = quoteReceiverId;
+            let initRcvrName = draft?.receiver_name || '';
+            if (!initRcvrName && typeof quoteReceiverName !== 'undefined') initRcvrName = quoteReceiverName;
+          %>
+          <div class="relative" x-data="customerSearch('receiver', <%= JSON.stringify(initRcvrId) %>, <%= JSON.stringify(initRcvrName) %>)" @click.away="close()">
+            <input type="hidden" name="receiver_id" :value="selectedId">
+            <input type="text" id="receiver_search"
+              x-model="query"
+              @input.debounce.250ms="search()"
+              @focus="search()"
+              @keydown.escape="close()"
+              @keydown.arrow-down.prevent="moveDown()"
+              @keydown.arrow-up.prevent="moveUp()"
+              @keydown.enter.prevent="selectFocused()"
+              @blur="setTimeout(() => autoSelectFirst(), 200)"
+              :class="[
+                selectedId ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/10 bg-white/5',
+                '<%= fieldErrors.receiver_id ? "border-red-500/50 bg-red-500/5" : "" %>'
+              ]"
+              class="w-full px-4 py-3 rounded-xl border text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 transition-all"
+              placeholder="ค้นหาชื่อ, เบอร์โทร..."
+              autocomplete="off"
+              value="<%= initRcvrName %>">
+            <template x-if="selectedId && selectedName">
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <span class="text-purple-400 text-xs font-semibold">
+                  <i class="fa-solid fa-circle-check mr-1"></i><span x-text="selectedName"></span>
+                </span>
+                <button type="button" @click="clear()" class="text-slate-500 hover:text-red-400 transition-colors">
+                  <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+              </div>
+            </template>
+            <div x-show="(results.length > 0 || noResults) && !selectedId"
+                 x-cloak
+                 class="absolute z-50 w-full mt-1 bg-slate-900 border border-white/10 rounded-xl overflow-hidden shadow-xl">
+              <template x-for="(c, idx) in results" :key="c.id">
+                <button type="button" @click="select(c)"
+                  :class="focused === idx ? 'bg-white/8' : ''"
+                  class="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left">
+                  <div class="w-8 h-8 rounded-full bg-purple-500/15 flex items-center justify-center flex-shrink-0 text-xs font-bold text-purple-400"
+                       x-text="c.name?.charAt(0) || '?'"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-sm font-medium" x-text="c.name"></div>
+                    <div class="text-slate-400 text-xs">
+                      <span x-text="c.phone || '–'"></span>
+                      <span x-show="c.country" class="ml-2 opacity-60" x-text="c.country"></span>
+                    </div>
+                  </div>
+                </button>
+              </template>
+              <div x-show="noResults" class="px-4 py-3 flex items-center justify-between">
+                <p class="text-slate-500 text-sm">ไม่พบลูกค้า "<span x-text="query"></span>"</p>
+                <a href="/customers/new" target="_blank" class="text-cyan-400 text-xs hover:text-cyan-300">+ สร้างใหม่ →</a>
+              </div>
+            </div>
+          </div>
+          <% if (fieldErrors.receiver_id) { %>
+          <p class="mt-1.5 text-red-400 text-xs flex items-center gap-1">
+            <i class="fa-solid fa-triangle-exclamation"></i> <%= fieldErrors.receiver_id %>
+          </p>
+          <% } %>
+        </div>
+
+        <!-- Same-person guard -->
+        <div x-show="senderSameAsReceiver" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <i class="fa-solid fa-triangle-exclamation text-red-400 text-sm"></i>
+          <span class="text-red-400 text-sm">ผู้ส่งและผู้รับต้องไม่ใช่คนเดียวกัน</span>
+        </div>
+
+      </div>
+
+      <!-- Step 1 Actions -->
+      <div class="flex justify-end mt-4 gap-3">
+        <a href="/orders" class="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white transition-all text-sm">ยกเลิก</a>
+        <button type="button" @click="nextStep()" :disabled="!canProceedStep1"
+          :class="canProceedStep1
+            ? 'from-cyan-500 to-blue-600 hover:shadow-cyan-500/25 hover:shadow-lg cursor-pointer'
+            : 'from-slate-600 to-slate-700 cursor-not-allowed opacity-50'"
+          class="px-6 py-2.5 bg-gradient-to-r text-white font-semibold rounded-xl transition-all text-sm flex items-center gap-2">
+          ถัดไป <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════ STEP 2 ════════════════════════════════ -->
+    <div x-show="step === 2" x-cloak>
+      <div class="glass-panel-dark p-6 space-y-6">
+
+        <!-- ── Source Type + Item Count ───────────────────────────────────────── -->
+        <div class="space-y-4">
+          <!-- Source Type -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              <i class="fa-solid fa-truck-ramp-box text-slate-400/70 mr-1"></i>
+              แหล่งที่มาของสินค้า <span class="text-red-400">*</span>
+            </label>
+            <input type="hidden" name="source_type" x-model="sourceType">
+            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <%
+              const sourceOptions = [
+                { val:'WALKIN',        icon:'fa-person-walking-arrow-right', label:'Walk-in',    color:'cyan' },
+                { val:'POST_TH',       icon:'fa-envelopes-bulk',              label:'ไปรษณีย์ไทย', color:'blue' },
+                { val:'LAZADA',        icon:'fa-bag-shopping',               label:'Lazada',     color:'orange' },
+                { val:'SHOPEE',        icon:'fa-bag-shopping',               label:'Shopee',     color:'orange' },
+                { val:'ALIPAY',        icon:'fa-a',                          label:'AliPay',     color:'blue' },
+                { val:'TIKTOK',        icon:'fa-brands fa-tiktok',           label:'TikTok Shop',color:'purple' },
+                { val:'MAKRO',         icon:'fa-store',                      label:'Makro',      color:'blue' },
+                { val:'LOTUS',         icon:'fa-store',                      label:"Lotus's",    color:'green' },
+                { val:'WATSON',        icon:'fa-prescription-bottle',        label:'Watson',     color:'green' },
+                { val:'KERRY',         icon:'fa-truck',                      label:'Kerry',      color:'orange' },
+                { val:'FLASH',         icon:'fa-bolt',                       label:'Flash',      color:'yellow' },
+                { val:'JT',            icon:'fa-truck-fast',                 label:'J\u0026T',        color:'red' },
+                { val:'DHL',           icon:'fa-truck-fast',                 label:'DHL',        color:'yellow' },
+                { val:'OTHER_CARRIER', icon:'fa-box-open',                   label:'ขนส่งอื่น',  color:'slate' },
+                { val:'OTHER',         icon:'fa-ellipsis',                   label:'อื่นๆ',      color:'slate' },
+              ];
+              %>
+              <% sourceOptions.forEach(opt => { %>
+              <button type="button"
+                @click="sourceType = '<%= opt.val %>'"
+                :class="sourceType === '<%= opt.val %>'
+                  ? 'border-cyan-500/60 bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/30 scale-[1.04]'
+                  : 'border-white/10 bg-white/3 text-slate-400 hover:bg-white/8 hover:text-slate-200'"
+                class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all duration-200 cursor-pointer text-center">
+                <i class="<%= opt.icon %> text-base"></i>
+                <span class="text-[10px] font-semibold leading-tight"><%= opt.label %></span>
+              </button>
+              <% }); %>
+            </div>
+          </div>
+
+          <!-- Source Tracking No + Item Count -->
+          <div class="grid grid-cols-2 gap-4" x-show="sourceType && sourceType !== 'WALKIN'">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1.5">Tracking เดิม (ของ Platform)</label>
+              <input type="text" name="source_tracking_no"
+                class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-500/40 transition-all font-mono"
+                placeholder="เช่น LZ123456789TH"
+                value="<%= draft?.source_tracking_no || '' %>">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1.5">จำนวนชิ้น / กล่อง</label>
+              <input type="number" name="item_count" x-model.number="itemCount"
+                min="1" max="999" step="1"
+                class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-500/40 transition-all"
+                placeholder="1"
+                value="<%= draft?.item_count || 1 %>">
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Type -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            ประเภทบริการ <span class="text-red-400">*</span>
+          </label>
+          <select name="service_type" x-model="serviceType" @change="calcPrice()"
+            class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-cyan-500/50 transition-all">
+            <option value="">-- เลือกประเภทบริการ --</option>
+            <% if (shippingRates && shippingRates.length > 0) { %>
+              <% shippingRates.forEach(r => { %>
+              <option value="<%= r.id %>" data-price="<%= r.price %>" data-label="<%= r.name %>"
+                <%= draft?.service_type == r.id ? 'selected' : '' %>>
+                <%= r.name %> — ฿<%= Number(r.price).toLocaleString() %>
+              </option>
+              <% }) %>
+            <% } else { %>
+            <option value="standard">Standard</option>
+            <option value="express">Express (+50%)</option>
+            <option value="economy">Economy (−20%)</option>
+            <% } %>
+          </select>
+        </div>
+
+        <!-- Item Description (NEW) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <i class="fa-solid fa-box-open text-slate-400/70 mr-1"></i>
+            รายการสินค้า / ชื่อสินค้า <span class="text-red-400">*</span>
+          </label>
+          <input type="text" name="item_description"
+            class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+            placeholder="เช่น เสื้อผ้า 3 ชิ้น, อะไหล่รถยนต์, อาหารแห้ง..."
+            maxlength="500"
+            value="<%= draft?.item_description || '' %>">
+          <p class="text-slate-600 text-xs mt-1">กรอกรายการสินค้าทั่วไป ใช้สำหรับใบกำกับสินค้าและศุลกากร</p>
+        </div>
+
+        <!-- Weight + Dimensions -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            น้ำหนัก &amp; ขนาด
+          </label>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Actual Weight -->
+            <div>
+              <div class="text-xs text-slate-500 mb-1.5">น้ำหนักจริง (กก.) <span class="text-red-400">*</span></div>
+              <div class="relative">
+                <input type="number" name="declared_weight" x-model.number="weight"
+                  @input="calcVol(); calcPrice();" @change="calcVol(); calcPrice();"
+                  step="0.1" min="0.1" max="9999"
+                  :class="errors.declared_weight ? 'border-red-500/50' : 'border-white/10'"
+                  class="w-full px-4 py-3 rounded-xl border bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all pr-14"
+                  placeholder="0.0"
+                  value="<%= draft?.declared_weight || '' %>">
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">กก.</span>
+              </div>
+              <p x-show="errors.declared_weight" class="mt-1 text-red-400 text-xs" x-text="errors.declared_weight"></p>
+            </div>
+
+            <!-- Dimensions W×H×D -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs text-slate-500">ขนาด กว้าง × สูง × ลึก (ซม.)</span>
+                <!-- Volumetric weight display -->
+                <span x-show="volWeight > 0" class="text-xs font-semibold text-purple-400">
+                  น.น.ปริมาตร: <span x-text="volWeight"></span> กก.
+                </span>
+              </div>
+              <div class="flex gap-2 items-center">
+                <input type="number" name="dim_w" x-model.number="dimW"
+                  @input="calcVol(); calcPrice();"
+                  step="1" min="1" placeholder="กว้าง"
+                  class="flex-1 px-3 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/50 transition-all"
+                  value="<%= draft?.dim_w || '' %>">
+                <span class="text-slate-600">×</span>
+                <input type="number" name="dim_h" x-model.number="dimH"
+                  @input="calcVol(); calcPrice();"
+                  step="1" min="1" placeholder="สูง"
+                  class="flex-1 px-3 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/50 transition-all"
+                  value="<%= draft?.dim_h || '' %>">
+                <span class="text-slate-600">×</span>
+                <input type="number" name="dim_d" x-model.number="dimD"
+                  @input="calcVol(); calcPrice();"
+                  step="1" min="1" placeholder="ลึก"
+                  class="flex-1 px-3 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/50 transition-all"
+                  value="<%= draft?.dim_d || '' %>">
+              </div>
+              <!-- Chargeable weight summary -->
+              <div x-show="chargeableWeight > 0" class="mt-2 flex items-center gap-2">
+                <span class="text-[10px] text-slate-500">น้ำหนักที่ใช้คิดราคา:</span>
+                <span class="text-[11px] font-semibold"
+                      :class="chargeableWeight > weight ? 'text-amber-400' : 'text-emerald-400'"
+                      x-text="chargeableWeight + ' กก.'"></span>
+                <span x-show="chargeableWeight > weight && weight > 0"
+                      class="text-[10px] text-amber-400/70">(ใช้น้ำหนักปริมาตร)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Declared Value + COD -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Declared Value -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              มูลค่าสินค้า (฿) — ประกันภัย
+            </label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">฿</span>
+              <input type="number" name="declared_value" x-model.number="declaredValue"
+                :class="errors.declared_value ? 'border-red-500/50' : 'border-white/10'"
+                step="1" min="0"
+                class="w-full pl-8 pr-4 py-3 rounded-xl border bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                placeholder="0"
+                value="<%= draft?.declared_value || '' %>">
+            </div>
+            <p class="text-slate-600 text-xs mt-1">0 = ไม่ประกัน</p>
+          </div>
+
+          <!-- COD Amount -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              <i class="fa-solid fa-coins text-amber-400/70 mr-1"></i>
+              เก็บเงินปลายทาง COD (฿)
+            </label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">฿</span>
+              <input type="number" name="cod_amount" x-model.number="codAmount"
+                step="1" min="0"
+                :class="[
+                  codAmount > 0 ? 'border-amber-500/40 bg-amber-500/5' : 'border-white/10 bg-white/5',
+                  errors.cod_amount ? '!border-red-500/50' : '',
+                ]"
+                class="w-full pl-8 pr-4 py-3 rounded-xl border text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-all"
+                placeholder="0 (ไม่มี COD)"
+                value="<%= draft?.cod_amount || '' %>">
+            </div>
+            <!-- COD warnings -->
+            <div x-show="codAmount > 5000" class="mt-2 flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xs flex-shrink-0"></i>
+              <span class="text-amber-300 text-xs">COD สูง — แนะนำแจ้งผู้รับล่วงหน้า</span>
+            </div>
+            <div x-show="codAmount > 0 && declaredValue > 0 && codAmount > declaredValue * 3"
+                 class="mt-2 flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+              <i class="fa-solid fa-triangle-exclamation text-red-400 text-xs flex-shrink-0"></i>
+              <span class="text-red-300 text-xs">COD สูงกว่ามูลค่าสินค้า 3 เท่า — ตรวจสอบอีกครั้ง</span>
+            </div>
+            <p x-show="errors.cod_amount" class="mt-1 text-red-400 text-xs" x-text="errors.cod_amount"></p>
+          </div>
+        </div>
+
+        <!-- Freight Price & Payment Method -->
+        <div>
+          <div class="flex flex-col mb-3 gap-2">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                ค่าขนส่ง (฿) <span class="text-red-400">*</span>
+              </label>
+              <span x-show="priceSource" class="text-xs text-slate-500" x-text="priceSource"></span>
+            </div>
+            
+            <div class="flex gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="payment_method" value="ORIGIN" x-model="paymentMethod" class="w-4 h-4 text-cyan-500 bg-white/5 border-white/10 focus:ring-cyan-500 focus:ring-2">
+                <span class="text-sm text-slate-300">จ่ายต้นทาง (ผู้ส่งจ่าย)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="payment_method" value="DESTINATION" x-model="paymentMethod" class="w-4 h-4 text-cyan-500 bg-white/5 border-white/10 focus:ring-cyan-500 focus:ring-2">
+                <span class="text-sm text-slate-300">จ่ายปลายทาง (ผู้รับจ่าย)</span>
+              </label>
+            </div>
+          </div>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">฿</span>
+            <input type="number" name="price_amount" x-model.number="freightPrice"
+              step="1" min="0" required
+              :class="[
+                errors.price_amount ? 'border-red-500/50' : freightPrice > 0 ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/10 bg-white/5',
+              ]"
+              class="w-full pl-8 pr-12 py-3 rounded-xl border text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all font-bold text-lg"
+              placeholder="0">
+            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+              <span x-show="calcLoading" class="text-slate-500 text-xs"><i class="fa-solid fa-spinner fa-spin"></i></span>
+              <span x-show="freightPrice > 0 && !calcLoading" class="text-emerald-400 text-xs"><i class="fa-solid fa-check"></i></span>
+            </div>
+          </div>
+          <p x-show="errors.price_amount" class="mt-1 text-red-400 text-xs" x-text="errors.price_amount"></p>
+          <p class="text-slate-600 text-[10px] mt-1">ราคาคำนวณจากประเภทบริการ แก้ไขได้ถ้าต้องการ</p>
+        </div>
+
+        <!-- Customs Toggle -->
+        <div class="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/3">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-stamp text-amber-400 text-lg w-6 text-center"></i>
+            <div>
+              <div class="text-white font-medium text-sm">ต้องผ่านพิธีศุลกากร</div>
+              <div class="text-slate-500 text-xs">เปิดถ้าสินค้าต้องแจ้งศุลกากร (สินค้าเกิน threshold)</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="requires_customs" value="1" x-model="requiresCustoms" class="sr-only peer"
+              <%= draft?.requires_customs ? 'checked' : '' %>>
+            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer
+                        peer-checked:after:translate-x-full peer-checked:after:border-white
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                        peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+
+        <!-- Fragile Toggle -->
+        <div class="flex items-center justify-between p-4 rounded-xl border transition-all duration-200"
+             :class="isFragile ? 'border-orange-500/30 bg-orange-500/5' : 'border-white/10 bg-white/3'">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-wine-glass-crack text-lg w-6 text-center"
+               :class="isFragile ? 'text-orange-400' : 'text-slate-500'"></i>
+            <div>
+              <div class="text-white font-medium text-sm">⚠️ สินค้าแตกหักง่าย (Fragile)</div>
+              <div class="text-slate-500 text-xs">เปิดถ้าสินค้าเป็นแก้ว กระจก เซรามิก อิเล็กทรอนิกส์ ฯลฯ</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" x-model="isFragile" class="sr-only peer">
+            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer
+                        peer-checked:after:translate-x-full peer-checked:after:border-white
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                        peer-checked:bg-orange-500"></div>
+          </label>
+        </div>
+
+        <!-- Job No (optional override) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            รหัส Job (ไม่บังคับ — ระบบสร้างอัตโนมัติ)
+          </label>
+          <input type="text" name="job_no"
+            class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all text-sm font-mono uppercase"
+            placeholder="SNG-YYMMDD-XXXX (อัตโนมัติ)"
+            value="<%= draft?.job_no || '' %>"
+            style="text-transform:uppercase">
+          <p class="text-slate-600 text-xs mt-1">ถ้ากรอก ต้องไม่ซ้ำกับ order อื่น</p>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">หมายเหตุ</label>
+          <textarea name="notes" rows="2" x-model="notes"
+            class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all text-sm resize-none"
+            maxlength="1000"
+            placeholder="เช่น สินค้าแตกง่าย, ต้องแช่เย็น, ระวังพิเศษ..."></textarea>
+        </div>
+
+        <!-- Parcel Image Upload -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            รูปพัสดุ (JPG/PNG ไม่เกิน 5MB)
+          </label>
+          <label class="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border border-dashed border-white/15 bg-white/3 cursor-pointer hover:bg-white/5 hover:border-cyan-500/30 transition-all"
+                 id="uploadZone" x-show="!imagePreview">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-500"></i>
+            <span class="text-slate-400 text-sm" id="uploadLabel">คลิกหรือลากไฟล์มาวาง</span>
+            <span class="text-slate-600 text-xs">JPG · PNG · WEBP ≤ 5MB</span>
+            <input type="file" name="parcel_image" accept="image/jpeg,image/png,image/webp"
+              class="sr-only" id="parcelImageInput" @change="previewImage($event)">
+          </label>
+          <div x-show="imagePreview" class="mt-3 relative">
+            <img :src="imagePreview" class="w-full max-h-48 object-cover rounded-xl border border-white/10">
+            <button type="button" @click="clearImage()"
+              class="absolute top-2 right-2 w-7 h-7 bg-red-500/80 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-500 transition-all shadow-lg">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ─── Order Summary Preview ──────────────────────────── -->
+        <div x-show="showSummary" class="p-5 rounded-xl bg-gradient-to-br from-white/5 to-white/2 border border-white/10 space-y-2">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-clipboard-list text-cyan-400/60"></i>
+            สรุปก่อนยืนยัน
+          </div>
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-400">ทิศทาง</span>
+              <span class="text-white" x-text="direction === 'TH_TO_LA' ? '🇹🇭 ไทย → ลาว 🇱🇦' : '🇱🇦 ลาว → ไทย 🇹🇭'"></span>
+            </div>
+            <div class="flex justify-between text-sm" x-show="weight > 0">
+              <span class="text-slate-400">น้ำหนัก</span>
+              <span class="text-white"><span x-text="weight"></span> กก.
+                <span x-show="volWeight > weight" class="text-amber-400 text-xs ml-1">(ปริมาตร <span x-text="volWeight"></span> กก.)</span>
+              </span>
+            </div>
+            <div class="flex justify-between text-sm" x-show="serviceType">
+              <span class="text-slate-400">บริการ</span>
+              <span class="text-white" x-text="serviceLabel"></span>
+            </div>
+            <div class="flex justify-between text-sm border-t border-white/8 pt-2 mt-2">
+              <span class="text-slate-400">ค่าขนส่ง <span class="text-xs ml-1" :class="paymentMethod === 'ORIGIN' ? 'text-cyan-400' : 'text-purple-400'" x-text="paymentMethod === 'ORIGIN' ? '(จ่ายต้นทาง)' : '(จ่ายปลายทาง)'"></span></span>
+              <span class="text-emerald-400 font-bold text-lg font-mono">฿<span x-text="Number(freightPrice).toLocaleString()"></span></span>
+            </div>
+            <div class="flex justify-between text-sm" x-show="codAmount > 0">
+              <span class="text-amber-400">COD ปลายทาง</span>
+              <span class="text-amber-400 font-bold font-mono">฿<span x-text="Number(codAmount).toLocaleString()"></span></span>
+            </div>
+            <div class="flex justify-between text-sm" x-show="declaredValue > 0">
+              <span class="text-slate-400">มูลค่าสินค้า</span>
+              <span class="text-slate-300 font-mono">฿<span x-text="Number(declaredValue).toLocaleString()"></span></span>
+            </div>
+            <div class="flex justify-between text-sm" x-show="requiresCustoms">
+              <span class="text-slate-400">ศุลกากร</span>
+              <span class="text-amber-400 flex items-center gap-1"><i class="fa-solid fa-stamp text-xs"></i> ต้องผ่าน</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Step 2 Actions -->
+      <div class="flex justify-between mt-4 gap-3">
+        <button type="button" @click="step = 1; window.scrollTo({top:0,behavior:'smooth'})"
+          class="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white transition-all text-sm flex items-center gap-2">
+          <i class="fa-solid fa-arrow-left"></i> ย้อนกลับ
+        </button>
+        <button type="submit" :disabled="submitting || !canSubmit"
+          :class="canSubmit
+            ? 'from-cyan-500 to-blue-600 hover:shadow-cyan-500/25 hover:shadow-lg'
+            : 'from-slate-600 to-slate-700 opacity-50 cursor-not-allowed'"
+          class="px-8 py-2.5 bg-gradient-to-r text-white font-semibold rounded-xl transition-all text-sm flex items-center gap-2 min-w-[160px] justify-center">
+          <template x-if="submitting">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+          </template>
+          <template x-if="!submitting">
+            <i class="fa-solid fa-floppy-disk"></i>
+          </template>
+          <span x-text="submitting ? 'กำลังสร้าง...' : '<%= isDupWarning ? 'ยืนยันสร้าง Order' : 'สร้าง Order' %>'"></span>
+        </button>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+
+<!-- ─── Alpine.js Logic ──────────────────────────────────────────────── -->
+<script type="application/json" id="orderInitData">
+  <%- JSON.stringify({
+    step: (locals.draft && (locals.fieldErrors?.sender_id || locals.fieldErrors?.receiver_id)) ? 1 : (locals.draft ? 2 : 1),
+    direction: locals.draft?.direction || "TH_TO_LA",
+    senderId: locals.draft?.sender_id || null,
+    receiverId: locals.draft?.receiver_id || (typeof quoteReceiverId !== 'undefined' ? quoteReceiverId : null),
+    serviceType: locals.draft?.service_type || "",
+    weight: locals.draft?.declared_weight || 0,
+    dimW: locals.draft?.dim_w || 0,
+    dimH: locals.draft?.dim_h || 0,
+    dimD: locals.draft?.dim_d || 0,
+    paymentMethod: locals.draft?.payment_method || 'ORIGIN',
+    freightPrice: locals.draft?.price_amount || 0,
+    codAmount: locals.draft?.cod_amount || 0,
+    declaredValue: locals.draft?.declared_value || 0,
+    requiresCustoms: locals.draft?.requires_customs ? true : false,
+    isFragile: locals.draft?.is_fragile ? true : false,
+    shippingRates: locals.shippingRates || [],
+    sourceType: locals.draft?.source_type || "WALKIN",
+    itemCount: locals.draft?.item_count || 1,
+    notes: locals.draft?.notes || (typeof quoteData !== 'undefined' && quoteData ? `อ้างอิงใบเสนอราคา: ${quoteData.quote_no}\nสินค้า: ${quoteData.product_name}\nลิงก์: ${quoteData.product_url || '-'}` : '')
+  }) %>
+</script>
+
+<script>
+function customerSearch(role, initId, initName) {
+  return {
+    role,
+    query: initName || '',
+    results: [],
+    selectedId: initId || null,
+    selectedName: initName || '',
+    noResults: false,
+    focused: -1,
+
+    async search() {
+      if (this.query.length < 2) { this.results = []; this.noResults = false; return; }
+      try {
+        const r = await fetch(`/api/customers/search?q=${encodeURIComponent(this.query)}&limit=8`);
+        const d = await r.json();
+        this.results  = d.results || [];
+        this.noResults = this.results.length === 0;
+        this.focused   = -1;
+      } catch { this.results = []; }
+    },
+
+    // External call: auto-fill from phone lookup
+    autoFill(c) {
+      this.selectedId   = c.id;
+      this.selectedName = c.name;
+      this.query        = c.name;
+      this.results      = [];
+      this.noResults    = false;
+      this.focused      = -1;
+      window._orderWizard?.setParty(this.role, c.id, c.name);
+    },
+
+    select(c) {
+      this.selectedId   = c.id;
+      this.selectedName = c.name;
+      this.query        = c.name;
+      this.results      = [];
+      this.noResults    = false;
+      this.focused      = -1;
+      window._orderWizard?.setParty(this.role, c.id, c.name);
+    },
+
+    clear() {
+      this.selectedId   = null;
+      this.selectedName = '';
+      this.query        = '';
+      this.results      = [];
+      window._orderWizard?.setParty(this.role, null, '');
+    },
+
+    close() { this.results = []; this.noResults = false; this.focused = -1; },
+
+    moveDown() {
+      if (this.focused < this.results.length - 1) this.focused++;
+    },
+    moveUp() {
+      if (this.focused > 0) this.focused--;
+    },
+    selectFocused() {
+      if (this.focused >= 0 && this.results[this.focused]) {
+        this.select(this.results[this.focused]);
+      } else if (this.results.length > 0) {
+        this.select(this.results[0]);
+      }
+    },
+    autoSelectFirst() {
+      if (!this.selectedId && this.query && this.results.length > 0) {
+        this.select(this.results[0]);
+      }
+    }
+  };
+}
+
+// ─── Phone Lookup Widget ─────────────────────────────────────────────────────
+function phoneLookupWidget(role) {
+  return {
+    role,
+    phone: '',
+    status: '', // 'loading' | 'found' | 'not_found'
+
+    async lookup() {
+      const phone = this.phone.trim().replace(/[\s\-()]/g, '');
+      if (phone.length < 6) return;
+
+      this.status = 'loading';
+      try {
+        const r = await fetch(`/api/customers/lookup?phone=${encodeURIComponent(phone)}`);
+        const d = await r.json();
+
+        if (d.found && d.customer) {
+          // Auto-fill ช่อง search ของ customerSearch component เดียวกัน
+          const searchEl = document.getElementById(`${this.role}_search`);
+          if (searchEl) {
+            // Alpine component reference via _x_dataStack
+            const alpineData = Alpine.closestDataStack(searchEl)?.find(d => d.role === this.role);
+            if (alpineData) alpineData.autoFill(d.customer);
+          }
+          // ยังใส่ผ่าน wizard ด้วย
+          window._orderWizard?.setParty(this.role, d.customer.id, d.customer.name);
+          this.status = 'found';
+        } else {
+          this.status = 'not_found';
+        }
+      } catch(e) {
+        console.error('[PhoneLookup]', e);
+        this.status = 'not_found';
+      }
+
+      // Auto-clear status after 4s
+      setTimeout(() => { if (this.status !== 'loading') this.status = ''; }, 4000);
+    },
+  };
+}
+
+function orderWizard() {
+  const initData = JSON.parse(document.getElementById('orderInitData').textContent || '{}');
+
+  return {
+    step: initData.step || 1,
+    direction: initData.direction || "TH_TO_LA",
+    senderId: initData.senderId || null,
+    receiverId: initData.receiverId || null,
+
+    serviceType: initData.serviceType || '',
+    serviceLabel: '',
+    weight: initData.weight || 0,
+    dimW: initData.dimW || 0,
+    dimH: initData.dimH || 0,
+    dimD: initData.dimD || 0,
+    volWeight: 0,
+    chargeableWeight: 0,
+    paymentMethod: initData.paymentMethod || 'ORIGIN',
+
+    freightPrice: initData.freightPrice || 0,
+    codAmount: initData.codAmount || 0,
+    declaredValue: initData.declaredValue || 0,
+    requiresCustoms: initData.requiresCustoms || false,
+    isFragile: initData.isFragile || false,
+    imagePreview: null,
+    submitting: false,
+    calcLoading: false,
+    errors: {},
+    priceSource: '',
+    notes: initData.notes || '',
+
+    shippingRates: initData.shippingRates || [],
+
+    // source & service type
+    sourceType: initData.sourceType || "WALKIN",
+    itemCount: initData.itemCount || 1,
+
+    init() {
+      window._orderWizard = this;
+      // Restore service label
+      if (this.serviceType) {
+        const rate = this.shippingRates.find(r => String(r.id) === String(this.serviceType));
+        if (rate) this.serviceLabel = rate.name;
+      }
+      // Recalc vol weight if dims restored
+      this.calcVol();
+    },
+
+    setParty(role, id, name) {
+      if (role === 'sender')   { this.senderId   = id; }
+      if (role === 'receiver') { this.receiverId = id; }
+    },
+
+    get senderSameAsReceiver() {
+      return this.senderId && this.receiverId && this.senderId === this.receiverId;
+    },
+
+    get canProceedStep1() {
+      return this.direction && this.senderId && this.receiverId && !this.senderSameAsReceiver;
+    },
+
+    get canSubmit() {
+      return this.freightPrice >= 0 && this.freightPrice !== '' && !this.submitting;
+    },
+
+    get showSummary() {
+      return this.freightPrice > 0 || this.codAmount > 0 || this.declaredValue > 0;
+    },
+
+    nextStep() {
+      this.errors = {};
+      if (!this.direction)   this.errors.direction   = 'เลือกทิศทาง';
+      if (!this.senderId)    this.errors.sender_id   = 'เลือกผู้ส่ง';
+      if (!this.receiverId)  this.errors.receiver_id = 'เลือกผู้รับ';
+      if (this.senderSameAsReceiver) this.errors.receiver_id = 'ผู้รับต้องไม่ใช่ผู้ส่ง';
+      if (Object.keys(this.errors).length === 0) {
+        this.step = 2;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    },
+
+    calcVol() {
+      const w = Number(this.dimW), h = Number(this.dimH), d = Number(this.dimD);
+      if (w > 0 && h > 0 && d > 0) {
+        this.volWeight = Math.round((w * h * d / 5000) * 100) / 100;
+      } else {
+        this.volWeight = 0;
+      }
+      const actualW = Number(this.weight) || 0;
+      this.chargeableWeight = actualW > 0 || this.volWeight > 0
+        ? Math.max(actualW, this.volWeight)
+        : 0;
+    },
+
+    calcPrice() {
+      if (!this.serviceType) return;
+      const rate = this.shippingRates.find(r => String(r.id) === String(this.serviceType));
+      if (!rate) return;
+      this.serviceLabel = rate.name;
+      this.calcLoading  = true;
+      setTimeout(() => {
+        // Use chargeable weight if rate has per-kg multiplier, else flat
+        let price = Number(rate.price);
+        if (rate.price_per_kg && this.chargeableWeight > 0) {
+          price = price + (Number(rate.price_per_kg) * this.chargeableWeight);
+        }
+        this.freightPrice = Math.round(price);
+        this.priceSource  = `คำนวณจาก ${rate.name}`;
+        this.calcLoading  = false;
+      }, 150);
+    },
+
+    previewImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        alert('ไฟล์ใหญ่เกิน 5MB');
+        event.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => { this.imagePreview = e.target.result; };
+      reader.readAsDataURL(file);
+      document.getElementById('uploadLabel') &&
+        (document.getElementById('uploadLabel').textContent = file.name);
+    },
+
+    clearImage() {
+      this.imagePreview = null;
+      const el = document.getElementById('parcelImageInput');
+      if (el) el.value = '';
+    },
+  };
+}
+
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+  const wiz = window._orderWizard;
+  const fd  = new FormData(this);
+  console.log('[FORM SUBMIT] sender_id=', fd.get('sender_id'),
+              'receiver_id=', fd.get('receiver_id'),
+              'direction=', fd.get('direction'),
+              'price_amount=', fd.get('price_amount'),
+              '_csrf=', fd.get('_csrf') ? 'present' : 'MISSING');
+  if (wiz) {
+    console.log('[WIZARD STATE] senderId=', wiz.senderId, 'receiverId=', wiz.receiverId,
+                'freightPrice=', wiz.freightPrice, 'canSubmit=', wiz.canSubmit, 'step=', wiz.step);
+    wiz.submitting = true;
+  }
+});
+</script>

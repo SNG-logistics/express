@@ -1,0 +1,189 @@
+<%#
+  views/freight/index.ejs — รายการจองพื้นที่ขนส่ง (ร้านฝากส่ง)
+%>
+<%
+  const STATUS_LABEL = {
+    DRAFT: 'รอยืนยัน', CONFIRMED: 'ยืนยันแล้ว',
+    LOADED: 'ขึ้นรถแล้ว', IN_TRANSIT: 'ระหว่างทาง',
+    COMPLETED: 'สำเร็จ', CANCELLED: 'ยกเลิก'
+  };
+  const STATUS_CSS = {
+    DRAFT: 'bg-slate-500/15 text-slate-300 border-slate-500/20',
+    CONFIRMED: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
+    LOADED: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
+    IN_TRANSIT: 'bg-purple-500/15 text-purple-300 border-purple-500/20',
+    COMPLETED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
+    CANCELLED: 'bg-red-500/15 text-red-300 border-red-500/20',
+  };
+  const PAY_CSS = {
+    UNPAID: 'bg-red-500/15 text-red-300',
+    PARTIAL: 'bg-amber-500/15 text-amber-300',
+    PAID: 'bg-emerald-500/15 text-emerald-300',
+  };
+%>
+
+<div class="space-y-6">
+
+  <%# Header %>
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-truck-ramp-box text-amber-400"></i>
+        ร้านฝากส่ง
+      </h2>
+      <p class="text-slate-400 text-sm mt-1">จัดการการจองพื้นที่ขนส่ง และเอกสารใบเสนอราคา/ใบเรียกเก็บเงิน</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/freight/partners" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm font-semibold transition-all">
+        <i class="fa-solid fa-users text-xs"></i> พาร์ทเนอร์
+      </a>
+      <a href="/freight/new" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold transition-all hover:shadow-lg hover:shadow-amber-500/25">
+        <i class="fa-solid fa-plus text-xs"></i> สร้างการจองใหม่
+      </a>
+    </div>
+  </div>
+
+  <%# Stats %>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="glass-panel-dark rounded-xl p-4 border border-white/8">
+      <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">รายการทั้งหมด</div>
+      <div class="text-2xl font-black text-white"><%= (stats.total || 0).toLocaleString() %></div>
+    </div>
+    <div class="glass-panel-dark rounded-xl p-4 border border-amber-500/20">
+      <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">รอยืนยัน</div>
+      <div class="text-2xl font-black text-amber-400"><%= (stats.draft_count || 0).toLocaleString() %></div>
+    </div>
+    <div class="glass-panel-dark rounded-xl p-4 border border-red-500/20">
+      <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">ค้างชำระ</div>
+      <div class="text-2xl font-black text-red-400"><%= (stats.unpaid_count || 0).toLocaleString() %></div>
+    </div>
+    <div class="glass-panel-dark rounded-xl p-4 border border-emerald-500/20">
+      <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">รายได้รวม</div>
+      <div class="text-xl font-black text-emerald-400">฿<%= Number(stats.total_revenue || 0).toLocaleString() %></div>
+      <% if (stats.total_outstanding > 0) { %>
+      <div class="text-[10px] text-red-400 mt-0.5">ค้าง ฿<%= Number(stats.total_outstanding).toLocaleString() %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <%# Filter Bar %>
+  <form method="GET" class="glass-panel-dark rounded-xl p-4 border border-white/8 flex flex-wrap gap-3">
+    <input type="text" name="q" value="<%= query.q || '' %>"
+           placeholder="ค้นหา เลข SB, ชื่อร้าน, สินค้า..."
+           class="flex-1 min-w-48 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-400/50">
+    <select name="partner_id" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none">
+      <option value="">— พาร์ทเนอร์ทั้งหมด —</option>
+      <% partners.forEach(p => { %>
+      <option value="<%= p.id %>" <%= query.partner_id == p.id ? 'selected' : '' %>><%= p.company_name %></option>
+      <% }); %>
+    </select>
+    <select name="status" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none">
+      <option value="">— สถานะทั้งหมด —</option>
+      <% Object.entries(STATUS_LABEL).forEach(([v,l]) => { %>
+      <option value="<%= v %>" <%= query.status === v ? 'selected' : '' %>><%= l %></option>
+      <% }); %>
+    </select>
+    <select name="payment_status" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none">
+      <option value="">— การชำระทั้งหมด —</option>
+      <option value="UNPAID" <%= query.payment_status === 'UNPAID' ? 'selected' : '' %>>ค้างชำระ</option>
+      <option value="PARTIAL" <%= query.payment_status === 'PARTIAL' ? 'selected' : '' %>>ชำระบางส่วน</option>
+      <option value="PAID" <%= query.payment_status === 'PAID' ? 'selected' : '' %>>ชำระแล้ว</option>
+    </select>
+    <button type="submit" class="px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:bg-amber-500/30 text-sm font-semibold transition-all">
+      <i class="fa-solid fa-filter mr-1"></i> กรอง
+    </button>
+    <a href="/freight" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white text-sm transition-all">ล้าง</a>
+  </form>
+
+  <%# Table %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <% if (bookings.length === 0) { %>
+    <div class="text-center py-16 text-slate-600">
+      <i class="fa-solid fa-truck-ramp-box text-5xl mb-4 block text-slate-700"></i>
+      <div class="text-lg font-semibold text-slate-500">ยังไม่มีรายการจอง</div>
+      <a href="/freight/new" class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300 text-sm font-semibold">
+        <i class="fa-solid fa-plus"></i> สร้างการจองแรก
+      </a>
+    </div>
+    <% } else { %>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/6 text-[10px] text-slate-500 uppercase tracking-wider">
+            <th class="px-4 py-3 text-left">เลขจอง</th>
+            <th class="px-4 py-3 text-left">ร้าน/พาร์ทเนอร์</th>
+            <th class="px-4 py-3 text-left">สินค้า / หน่วย</th>
+            <th class="px-4 py-3 text-left">ทริป</th>
+            <th class="px-4 py-3 text-right">ยอดรวม</th>
+            <th class="px-4 py-3 text-center">การชำระ</th>
+            <th class="px-4 py-3 text-center">สถานะ</th>
+            <th class="px-4 py-3 text-center">เอกสาร</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/4">
+          <% bookings.forEach(b => { %>
+          <tr class="hover:bg-white/3 transition-colors group">
+            <td class="px-4 py-3">
+              <a href="/freight/<%= b.id %>" class="font-mono font-bold text-amber-400 hover:text-amber-300 text-sm">
+                <%= b.booking_no %>
+              </a>
+              <div class="text-[10px] text-slate-600 mt-0.5">
+                <%= new Date(b.created_at).toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'2-digit' }) %>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-white text-sm"><%= b.partner_name %></div>
+              <div class="text-[10px] text-slate-500"><%= b.partner_phone || '' %></div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="text-white text-sm"><%= b.unit_label || b.unit_type %> × <%= b.quantity %></div>
+              <% if (b.dim_l_cm && b.dim_w_cm && b.dim_h_cm) { %>
+              <div class="text-[10px] text-slate-500"><%= b.dim_l_cm %>×<%= b.dim_w_cm %>×<%= b.dim_h_cm %> ซม.</div>
+              <% } %>
+            </td>
+            <td class="px-4 py-3">
+              <% if (b.trip_no) { %>
+              <div class="font-mono text-slate-300 text-sm"><%= b.trip_no %></div>
+              <div class="text-[10px] text-slate-600"><%= b.trip_date ? new Date(b.trip_date).toLocaleDateString('th-TH', { day:'2-digit', month:'short' }) : '' %></div>
+              <% } else { %>
+              <span class="text-slate-600 text-xs">ยังไม่ระบุทริป</span>
+              <% } %>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div class="font-bold text-white">฿<%= Number(b.grand_total_thb).toLocaleString() %></div>
+              <% if (b.payment_type === 'CREDIT') { %>
+              <div class="text-[10px] text-indigo-400">เครดิต</div>
+              <% } %>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full <%= PAY_CSS[b.payment_status] || '' %>">
+                <%= b.payment_status === 'UNPAID' ? 'ค้างชำระ' : b.payment_status === 'PARTIAL' ? 'บางส่วน' : 'ชำระแล้ว' %>
+              </span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs font-bold px-2 py-0.5 rounded-lg border <%= STATUS_CSS[b.status] || '' %>">
+                <%= STATUS_LABEL[b.status] || b.status %>
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-1">
+                <a href="/freight/<%= b.id %>/quote" target="_blank"
+                   class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all"
+                   title="ใบเสนอราคา">
+                  <i class="fa-solid fa-file-invoice text-xs"></i>
+                </a>
+                <a href="/freight/<%= b.id %>/invoice" target="_blank"
+                   class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all"
+                   title="ใบเรียกเก็บเงิน">
+                  <i class="fa-solid fa-receipt text-xs"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>

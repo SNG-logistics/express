@@ -1,0 +1,269 @@
+<div class="max-w-5xl mx-auto space-y-8 animate-fade-in">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-8 glass-panel-dark rounded-3xl border border-white/5 relative overflow-hidden group">
+        <!-- Abstract Decoration -->
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 blur-3xl rounded-full transition-transform duration-700 group-hover:scale-150"></div>
+        <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full transition-transform duration-700 group-hover:scale-150"></div>
+        
+        <div class="relative z-10">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <i class="fa-brands fa-whatsapp text-2xl text-white"></i>
+                </div>
+                <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">การเชื่อมต่อ WhatsApp</h1>
+            </div>
+            <p class="text-slate-400 text-lg ml-16">จัดการและมอนิเตอร์ระบบแจ้งเตือนลูกค้าอัตโนมัติ</p>
+        </div>
+        
+        <div class="flex gap-3 relative z-10 ml-16 md:ml-0">
+            <button onclick="resetSession()" class="px-6 py-3 rounded-xl font-bold transition-all duration-300 bg-slate-800/50 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700/50 hover:border-red-500/50 flex items-center gap-2 group">
+                <i class="fa-solid fa-power-off transition-transform group-hover:scale-110"></i> รีเซ็ตระบบ
+            </button>
+            <button onclick="restartClient()" class="px-6 py-3 rounded-xl font-bold transition-all duration-300 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 flex items-center gap-2 group hover:-translate-y-1">
+                <i class="fa-solid fa-rotate transition-transform group-hover:rotate-180"></i> รีสตาร์ท
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Status Panel -->
+        <div class="lg:col-span-2 glass-panel-dark rounded-3xl p-8 border border-white/5 relative overflow-hidden flex flex-col justify-center min-h-[500px]">
+            
+            <!-- Connection Indicator -->
+            <div class="absolute top-6 left-6 flex items-center gap-3 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
+                <div id="statusDot" class="w-3 h-3 rounded-full bg-slate-500 shadow-[0_0_10px_rgba(100,116,139,0.5)]"></div>
+                <span id="statusText" class="text-sm font-bold tracking-wide text-slate-300 uppercase">INITIALIZING...</span>
+            </div>
+
+            <!-- QR Code State -->
+            <div id="qrContainer" class="hidden flex flex-col items-center justify-center w-full h-full animate-fade-in mt-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">สแกน QR Code เพื่อเชื่อมต่อ</h2>
+                    <p class="text-slate-400">เปิดแอป WhatsApp ในมือถือ > การตั้งค่า > อุปกรณ์ที่เชื่อมโยง</p>
+                </div>
+                <div class="relative p-6 bg-white rounded-3xl shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-transform hover:scale-105 duration-500">
+                    <div id="qrcode" class="w-64 h-64 flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connected State -->
+            <div id="connectedContainer" class="hidden flex flex-col items-center justify-center w-full h-full animate-fade-in">
+                <div class="relative mb-8">
+                    <div class="absolute inset-0 bg-emerald-500 blur-[60px] opacity-20 rounded-full"></div>
+                    <div class="w-32 h-32 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/40 relative z-10 border-4 border-black/20">
+                        <i class="fa-brands fa-whatsapp text-6xl text-white"></i>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-black text-white mb-3 tracking-tight">เชื่อมต่อสำเร็จแล้ว</h2>
+                <p class="text-emerald-400 font-medium text-lg flex items-center gap-2 bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20">
+                    <i class="fa-solid fa-circle-check"></i> ระบบแจ้งเตือนพร้อมทำงาน
+                </p>
+            </div>
+            
+        </div>
+
+        <!-- Sidebar / Settings & Logs -->
+        <div class="space-y-8">
+            
+            <!-- Quick Settings -->
+            <div class="glass-panel-dark rounded-3xl p-6 border border-white/5">
+                <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i> การตั้งค่าการทำงาน
+                </h3>
+                
+                <div class="space-y-4">
+                    <label class="flex items-center justify-between p-4 bg-slate-800/30 rounded-2xl border border-slate-700/50 cursor-pointer hover:bg-slate-800/50 transition-colors">
+                        <div>
+                            <p class="font-bold text-slate-200" id="toggleLabel">เปิดใช้งานระบบ WhatsApp</p>
+                            <p class="text-xs text-slate-400 mt-1">ปิดเมื่อไม่ใช้งานเพื่อประหยัด RAM เซิร์ฟเวอร์</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="masterToggle" onchange="toggleService(this.checked)" class="sr-only">
+                            <div id="toggleBg" class="block bg-slate-600 w-10 h-6 rounded-full transition-colors"></div>
+                            <div id="toggleDot" class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Server Logs -->
+            <div class="glass-panel-dark rounded-3xl p-6 border border-white/5 flex flex-col h-[320px]">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-slate-400"></i> Server Logs
+                </h3>
+                <div id="logsContainer" class="flex-1 bg-black/60 rounded-2xl p-4 overflow-y-auto font-mono text-xs text-emerald-400/80 border border-black/50 shadow-inner">
+                    <div class="text-slate-500 italic flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Waiting for logs...</div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    let currentQr = null;
+    let pollInterval = null;
+
+    function updateUI(data) {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        const qrContainer = document.getElementById('qrContainer');
+        const connectedContainer = document.getElementById('connectedContainer');
+        const logsContainer = document.getElementById('logsContainer');
+
+        // Update Logs
+        if (data.logs && data.logs.length > 0) {
+            logsContainer.innerHTML = data.logs.map(log => `<div class="mb-1 hover:text-emerald-300 transition-colors">> ${log}</div>`).join('');
+        }
+
+        // Update Text
+        text.textContent = data.status.replace(/_/g, ' ');
+
+        // Reset Styles
+        dot.className = 'w-3 h-3 rounded-full transition-colors duration-300';
+        qrContainer.classList.add('hidden');
+        connectedContainer.classList.add('hidden');
+
+        switch(data.status) {
+            case 'CONNECTED':
+            case 'AUTHENTICATED':
+                dot.classList.add('bg-emerald-400', 'shadow-[0_0_12px_rgba(52,211,153,0.8)]');
+                connectedContainer.classList.remove('hidden');
+                text.classList.replace('text-slate-300', 'text-emerald-400');
+                break;
+            case 'QR_READY':
+                dot.classList.add('bg-amber-400', 'animate-pulse', 'shadow-[0_0_12px_rgba(251,191,36,0.8)]');
+                qrContainer.classList.remove('hidden');
+                text.classList.replace('text-emerald-400', 'text-amber-400');
+                // Render QR if changed
+                if (data.qr && data.qr !== currentQr) {
+                    currentQr = data.qr;
+                    document.getElementById('qrcode').innerHTML = '';
+                    new QRCode(document.getElementById('qrcode'), {
+                        text: data.qr,
+                        width: 256,
+                        height: 256,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+                break;
+            case 'DISCONNECTED':
+                dot.classList.add('bg-red-500', 'shadow-[0_0_12px_rgba(239,68,68,0.8)]');
+                text.classList.replace('text-emerald-400', 'text-red-400');
+                break;
+            case 'DISABLED_OOM_FIX':
+                dot.classList.add('bg-slate-500');
+                text.textContent = 'SYSTEM DISABLED';
+                break;
+            case 'ERROR':
+                dot.classList.add('bg-red-500', 'animate-pulse');
+                text.classList.replace('text-emerald-400', 'text-red-500');
+                if (data.error) {
+                    text.textContent = 'ERR: ' + data.error.substring(0,20);
+                }
+                break;
+            default:
+                dot.classList.add('bg-slate-500');
+        }
+
+        // Sync Toggle Switch
+        const toggle = document.getElementById('masterToggle');
+        const toggleBg = document.getElementById('toggleBg');
+        const toggleDot = document.getElementById('toggleDot');
+        
+        if (data.status === 'DISABLED_MANUALLY' || data.status === 'DISCONNECTED' && !data.qr) {
+            toggle.checked = false;
+            toggleBg.classList.replace('bg-emerald-500', 'bg-slate-600');
+            toggleDot.classList.remove('translate-x-4');
+        } else {
+            toggle.checked = true;
+            toggleBg.classList.replace('bg-slate-600', 'bg-emerald-500');
+            toggleDot.classList.add('translate-x-4');
+        }
+    }
+
+    async function toggleService(isEnabled) {
+        if (!isEnabled) {
+            if(!confirm('คุณต้องการ "ปิด" ระบบ WhatsApp ใช่หรือไม่? (หยุดการเชื่อมต่อและลดการใช้ RAM)')) {
+                checkStatus(); // revert toggle visually
+                return;
+            }
+            try {
+                await fetch('/whatsapp/api/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ _csrf: '<%= csrfToken %>' })
+                });
+                checkStatus();
+            } catch (e) {
+                alert('เกิดข้อผิดพลาดในการปิดระบบ');
+            }
+        } else {
+            if(!confirm('คุณต้องการ "เปิด" ระบบ WhatsApp ใช่หรือไม่? (จะเริ่มเชื่อมต่อและสแกน QR ใหม่)')) {
+                checkStatus(); // revert toggle visually
+                return;
+            }
+            try {
+                await fetch('/whatsapp/api/restart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ _csrf: '<%= csrfToken %>' })
+                });
+                checkStatus();
+            } catch (e) {
+                alert('เกิดข้อผิดพลาดในการเปิดระบบ');
+            }
+        }
+    }
+
+    async function checkStatus() {
+        try {
+            const res = await fetch('/whatsapp/api/status');
+            const data = await res.json();
+            updateUI(data);
+        } catch (e) {
+            console.error('Status check failed', e);
+        }
+    }
+
+    async function restartClient() {
+        if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการรีสตาร์ทระบบ WhatsApp?')) return;
+        try {
+            await fetch('/whatsapp/api/restart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ _csrf: '<%= csrfToken %>' })
+            });
+            alert('กำลังรีสตาร์ท... กรุณารอสักครู่');
+            location.reload();
+        } catch (e) {
+            alert('เกิดข้อผิดพลาดในการรีสตาร์ท');
+        }
+    }
+
+    async function resetSession() {
+        if (!confirm('การดำเนินการนี้จะลบเซสชันปัจจุบันและต้องสแกน QR ใหม่ ดำเนินการต่อหรือไม่?')) return;
+        try {
+            await fetch('/whatsapp/api/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ _csrf: '<%= csrfToken %>' })
+            });
+            alert('รีเซ็ตเซสชันเรียบร้อย กำลังรีสตาร์ทบริการ...');
+            location.reload();
+        } catch (e) {
+            alert('เกิดข้อผิดพลาดในการรีเซ็ตเซสชัน');
+        }
+    }
+
+    // Start polling
+    checkStatus();
+    pollInterval = setInterval(checkStatus, 3000);
+</script>

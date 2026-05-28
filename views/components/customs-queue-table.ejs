@@ -1,0 +1,48 @@
+<%#
+  customs-queue-table.ejs
+  Props: customsQueue (array)
+%>
+<div class="glass-panel-dark p-4">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-white font-semibold flex items-center gap-2 text-sm">
+      <i class="fa-solid fa-stamp text-amber-400"></i>
+      ค้างศุลกากร
+    </h3>
+    <a href="/orders?status=CUSTOMS_HOLD" class="text-xs text-amber-400/70 hover:text-amber-400 transition-colors">ดูทั้งหมด →</a>
+  </div>
+
+  <% if (!customsQueue || customsQueue.length === 0) { %>
+  <div class="flex flex-col items-center gap-2 py-6 text-slate-500">
+    <i class="fa-solid fa-circle-check text-2xl text-emerald-500/40"></i>
+    <span class="text-sm">ไม่มี order ค้างศุลกากร</span>
+  </div>
+  <% } else { %>
+  <div class="space-y-2 max-h-56 overflow-y-auto scrollbar-thin">
+    <% customsQueue.forEach(item => {
+      const hoursHeld = item.hours_held || 0;
+      const isCritical = hoursHeld > 72;
+      const isWarning  = hoursHeld > 48;
+      const rowColor   = isCritical ? 'bg-red-500/8 border-red-500/20' : isWarning ? 'bg-amber-500/8 border-amber-500/20' : 'bg-white/3 border-transparent';
+      const timeColor  = isCritical ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-slate-400';
+      const customsDate = item.customs_start ? new Date(item.customs_start).toLocaleDateString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '–';
+    %>
+    <a href="/orders/<%= item.id %>" class="flex items-center justify-between p-2.5 rounded-lg border <%= rowColor %> hover:brightness-125 transition-all group">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-white text-xs font-semibold"><%= item.job_no %></span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full <%= item.direction === 'TH_TO_LA' ? 'bg-blue-500/15 text-blue-400' : 'bg-violet-500/15 text-violet-400' %>">
+            <%= item.direction === 'TH_TO_LA' ? '🇹🇭→🇱🇦' : '🇱🇦→🇹🇭' %>
+          </span>
+        </div>
+        <div class="text-slate-400 text-xs"><%= item.sender_name %> → <%= item.receiver_name %></div>
+        <div class="<%= timeColor %> text-xs font-medium">
+          <i class="fa-regular fa-clock mr-1"></i>ค้างมา <%= hoursHeld %>ชม.
+          <% if (isCritical) { %><i class="fa-solid fa-triangle-exclamation ml-1"></i><% } %>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right text-xs text-white/20 group-hover:text-white/50 transition-colors"></i>
+    </a>
+    <% }) %>
+  </div>
+  <% } %>
+</div>

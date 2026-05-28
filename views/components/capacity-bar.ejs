@@ -1,0 +1,36 @@
+<%#
+  views/components/capacity-bar.ejs
+
+  Props:
+    current  — current load (orders count or weight)
+    max      — maximum capacity
+    unit     — display unit string (e.g., 'kg', 'ออเดอร์')
+    showText — boolean, show XX/YY label above bar (default true)
+
+  Usage:
+    <%- include('../components/capacity-bar', { current: trip.total_weight, max: trip.max_weight, unit: 'kg' }) %>
+%>
+<%
+  const pct     = max > 0 ? Math.min(Math.round((current / max) * 100), 100) : 0;
+  const level   = pct < 70 ? 'low' : pct < 90 ? 'medium' : 'high';
+  const display = showText !== false;
+%>
+
+<% if (display) { %>
+  <div class="flex items-center justify-between mb-1">
+    <span class="text-xs text-white/40">ความจุ</span>
+    <span class="text-xs font-semibold <%= level === 'high' ? 'text-red-400' : level === 'medium' ? 'text-amber-400' : 'text-emerald-400' %>">
+      <%= current %> / <%= max %> <%= unit || '' %>
+      <span class="ml-1 opacity-60">(<%= pct %>%)</span>
+    </span>
+  </div>
+<% } %>
+
+<div class="capacity-bar">
+  <div
+    class="capacity-bar-fill <%= level %>"
+    data-width="<%= pct %>"
+    title="<%= current %>/<%= max %> <%= unit || '' %> (<%= pct %>%)"
+    style="--bar-w: <%= pct %>%; width: var(--bar-w)"
+  ></div>
+</div>

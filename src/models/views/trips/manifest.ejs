@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <title>Manifest <%= trip.trip_no %>
+    </title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: white;
+            color: black;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+            position: relative;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 p-8 print:p-0 print:bg-white">
+
+    <div class="fixed top-4 right-4 no-print space-x-2">
+        <button onclick="window.print()"
+            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-bold">
+            🖨️ Print Manifest
+        </button>
+        <button onclick="window.close()" class="bg-gray-500 text-white px-4 py-2 rounded shadow hover:bg-gray-600">
+            Close
+        </button>
+    </div>
+
+    <div class="a4-page shadow-lg print:shadow-none">
+        <div class="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold uppercase tracking-wider">Cargo Manifest</h1>
+                <p class="text-sm">ใบกำกับการขนส่งสินค้าข้ามแดน</p>
+            </div>
+            <div class="text-right">
+                <h2 class="text-xl font-bold">
+                    <%= trip.trip_no %>
+                </h2>
+                <p class="text-sm">Date: <%= new Date(trip.trip_date).toLocaleDateString('th-TH') %>
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 mb-6 text-sm">
+            <div class="border p-4 rounded">
+                <h3 class="font-bold border-b pb-2 mb-2 uppercase">Vehicle Information</h3>
+                <p><span class="w-24 inline-block text-gray-600">Plate No:</span> <span class="font-semibold">
+                        <%= trip.vehicle %>
+                    </span></p>
+                <p><span class="w-24 inline-block text-gray-600">Driver:</span> <span class="font-semibold">
+                        <%= trip.driver_name %>
+                    </span></p>
+            </div>
+            <div class="border p-4 rounded">
+                <h3 class="font-bold border-b pb-2 mb-2 uppercase">Route Information</h3>
+                <p><span class="w-24 inline-block text-gray-600">Origin:</span> <span class="font-semibold">
+                        <%= trip.origin_border %>
+                    </span></p>
+                <p><span class="w-24 inline-block text-gray-600">Destination:</span> <span class="font-semibold">
+                        <%= trip.dest_border %>
+                    </span></p>
+            </div>
+        </div>
+
+        <table class="w-full text-sm mb-8 border-collapse border border-black">
+            <thead>
+                <tr class="bg-gray-100 text-left">
+                    <th class="border border-black px-2 py-2 w-12 text-center">#</th>
+                    <th class="border border-black px-2 py-2 text-center">Job No</th>
+                    <th class="border border-black px-2 py-2">Sender / Receiver</th>
+                    <th class="border border-black px-2 py-2 w-20 text-center">Weight</th>
+                    <th class="border border-black px-2 py-2 w-24 text-center">Size</th>
+                    <th class="border border-black px-2 py-2 w-24 text-right">Value</th>
+                    <th class="border border-black px-2 py-2 w-32 border-r text-center">Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (tripOrders.length===0) { %>
+                    <tr>
+                        <td colspan="7" class="border border-black py-8 text-center text-gray-400">No Cargo Attached
+                        </td>
+                    </tr>
+                    <% } %>
+                        <% tripOrders.forEach((o, index)=> { %>
+                            <tr>
+                                <td class="border border-black px-2 py-2 text-center">
+                                    <%= index + 1 %>
+                                </td>
+                                <td class="border border-black px-2 py-2 font-mono text-center font-bold">
+                                    <%= o.job_no %>
+                                </td>
+                                <td class="border border-black px-2 py-2">
+                                    <div class="font-semibold">
+                                        <%= o.sender_name || 'Unknown' %>
+                                    </div>
+                                    <div class="text-xs text-gray-500">to</div>
+                                    <div class="font-semibold">
+                                        <%= o.receiver_name || 'Unknown' %>
+                                    </div>
+                                </td>
+                                <td class="border border-black px-2 py-2 text-center">
+                                    <%= o.actual_weight || o.declared_weight || '-' %> kg
+                                </td>
+                                <td class="border border-black px-2 py-2 text-center">
+                                    <%= o.actual_size || o.declared_size || '-' %>
+                                </td>
+                                <td class="border border-black px-2 py-2 text-right">
+                                    <%= (o.declared_value || 0).toLocaleString() %>
+                                </td>
+                                <td class="border border-black px-2 py-2"></td>
+                            </tr>
+                            <% }) %>
+            </tbody>
+        </table>
+
+        <div class="absolute bottom-20 left-20 right-20">
+            <div class="flex justify-between text-center">
+                <div>
+                    <div class="h-20 border-b border-black w-48 mb-2"></div>
+                    <p class="font-bold">Driver Signature</p>
+                    <p class="text-xs text-gray-500">ผู้ขับขี่</p>
+                </div>
+                <div>
+                    <div class="h-20 border-b border-black w-48 mb-2"></div>
+                    <p class="font-bold">Officer Signature</p>
+                    <p class="text-xs text-gray-500">เจ้าหน้าที่ศุลกากร/คลัง</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,46 @@
+<%#
+  cod-queue-table.ejs
+  Props: codQueue (array), codPending (number)
+%>
+<div class="glass-panel-dark p-4">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-white font-semibold flex items-center gap-2 text-sm">
+      <i class="fa-solid fa-coins text-amber-400"></i>
+      COD รอเก็บ
+    </h3>
+    <a href="/cod" class="text-xs text-amber-400/70 hover:text-amber-400 transition-colors">ดูทั้งหมด →</a>
+  </div>
+
+  <% if (!codQueue || codQueue.length === 0) { %>
+  <div class="flex flex-col items-center gap-2 py-6 text-slate-500">
+    <i class="fa-solid fa-circle-check text-2xl text-emerald-500/40"></i>
+    <span class="text-sm">ไม่มี COD ค้างรับ</span>
+  </div>
+  <% } else { %>
+  <!-- Summary -->
+  <div class="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-amber-500/8 border border-amber-500/15">
+    <i class="fa-solid fa-triangle-exclamation text-amber-400 text-sm"></i>
+    <span class="text-amber-300 text-sm font-medium">
+      ค้างรับ ฿<%= Number(codPending || 0).toLocaleString() %> (<%= codQueue.length %> รายการ)
+    </span>
+  </div>
+
+  <div class="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+    <% codQueue.slice(0, 8).forEach(item => {
+      const deliveredDate = item.delivered_at ? new Date(item.delivered_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) : '–';
+    %>
+    <a href="/orders/<%= item.id %>" class="flex items-center justify-between p-2.5 rounded-lg bg-white/3 hover:bg-white/6 transition-colors group">
+      <div>
+        <div class="text-white text-xs font-semibold"><%= item.job_no %></div>
+        <div class="text-slate-400 text-xs"><%= item.receiver_name || '–' %></div>
+        <div class="text-slate-500 text-xs"><%= deliveredDate %></div>
+      </div>
+      <div class="text-right">
+        <div class="text-amber-400 font-bold text-sm">฿<%= Number(item.cod_amount).toLocaleString() %></div>
+        <i class="fa-solid fa-chevron-right text-xs text-white/20 group-hover:text-white/50 transition-colors"></i>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+  <% } %>
+</div>

@@ -1,0 +1,271 @@
+<div class="max-w-5xl mx-auto space-y-8 pb-12" x-data="{ activeTab: 'workflow' }">
+  
+  <div class="flex justify-between items-center print:hidden">
+    <div>
+      <h1 class="text-3xl font-black text-white flex items-center gap-3">
+        <i class="fa-solid fa-book-open text-indigo-400"></i> คู่มือและแบบทดสอบระบบ (System Manual)
+      </h1>
+      <p class="text-slate-400 mt-2">คู่มือเตรียมความพร้อมทีมงาน SNG Logistics (อัปเดตล่าสุดรวมระบบร้านฝากส่ง)</p>
+    </div>
+    <a href="/system-manual/print?autoPrint=true" target="_blank" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/30 flex items-center gap-2">
+      <i class="fa-solid fa-print"></i> พิมพ์คู่มือ (PDF)
+    </a>
+  </div>
+
+  <!-- Role Selection Tabs (Hidden on Print) -->
+  <div class="flex flex-wrap gap-2 print:hidden">
+    <button @click="activeTab = 'workflow'" :class="activeTab === 'workflow' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-diagram-project"></i> Workflow ภาพรวม
+    </button>
+    <button @click="activeTab = 'freight'" :class="activeTab === 'freight' ? 'bg-purple-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-truck-ramp-box"></i> ร้านฝากส่ง (Freight)
+    </button>
+    <button @click="activeTab = 'warehouse'" :class="activeTab === 'warehouse' ? 'bg-orange-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-warehouse"></i> คลังสินค้า (TH/LA)
+    </button>
+    <button @click="activeTab = 'dispatcher'" :class="activeTab === 'dispatcher' ? 'bg-blue-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-truck-fast"></i> จัดรถ (Dispatcher)
+    </button>
+    <button @click="activeTab = 'driver'" :class="activeTab === 'driver' ? 'bg-teal-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-steering-wheel"></i> คนขับรถ (Driver)
+    </button>
+    <button @click="activeTab = 'finance'" :class="activeTab === 'finance' ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-coins"></i> การเงิน/บัญชี
+    </button>
+  </div>
+
+  <div class="glass-panel-dark p-6 md:p-8 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden print-container">
+    
+    <!-- Print Header -->
+    <div class="hidden print:block text-center mb-10 border-b border-black pb-6">
+      <h1 class="text-3xl font-black text-black">คู่มือการใช้งานระบบ SNG Logistics</h1>
+      <p class="text-gray-600 mt-2">เอกสารสำหรับเตรียมความพร้อมและทดสอบระบบของทีมงานทุกแผนก</p>
+    </div>
+
+    <!-- WORKFLOW DIAGRAM -->
+    <div x-show="activeTab === 'workflow'" class="print-section space-y-6">
+      <h2 class="text-2xl font-bold text-indigo-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-diagram-project"></i> แผนผังการทำงาน (Workflow)
+      </h2>
+      <p class="text-slate-300 print:text-gray-700">ภาพรวมการทำงานของระบบ SNG Express แบ่งออกเป็น 2 กระบวนการหลัก: 1) พัสดุย่อยทั่วไป 2) ร้านฝากส่งรายใหญ่</p>
+      
+      <div class="bg-white p-4 rounded-xl overflow-x-auto print:border print:border-gray-300 print:shadow-none shadow-xl">
+        <div class="mermaid">
+          flowchart LR
+            classDef normal fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e3a5f
+            classDef freight fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#3b0764
+            classDef finance fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
+
+            subgraph P [" พัสดุย่อย C2C / B2C "]
+              direction LR
+              P1[สร้างออเดอร์] --> P2[สแกนขึ้นรถ] --> P3[ผ่านด่าน] --> P4[รับเข้าคลังลาว] --> P5[นำส่งลูกค้า] --> P6[เก็บเงิน COD] --> P7[ส่งยอดบัญชี]
+            end
+
+            subgraph F [" ร้านฝากส่ง B2B Freight "]
+              direction LR
+              F1[ลงทะเบียนร้านค้า] --> F2[สร้างการจองพื้นที่] --> F3[ออกใบเสนอราคา] --> F4[ออก Invoice] --> F5[รับชำระเงิน] --> F6[โหลดสินค้าขึ้นรถ] --> F7[ส่งมอบสำเร็จ]
+            end
+
+            class P1,P2,P3,P4,P5,P6 normal
+            class P7 finance
+            class F1,F2,F3,F6,F7 freight
+            class F4,F5 finance
+        </div>
+      </div>
+    </div>
+
+    <!-- FREIGHT -->
+    <div x-show="activeTab === 'freight'" class="print-section space-y-6 mt-12 print:mt-16">
+      <h2 class="text-2xl font-bold text-purple-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-truck-ramp-box"></i> ระบบร้านฝากส่ง (Freight Partners)
+      </h2>
+      <p class="text-slate-300 print:text-gray-700">กระบวนการรับฝากส่งสินค้าแบบเหมาพื้นที่ หรือแบบกระสอบสำหรับพาร์ทเนอร์</p>
+      
+      <div class="space-y-4">
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-purple-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-purple-300 print:text-purple-800 mb-2">ขั้นตอนที่ 1: ลงทะเบียนร้านค้า</h3>
+          <ul class="list-decimal list-inside text-sm text-slate-400 print:text-gray-700 space-y-2">
+            <li>เข้าเมนู <strong>"ร้านฝากส่ง" -> "รายชื่อร้านค้า/Partner"</strong></li>
+            <li>กดปุ่ม <strong>"เพิ่มร้านค้าใหม่"</strong> กรอกข้อมูลชื่อบริษัท, ผู้ติดต่อ, เบอร์โทรศัพท์ และที่อยู่</li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-purple-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-purple-300 print:text-purple-800 mb-2">ขั้นตอนที่ 2: สร้างรายการจองพื้นที่ (Booking)</h3>
+          <ul class="list-decimal list-inside text-sm text-slate-400 print:text-gray-700 space-y-2">
+            <li>เข้าเมนู <strong>"ร้านฝากส่ง" -> "สร้างการจองใหม่"</strong></li>
+            <li>เลือกร้านค้าจากระบบ เลือกประเภทหน่วย (กล่อง/กระสอบ/พาเลท)</li>
+            <li>ใส่ขนาด (กว้างxยาวxสูง) ระบบจะคำนวณราคาเริ่มต้นให้โดยอัตโนมัติ (แก้ไขราคาตกลงได้)</li>
+            <li>เมื่อบันทึก สถานะจะเป็น <strong>"DRAFT" (รอเสนอราคา)</strong></li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-purple-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-purple-300 print:text-purple-800 mb-2">ขั้นตอนที่ 3: ออกเอกสารการเงิน</h3>
+          <ul class="list-decimal list-inside text-sm text-slate-400 print:text-gray-700 space-y-2">
+            <li>ในหน้าหน้ารายละเอียดการจอง กดไอคอน <strong>"ใบเสนอราคา"</strong> เพื่อพิมพ์ PDF ส่งให้ลูกค้า</li>
+            <li>เมื่อลูกค้าตกลง ให้เปลี่ยนสถานะเป็น <strong>"CONFIRMED"</strong></li>
+            <li>กดไอคอน <strong>"ใบเรียกเก็บเงิน (Invoice)"</strong> เพื่อออกบิลเก็บเงิน</li>
+            <li>ฝ่ายบัญชีเข้ามากด <strong>"บันทึกรับเงิน"</strong> (รองรับทั้งชำระล่วงหน้า และ เครดิต)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAREHOUSE -->
+    <div x-show="activeTab === 'warehouse'" class="print-section space-y-6 mt-12 print:mt-16">
+      <h2 class="text-2xl font-bold text-orange-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-warehouse"></i> พนักงานคลังสินค้า (Warehouse TH & LA)
+      </h2>
+      <p class="text-slate-300 print:text-gray-700">รับผิดชอบการรับสินค้าเข้าคลัง และการนำสินค้าขึ้น/ลงจากรถขนส่งด้วยระบบสแกนอัตโนมัติ</p>
+      
+      <div class="space-y-4">
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-orange-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-orange-300 print:text-orange-800 mb-2">1. การรับพัสดุ (คลังต้นทาง)</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>เข้าเมนู <strong>"สร้างออเดอร์"</strong> เพื่อบันทึกพัสดุ</li>
+            <li>กรอกรายละเอียดผู้ส่ง-ผู้รับ และประเภทบริการ (COD / จ่ายต้นทาง)</li>
+            <li>พิมพ์สติ๊กเกอร์บาร์โค้ด และแปะบนพัสดุ</li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-orange-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-orange-300 print:text-orange-800 mb-2">2. การสแกนขึ้นรถ (Loading)</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>เข้าเมนู <strong>"สแกน (Scanner)"</strong> ผ่านมือถือหรือคอมพิวเตอร์</li>
+            <li>เลือกโหมด "ขึ้นรถ (Load to Truck)"</li>
+            <li>ยิงบาร์โค้ดพัสดุ สถานะจะเปลี่ยนเป็น <strong>"ON_TRUCK"</strong> ทันที พร้อมส่งเสียง "ติ๊ด!"</li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-orange-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-orange-300 print:text-orange-800 mb-2">3. การรับของเข้าคลังปลายทาง (Unloading)</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>เปิดเมนูสแกนเนอร์ เลือกโหมด "รับเข้าคลังปลายทาง (Receive at Dest)"</li>
+            <li>ยิงบาร์โค้ดตอนยกลงจากรถ สถานะจะเปลี่ยนเป็น <strong>"AT_DEST_WH"</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISPATCHER -->
+    <div x-show="activeTab === 'dispatcher'" class="print-section space-y-6 mt-12 print:mt-16">
+      <h2 class="text-2xl font-bold text-blue-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-truck-fast"></i> ฝ่ายจัดรถ (Dispatcher)
+      </h2>
+      
+      <div class="space-y-4">
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-blue-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-blue-300 print:text-blue-800 mb-2">1. สร้างรอบรถประจำวัน (Create Trip)</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>เข้าเมนู <strong>"รอบรถขนส่ง (Trips)"</strong> กดปุ่มสร้างรอบรถ</li>
+            <li>เลือกทะเบียนรถ และคนขับรถประจำวัน</li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-blue-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-blue-300 print:text-blue-800 mb-2">2. จ่ายงาน (Dispatch)</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>มอบหมายออเดอร์เข้าไปในรถ (หรือปล่อยให้คลังสินค้าใช้ปืนสแกนยิงเข้าอัตโนมัติ)</li>
+            <li>พิมพ์ <strong>ใบกำกับการขนส่ง (Manifest)</strong> ให้คนขับ</li>
+            <li>กดปุ่ม "ออกรถ (Depart)"</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRIVER -->
+    <div x-show="activeTab === 'driver'" class="print-section space-y-6 mt-12 print:mt-16">
+      <h2 class="text-2xl font-bold text-teal-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-steering-wheel"></i> คนขับรถ (Driver & Last-Mile)
+      </h2>
+      
+      <div class="space-y-4">
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-teal-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-teal-300 print:text-teal-800 mb-2">1. นำส่งพัสดุ</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>ใช้มือถือสแกนพัสดุโหมด "นำส่งลูกค้า (Deliver)"</li>
+            <li>เมื่อถึงหน้าบ้านลูกค้า ใช้กล้องมือถือสแกนบาร์โค้ด เปลี่ยนสถานะเป็น <strong>"DELIVERED"</strong></li>
+            <li>หากมีเก็บเงินปลายทาง ระบบจะเด้งเตือนให้เก็บเงินสด <strong>COD</strong> ทันที</li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-teal-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-teal-300 print:text-teal-800 mb-2">2. การเบิกจ่าย</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>เข้าเมนู <strong>"บันทึกรายจ่าย"</strong> แนบรูปสลิปเติมน้ำมัน หรือค่าผ่านทาง ส่งตรงถึงฝ่ายบัญชี</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANCE -->
+    <div x-show="activeTab === 'finance'" class="print-section space-y-6 mt-12 print:mt-16">
+      <h2 class="text-2xl font-bold text-emerald-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-coins"></i> การเงินและบัญชี (Finance)
+      </h2>
+      
+      <div class="space-y-4">
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-emerald-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-emerald-300 print:text-emerald-800 mb-2">1. เคลียร์ยอด COD (เงินสดปลายทาง)</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>เมื่อคนขับกลับมา เข้าเมนู <strong>"บัญชี COD"</strong></li>
+            <li>กด <strong>"รับเงินเข้าระบบ (Remit)"</strong> เพื่อล้างหนี้คนขับ</li>
+          </ul>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-emerald-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-emerald-300 print:text-emerald-800 mb-2">2. ควบคุมงบประมาณ</h3>
+          <ul class="list-disc list-inside text-sm text-slate-400 print:text-gray-700 space-y-1">
+            <li>รับเรื่องเบิกจ่าย (Expenses) ตรวจสอบสลิปน้ำมัน</li>
+            <li>บันทึกรับเงินจากร้านฝากส่ง (Freight Invoices) ดูยอดหนี้ค้างชำระเครดิต</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Print CSS & Utilities -->
+<style>
+  @media print {
+    body {
+      background: white !important;
+      color: black !important;
+      font-size: 11pt;
+    }
+    
+    /* Make all sections visible during print */
+    .print-section {
+      display: block !important;
+      break-inside: avoid;
+    }
+    
+    /* Remove dark mode aesthetics for print */
+    .glass-panel-dark {
+      background: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    
+    /* Adjust text colors for paper */
+    .text-slate-400, .text-slate-300 { color: #333 !important; }
+    
+    /* Hide the rest of the app UI */
+    header, nav, .sidebar { display: none !important; }
+    main { padding: 0 !important; margin: 0 !important; }
+    
+    /* Page setup */
+    @page { margin: 1.5cm; }
+  }
+</style>
+
+<!-- Mermaid JS for Flowchart -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ 
+    startOnLoad: true, 
+    theme: 'base',
+    themeVariables: {
+      fontFamily: 'Prompt, sans-serif',
+      primaryColor: '#e0f2fe',
+      primaryBorderColor: '#0284c7',
+      primaryTextColor: '#0f172a',
+    }
+  });
+</script>

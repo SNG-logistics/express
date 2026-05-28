@@ -1,0 +1,180 @@
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-white">จัดการผู้ใช้งาน (User Management)</h1>
+            <p class="text-slate-400 mt-1">เพิ่ม ลบ และแก้ไขสิทธิ์การเข้าใช้งานระบบ</p>
+        </div>
+        <button onclick="document.getElementById('addUserModal').classList.remove('hidden')"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งาน
+        </button>
+    </div>
+
+    <% if (flash && flash.message) { %>
+        <div
+            class="p-4 rounded-xl <%= flash.type === 'error' ? 'bg-red-500/10 text-red-200 border-red-500/20' : 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' %> border flex items-center gap-3">
+            <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check' %>"></i>
+            <%= flash.message %>
+        </div>
+        <% } %>
+
+            <!-- User List -->
+            <div class="glass-panel-dark rounded-xl overflow-hidden border border-white/5">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white/5 border-b border-white/10 text-slate-300 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-bold">Username</th>
+                            <th class="p-4 font-bold">ชื่อ-นามสกุล</th>
+                            <th class="p-4 font-bold">Role</th>
+                            <th class="p-4 font-bold">Status</th>
+                            <th class="p-4 font-bold text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 text-sm">
+                        <% users.forEach(u=> { %>
+                            <tr class="hover:bg-white/5 transition-colors group">
+                                <td class="p-4 font-bold text-white">
+                                    <%= u.username %>
+                                </td>
+                                <td class="p-4 text-slate-300">
+                                    <%= u.name %>
+                                </td>
+                                <td class="p-4">
+                                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase border border-white/10 
+              <%= u.role === 'admin' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 
+                  u.role === 'manager' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 
+                  u.role === 'thai_warehouse' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                  u.role === 'lao_warehouse' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                  'bg-slate-700 text-slate-400' %>">
+                                        <%= u.role %>
+                                    </span>
+                                </td>
+                                <td class="p-4">
+                                    <span class="px-2 py-1 rounded-full text-[10px] font-bold 
+              <%= u.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400' %>">
+                                        <%= u.status %>
+                                    </span>
+                                </td>
+                                <td class="p-4 text-right flex items-center justify-end gap-2">
+                                    <!-- Reset Password Button -->
+                                    <button onclick="openResetModal('<%= u.id %>', '<%= u.username %>')"
+                                        class="text-slate-400 hover:text-amber-400 transition-colors p-2 rounded hover:bg-white/5"
+                                        title="Reset Password">
+                                        <i class="fa-solid fa-key"></i>
+                                    </button>
+
+                                    <!-- Delete Button -->
+                                    <% if (user.id !==u.id) { %>
+                                        <form action="/users/<%= u.id %>/delete" method="POST"
+                                            onsubmit="return confirm('ยืนยันการลบผู้ใช้งาน <%= u.username %>?');"
+                                            class="inline">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <button
+                                                class="text-slate-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-white/5"
+                                                title="Delete User">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        <% } %>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+            </div>
+
+</div>
+
+<!-- Add User Modal -->
+<div id="addUserModal"
+    class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div
+        class="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in-up">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-white">เพิ่มผู้ใช้งานใหม่</h3>
+            <button onclick="document.getElementById('addUserModal').classList.add('hidden')"
+                class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form action="/users" method="POST" class="p-6 space-y-4">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Username</label>
+                <input type="text" name="username" required
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Password</label>
+                <input type="password" name="password" required
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">ชื่อ-นามสกุล</label>
+                <input type="text" name="name" required
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Role</label>
+                <select name="role"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    <option value="staff">Staff (General)</option>
+                    <option value="thai_warehouse">Thai Warehouse (New Orders)</option>
+                    <option value="lao_warehouse">Lao Warehouse (New Orders)</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+
+            <div class="pt-4 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('addUserModal').classList.add('hidden')"
+                    class="px-4 py-2 rounded-lg text-slate-300 hover:bg-white/5 transition-colors font-medium">Cancel</button>
+                <button type="submit"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-all">Create
+                    User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetModal"
+    class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div class="p-6 border-b border-white/10">
+            <h3 class="text-xl font-bold text-white">Reset Password</h3>
+            <p class="text-slate-400 text-sm mt-1">สำหรับ user: <span id="resetUsername"
+                    class="text-indigo-400 font-mono"></span></p>
+        </div>
+        <form id="resetForm" method="POST" class="p-6 space-y-4">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">New Password</label>
+                <input type="password" name="new_password" required placeholder="Enter new password"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div class="pt-2 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('resetModal').classList.add('hidden')"
+                    class="px-4 py-2 rounded-lg text-slate-300 hover:bg-white/5 transition-colors font-medium">Cancel</button>
+                <button type="submit"
+                    class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-all">Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openResetModal(id, username) {
+        document.getElementById('resetUsername').textContent = username;
+        document.getElementById('resetForm').action = '/users/' + id + '/reset-password';
+        document.getElementById('resetModal').classList.remove('hidden');
+    }
+</script>

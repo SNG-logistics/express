@@ -1,0 +1,28 @@
+<%#
+  alert-row.ejs
+  Props: level ('red'|'orange'|'yellow'), icon, message, count, href
+%>
+<% if (count > 0) { %>
+<%
+const colorMap = {
+  red:    { bg: 'bg-red-500/10',    border: 'border-red-500/25',    text: 'text-red-400',    badge: 'bg-red-500/20 text-red-300',    dot: 'bg-red-500' },
+  orange: { bg: 'bg-orange-500/10', border: 'border-orange-500/25', text: 'text-orange-400', badge: 'bg-orange-500/20 text-orange-300', dot: 'bg-orange-500' },
+  yellow: { bg: 'bg-amber-500/10',  border: 'border-amber-500/25',  text: 'text-amber-400',  badge: 'bg-amber-500/20 text-amber-300',  dot: 'bg-amber-400' },
+};
+const c = colorMap[level] || colorMap['orange'];
+%>
+<a href="<%= href || '/orders' %>" class="flex items-center justify-between p-3 rounded-xl <%= c.bg %> border <%= c.border %> hover:brightness-125 transition-all group">
+  <div class="flex items-center gap-3">
+    <span class="relative flex h-2.5 w-2.5 flex-shrink-0">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full <%= c.dot %> opacity-60"></span>
+      <span class="relative inline-flex rounded-full h-2.5 w-2.5 <%= c.dot %>"></span>
+    </span>
+    <i class="<%= icon %> <%= c.text %> w-4 text-center flex-shrink-0"></i>
+    <span class="<%= c.text %> text-sm font-medium"><%= message %></span>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="px-2 py-0.5 rounded-full text-xs font-bold <%= c.badge %>"><%= count %> รายการ</span>
+    <i class="fa-solid fa-chevron-right text-xs <%= c.text %> opacity-0 group-hover:opacity-100 transition-opacity"></i>
+  </div>
+</a>
+<% } %>

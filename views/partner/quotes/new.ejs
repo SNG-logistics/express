@@ -1,0 +1,356 @@
+<%# ═══════════════════════════════════════════════════════════
+    Partner Quotation Calculator — /partner/quotes/new
+    Real-time AJAX calculator: input → breakdown → total LAK
+════════════════════════════════════════════════════════════ %>
+
+<div class="max-w-5xl mx-auto" x-data="quoteCalc()" x-init="init()">
+
+  <div class="flex items-center gap-3 mb-8">
+    <a href="/partner/quotes" class="text-slate-500 hover:text-white transition-colors">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <div>
+      <h1 class="text-2xl font-black text-white flex items-center gap-3">
+        <span class="bg-amber-500 w-1.5 h-7 rounded-full"></span>
+        สร้างใบเสนอราคา
+      </h1>
+      <p class="text-slate-500 text-sm mt-1 ml-5">คำนวณราคาสินค้าออนไลน์สำหรับลูกค้าลาว</p>
+    </div>
+  </div>
+
+  <form action="/partner/quotes" method="post" class="grid lg:grid-cols-5 gap-6">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <%# ─── LEFT: Input ──────────────────────────────────── %>
+    <div class="lg:col-span-3 space-y-5">
+
+      <%# สินค้า Block %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+        <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-box-open"></i> ข้อมูลสินค้า
+        </h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              Link สินค้า (Lazada / Shopee / JD)
+            </label>
+            <div class="flex gap-2">
+              <input type="url" name="product_url" id="product_url"
+                x-model="form.product_url"
+                placeholder="https://s.lazada.co.th/s.ZfXHBA"
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600">
+              <a :href="form.product_url || '#'" target="_blank"
+                class="flex items-center px-3 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-amber-400 transition-colors text-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              ชื่อสินค้า <span class="text-red-400">*</span>
+            </label>
+            <input type="text" name="product_name" required
+              x-model="form.product_name"
+              placeholder="เช่น รองเท้าวิ่ง Nike Air Max size 42"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+                ราคาสินค้า (THB) <span class="text-red-400">*</span>
+              </label>
+              <div class="relative">
+                <span class="absolute left-4 top-3 text-slate-500 text-sm">฿</span>
+                <input type="number" name="product_price_thb" step="0.01" min="0" required
+                  x-model="form.product_price_thb" @input="recalc"
+                  placeholder="750.00"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-4 py-3 text-white font-bold font-mono focus:ring-amber-500 focus:border-amber-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+                ค่าส่งในไทย (THB)
+              </label>
+              <div class="relative">
+                <span class="absolute left-4 top-3 text-slate-500 text-sm">฿</span>
+                <input type="number" name="shipping_th_thb" step="0.01" min="0"
+                  x-model="form.shipping_th_thb" @input="recalc"
+                  placeholder="50.00"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-4 py-3 text-white font-mono focus:ring-amber-500 focus:border-amber-500">
+              </div>
+              <p class="text-[10px] text-slate-600 mt-1">ค่าส่ง Lazada → หนองคาย (ดูหน้าสินค้า)</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              น้ำหนักโดยประมาณ (kg)
+            </label>
+            <div class="flex gap-2 items-center">
+              <input type="number" name="weight_kg" step="0.1" min="0"
+                x-model="form.weight_kg" @input="fetchAutoShipping"
+                placeholder="0.5"
+                class="w-36 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-mono focus:ring-amber-500 focus:border-amber-500">
+              <span class="text-slate-600 text-xs">kg</span>
+              <button type="button" @click="fetchAutoShipping"
+                class="ml-auto flex items-center gap-1.5 px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-amber-400 text-xs transition-colors">
+                <i class="fa-solid fa-calculator"></i> ดึงค่าขนส่ง SNG
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# อัตราแลกเปลี่ยน Block %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+        <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-coins"></i> อัตราแลกเปลี่ยน
+        </h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              อัตรา THB → LAK <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <input type="number" name="exchange_rate" step="0.01" min="1" required
+                x-model="form.exchange_rate" @input="recalc"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold font-mono text-lg focus:ring-cyan-500 focus:border-cyan-500 pr-14">
+              <span class="absolute right-4 top-3 text-cyan-400 font-bold text-xs">LAK</span>
+            </div>
+            <p class="text-[10px] text-slate-600 mt-1">อัตราจาก Setting: <span x-text="form.exchange_rate"></span> LAK / 1 THB</p>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              Spread เพิ่ม (%)
+            </label>
+            <div class="relative">
+              <input type="number" name="fx_spread_pct" step="0.5" min="0" max="20"
+                x-model="form.fx_spread_pct" @input="recalc"
+                placeholder="2"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-mono focus:ring-cyan-500 focus:border-cyan-500 pr-10">
+              <span class="absolute right-4 top-3 text-slate-500 text-xs">%</span>
+            </div>
+            <p class="text-[10px] text-slate-600 mt-1">บวกเพิ่มนอกจากอัตราตลาด</p>
+          </div>
+        </div>
+      </div>
+
+      <%# ค่าขนส่ง SNG + ค่าบริการ %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-truck"></i> ค่าขนส่ง & ค่าบริการ
+        </h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              ค่าขนส่ง SNG (LAK) <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <input type="number" name="sng_shipping_lak" step="100" min="0" required
+                x-model="form.sng_shipping_lak" @input="recalc"
+                placeholder="15000"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold font-mono focus:ring-emerald-500 focus:border-emerald-500 pr-12">
+              <span class="absolute right-3 top-3 text-emerald-400 font-bold text-xs">LAK</span>
+            </div>
+            <p class="text-[10px] text-slate-600 mt-1">
+              <span x-show="autoSngLak" class="text-emerald-400">
+                💡 แนะนำ: <span x-text="autoSngLak?.toLocaleString('th')"></span> LAK
+                (<button type="button" @click="form.sng_shipping_lak=autoSngLak; recalc()" class="underline hover:text-white">ใช้ค่านี้</button>)
+              </span>
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">
+              ค่าบริการกดสั่ง (LAK)
+            </label>
+            <div class="relative">
+              <input type="number" name="service_fee_lak" step="500" min="0"
+                x-model="form.service_fee_lak" @input="recalc"
+                placeholder="5000"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold font-mono focus:ring-amber-500 focus:border-amber-500 pr-12">
+              <span class="absolute right-3 top-3 text-amber-400 font-bold text-xs">LAK</span>
+            </div>
+            <p class="text-[10px] text-slate-600 mt-1">ค่าบริการที่สาขาเรียกเก็บ</p>
+          </div>
+        </div>
+      </div>
+
+      <%# ข้อมูลลูกค้า %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+        <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-user"></i> ข้อมูลลูกค้า (optional)
+        </h3>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">ชื่อลูกค้า</label>
+            <input type="text" name="customer_name" placeholder="นาง สมหมาย"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">เบอร์โทร</label>
+            <input type="tel" name="customer_phone" placeholder="020-xxx-xxx"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">ที่อยู่จัดส่งลาว</label>
+          <textarea name="customer_address" rows="2" placeholder="แขวง/เมือง/บ้าน..."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600 resize-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">สาขา Partner</label>
+            <select name="branch_id"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500">
+              <option value="">— ไม่ระบุ —</option>
+              <% branches.forEach(b => { %>
+              <option value="<%= b.id %>"><%= b.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">สถานะ</label>
+            <select name="status"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500">
+              <option value="draft">Draft (ร่าง)</option>
+              <option value="sent">Sent (ส่งให้ลูกค้าแล้ว)</option>
+              <option value="accepted">Accepted (ลูกค้ายืนยัน)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ─── RIGHT: Live Breakdown ──────────────────────────── %>
+    <div class="lg:col-span-2">
+      <div class="sticky top-6">
+        <%# Result Card %>
+        <div class="glass-panel-dark rounded-2xl p-6 border border-amber-500/20 bg-amber-500/5 mb-4">
+          <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-receipt"></i> ใบเสนอราคา (Preview)
+          </div>
+
+          <div class="space-y-3 text-sm">
+            <%# รายการ %>
+            <div class="flex justify-between text-slate-400">
+              <span>ราคาสินค้า</span>
+              <span class="font-mono text-white" x-text="fmt(form.product_price_thb) + ' THB'">—</span>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>ค่าส่งในไทย</span>
+              <span class="font-mono text-white" x-text="fmt(form.shipping_th_thb) + ' THB'">—</span>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>รวม (THB)</span>
+              <span class="font-mono text-white" x-text="fmt(subtotalThb) + ' THB'">—</span>
+            </div>
+
+            <div class="border-t border-white/10 pt-3">
+              <div class="flex justify-between text-slate-400">
+                <span>อัตราใช้งาน</span>
+                <span class="font-mono text-cyan-400 text-xs" x-text="effectiveRate.toFixed(2) + ' LAK/THB'">—</span>
+              </div>
+              <div class="flex justify-between text-slate-400 mt-2">
+                <span>ยอดสินค้า (LAK)</span>
+                <span class="font-mono text-white" x-text="fmtLak(productLak)">—</span>
+              </div>
+            </div>
+
+            <div class="border-t border-white/10 pt-3">
+              <div class="flex justify-between text-slate-400">
+                <span>ค่าขนส่ง SNG</span>
+                <span class="font-mono text-emerald-400" x-text="fmtLak(form.sng_shipping_lak)">—</span>
+              </div>
+              <div class="flex justify-between text-slate-400 mt-1">
+                <span>ค่าบริการ Partner</span>
+                <span class="font-mono text-amber-400" x-text="fmtLak(form.service_fee_lak)">—</span>
+              </div>
+            </div>
+          </div>
+
+          <%# ยอดรวมใหญ่ %>
+          <div class="mt-5 pt-4 border-t border-amber-500/30">
+            <div class="text-xs text-amber-400 uppercase tracking-wider font-bold mb-1">ยอดที่ลูกค้าจ่าย</div>
+            <div class="text-4xl font-black text-white font-mono" x-text="fmtLak(totalLak)">—</div>
+            <div class="text-slate-500 text-xs mt-1">LAK (ກີບ)</div>
+          </div>
+        </div>
+
+        <%# Note %>
+        <div class="glass-panel-dark rounded-2xl p-5 border border-white/5 mb-4">
+          <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">หมายเหตุ</label>
+          <textarea name="note" rows="3" placeholder="บันทึกเพิ่มเติม..."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-white/20 focus:border-white/20 placeholder-slate-600 resize-none"></textarea>
+        </div>
+
+        <button type="submit"
+          class="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black rounded-xl shadow-lg shadow-amber-900/30 transition-all flex items-center justify-center gap-2 text-base">
+          <i class="fa-solid fa-save"></i> บันทึกใบเสนอราคา
+        </button>
+        <a href="/partner/quotes" class="block mt-3 text-center text-slate-500 text-sm hover:text-white transition-colors">ยกเลิก</a>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<script>
+function quoteCalc() {
+  return {
+    form: {
+      product_url: '',
+      product_name: '',
+      product_price_thb: '',
+      shipping_th_thb: 0,
+      weight_kg: 0,
+      exchange_rate: <%= fx_rate %>,
+      fx_spread_pct: 2,
+      sng_shipping_lak: 0,
+      service_fee_lak: 5000,
+    },
+    autoSngLak: null,
+
+    // Computed
+    get subtotalThb() {
+      return (parseFloat(this.form.product_price_thb) || 0) + (parseFloat(this.form.shipping_th_thb) || 0);
+    },
+    get effectiveRate() {
+      const r = parseFloat(this.form.exchange_rate) || 200;
+      const s = parseFloat(this.form.fx_spread_pct) || 0;
+      return r * (1 + s / 100);
+    },
+    get productLak() {
+      return Math.ceil(this.subtotalThb * this.effectiveRate);
+    },
+    get totalLak() {
+      return this.productLak
+           + (parseFloat(this.form.sng_shipping_lak) || 0)
+           + (parseFloat(this.form.service_fee_lak) || 0);
+    },
+
+    recalc() { /* computed props auto-update */ },
+
+    async fetchAutoShipping() {
+      const w = parseFloat(this.form.weight_kg) || 0;
+      if (w <= 0) return;
+      try {
+        const r = await fetch(`/api/shipping-price?weight=${w}`);
+        const d = await r.json();
+        if (d.price > 0) {
+          this.autoSngLak = d.price;
+        }
+      } catch(e) { console.warn('shipping fetch failed', e); }
+    },
+
+    fmt(v)    { return Number(v || 0).toLocaleString('th', {minimumFractionDigits:2}); },
+    fmtLak(v) { return Number(v || 0).toLocaleString('th') + ' ₭'; },
+
+    init() {
+      // nothing extra needed — Alpine reactivity handles it
+    }
+  }
+}
+</script>

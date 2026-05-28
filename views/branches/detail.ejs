@@ -1,0 +1,262 @@
+<%# Branch Detail View — Admin interface for branch management %>
+
+<!-- Page Title -->
+<div class="mb-6">
+  <div class="flex items-center gap-3 mb-2">
+    <a href="/branches" class="text-slate-400 hover:text-white transition-colors">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <h1 class="text-2xl font-bold text-white"><%= branch.name %></h1>
+    <span class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider
+      <%= branch.status === 'active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+       : branch.status === 'suspended' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+       : 'bg-red-500/15 text-red-400 border border-red-500/20' %>">
+      <%= branch.status %>
+    </span>
+  </div>
+  <p class="text-slate-400 text-sm">
+    <i class="fa-solid fa-barcode mr-1.5"></i><%= branch.branch_code %>
+    <% if (branch.province) { %> · <i class="fa-solid fa-map-pin ml-2 mr-1.5"></i><%= branch.province %><% } %>
+  </p>
+</div>
+
+<!-- Info + Stats Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <!-- Branch Info -->
+  <div class="glass-panel-dark p-5 space-y-4">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+      <i class="fa-solid fa-store text-cyan-400/60"></i> ข้อมูลสาขา
+    </h3>
+    <div class="space-y-3 text-sm">
+      <div class="flex justify-between">
+        <span class="text-slate-500">เจ้าของ:</span>
+        <span class="text-white"><%= branch.operator_name || '-' %></span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">โทร:</span>
+        <span class="text-white"><%= branch.phone || '-' %></span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">อีเมล:</span>
+        <span class="text-white"><%= branch.email || '-' %></span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">ที่อยู่:</span>
+        <span class="text-white text-right max-w-[200px]"><%= branch.address || '-' %></span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">แขวง:</span>
+        <span class="text-white"><%= branch.province || '-' %></span>
+      </div>
+      <% if (branch.lat && branch.lng) { %>
+      <div class="flex justify-between">
+        <span class="text-slate-500">GPS:</span>
+        <span class="text-cyan-400 text-xs font-mono"><%= branch.lat %>, <%= branch.lng %></span>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Zone Config -->
+  <div class="glass-panel-dark p-5 space-y-4">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+      <i class="fa-solid fa-crosshairs text-purple-400/60"></i> โซนการส่ง
+    </h3>
+    <div class="space-y-3 text-sm">
+      <div class="flex justify-between items-center p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+        <span class="text-emerald-400 font-semibold">Zone A (≤<%= branch.zone_a_km || 5 %> km)</span>
+        <span class="text-white font-mono">₭<%= Number(branch.fee_zone_a || 0).toLocaleString() %></span>
+      </div>
+      <div class="flex justify-between items-center p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
+        <span class="text-amber-400 font-semibold">Zone B (≤<%= branch.zone_b_km || 10 %> km)</span>
+        <span class="text-white font-mono">₭<%= Number(branch.fee_zone_b || 0).toLocaleString() %></span>
+      </div>
+      <div class="flex justify-between items-center p-2 rounded-lg bg-red-500/5 border border-red-500/10">
+        <span class="text-red-400 font-semibold">Zone C (≤<%= branch.zone_c_km || 15 %> km)</span>
+        <span class="text-white font-mono">₭<%= Number(branch.fee_zone_c || 0).toLocaleString() %></span>
+      </div>
+      <div class="border-t border-white/5 pt-3">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">Revenue Split:</span>
+          <span class="text-slate-300">Hub <%= branch.split_hub_pct || 30 %>% / Branch <%= branch.split_branch_pct || 70 %>%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="glass-panel-dark p-5 space-y-4">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+      <i class="fa-solid fa-chart-pie text-cyan-400/60"></i> สถิติ
+    </h3>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="p-3 rounded-lg bg-white/3 border border-white/5 text-center">
+        <div class="text-2xl font-bold text-white"><%= stats?.total || 0 %></div>
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">ทั้งหมด</div>
+      </div>
+      <div class="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10 text-center">
+        <div class="text-2xl font-bold text-amber-400"><%= stats?.pending || 0 %></div>
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">รอจัดส่ง</div>
+      </div>
+      <div class="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10 text-center">
+        <div class="text-2xl font-bold text-emerald-400"><%= stats?.delivered || 0 %></div>
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">ส่งสำเร็จ</div>
+      </div>
+      <div class="p-3 rounded-lg bg-red-500/5 border border-red-500/10 text-center">
+        <div class="text-2xl font-bold text-red-400"><%= stats?.failed || 0 %></div>
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">ส่งไม่สำเร็จ</div>
+      </div>
+    </div>
+    <div class="border-t border-white/5 pt-3 text-sm">
+      <div class="flex justify-between">
+        <span class="text-slate-500">รายได้เดือนนี้:</span>
+        <span class="text-emerald-400 font-bold font-mono">₭<%= Number(stats?.month_branch_earn || 0).toLocaleString() %></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Update -->
+<div class="flex items-center gap-3 mb-6">
+  <form action="/branches/<%= branch.id %>/status" method="POST" class="flex items-center gap-2">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <select name="status"
+      class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:border-cyan-500/50">
+      <option value="active"    <%= branch.status === 'active'    ? 'selected' : '' %>>Active</option>
+      <option value="suspended" <%= branch.status === 'suspended' ? 'selected' : '' %>>Suspended</option>
+      <option value="inactive"  <%= branch.status === 'inactive'  ? 'selected' : '' %>>Inactive</option>
+    </select>
+    <button type="submit"
+      class="px-4 py-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg text-sm hover:bg-cyan-500/30 transition-all">
+      อัปเดตสถานะ
+    </button>
+  </form>
+</div>
+
+<!-- Riders -->
+<div class="glass-panel-dark p-5 mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+      <i class="fa-solid fa-motorcycle text-cyan-400/60"></i> ไรเดอร์ (<%= riders.length %>)
+    </h3>
+  </div>
+
+  <% if (riders.length > 0) { %>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-slate-500 text-xs uppercase tracking-wider border-b border-white/5">
+          <th class="px-3 py-2 text-left">ชื่อ</th>
+          <th class="px-3 py-2 text-left">โทร</th>
+          <th class="px-3 py-2 text-left">ยานพาหนะ</th>
+          <th class="px-3 py-2 text-center">สถานะ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% riders.forEach(r => { %>
+        <tr class="border-b border-white/3 hover:bg-white/2 transition-colors">
+          <td class="px-3 py-2.5 text-white font-medium"><%= r.name %></td>
+          <td class="px-3 py-2.5 text-slate-400 font-mono"><%= r.phone %></td>
+          <td class="px-3 py-2.5 text-slate-400"><%= r.vehicle_type %> <span class="text-slate-600"><%= r.vehicle_no || '' %></span></td>
+          <td class="px-3 py-2.5 text-center">
+            <span class="px-2 py-0.5 rounded-full text-xs
+              <%= r.status === 'active' ? 'bg-emerald-500/15 text-emerald-400'
+               : r.status === 'busy'   ? 'bg-amber-500/15 text-amber-400'
+               : 'bg-slate-500/15 text-slate-400' %>">
+              <%= r.status %>
+            </span>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <p class="text-slate-500 text-sm text-center py-6">ยังไม่มีไรเดอร์</p>
+  <% } %>
+
+  <!-- Add Rider Quick Form -->
+  <form action="/branches/<%= branch.id %>/riders" method="POST"
+    class="mt-4 pt-4 border-t border-white/5 flex flex-wrap gap-3 items-end">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">ชื่อ</label>
+      <input type="text" name="name" required
+        class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm w-40"
+        placeholder="ชื่อไรเดอร์">
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">เบอร์โทร</label>
+      <input type="text" name="phone" required
+        class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm w-36"
+        placeholder="020-XXXX-XXXX">
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">ยานพาหนะ</label>
+      <select name="vehicle_type"
+        class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm">
+        <option value="motorcycle">มอเตอร์ไซค์</option>
+        <option value="car">รถยนต์</option>
+        <option value="van">รถตู้</option>
+      </select>
+    </div>
+    <button type="submit"
+      class="px-4 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-sm hover:bg-emerald-500/30 transition-all">
+      <i class="fa-solid fa-plus mr-1"></i> เพิ่มไรเดอร์
+    </button>
+  </form>
+</div>
+
+<!-- Recent Deliveries -->
+<div class="glass-panel-dark p-5">
+  <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
+    <i class="fa-solid fa-box text-cyan-400/60"></i> การจัดส่งล่าสุด
+  </h3>
+  <% if (recentDeliveries.length > 0) { %>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-slate-500 text-xs uppercase tracking-wider border-b border-white/5">
+          <th class="px-3 py-2 text-left">Job No</th>
+          <th class="px-3 py-2 text-left">ไรเดอร์</th>
+          <th class="px-3 py-2 text-center">โซน</th>
+          <th class="px-3 py-2 text-right">ค่าส่ง</th>
+          <th class="px-3 py-2 text-center">สถานะ</th>
+          <th class="px-3 py-2 text-right">วันที่</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recentDeliveries.forEach(d => { %>
+        <tr class="border-b border-white/3 hover:bg-white/2 transition-colors">
+          <td class="px-3 py-2.5">
+            <a href="/orders/<%= d.order_id %>" class="text-cyan-400 hover:text-cyan-300 font-mono text-xs"><%= d.job_no %></a>
+          </td>
+          <td class="px-3 py-2.5 text-slate-300"><%= d.rider_name || '-' %></td>
+          <td class="px-3 py-2.5 text-center">
+            <span class="px-2 py-0.5 rounded text-xs font-semibold
+              <%= d.zone === 'A' ? 'bg-emerald-500/15 text-emerald-400'
+               : d.zone === 'B' ? 'bg-amber-500/15 text-amber-400'
+               : 'bg-red-500/15 text-red-400' %>"><%= d.zone %></span>
+          </td>
+          <td class="px-3 py-2.5 text-right text-white font-mono">₭<%= Number(d.delivery_fee || 0).toLocaleString() %></td>
+          <td class="px-3 py-2.5 text-center">
+            <span class="px-2 py-0.5 rounded-full text-xs
+              <%= d.status === 'DELIVERED' ? 'bg-emerald-500/15 text-emerald-400'
+               : d.status === 'PENDING'   ? 'bg-amber-500/15 text-amber-400'
+               : d.status === 'FAILED'    ? 'bg-red-500/15 text-red-400'
+               : 'bg-blue-500/15 text-blue-400' %>">
+              <%= d.status %>
+            </span>
+          </td>
+          <td class="px-3 py-2.5 text-right text-slate-500 text-xs">
+            <%= d.created_at ? new Date(d.created_at).toLocaleDateString('th-TH') : '-' %>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <p class="text-slate-500 text-sm text-center py-6">ยังไม่มีการจัดส่ง</p>
+  <% } %>
+</div>

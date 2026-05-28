@@ -1,0 +1,271 @@
+<%# views/freight/booking-new.ejs — ฟอร์มสร้างการจองพื้นที่ %>
+
+<div class="max-w-3xl mx-auto space-y-6" x-data="freightForm()">
+
+  <%# Header %>
+  <div class="flex items-center gap-3">
+    <a href="/freight" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div>
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-truck-ramp-box text-amber-400"></i>
+        สร้างการจองพื้นที่ขนส่ง
+      </h2>
+      <p class="text-slate-400 text-xs mt-0.5">ร้านฝากส่ง — จองพื้นที่รถทริปไทย-ลาว</p>
+    </div>
+  </div>
+
+  <form action="/freight" method="POST" class="space-y-5">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <%# ── Section 1: พาร์ทเนอร์ ──────────────────────────────────── %>
+    <div class="glass-panel-dark rounded-2xl p-5 border border-white/8 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-handshake text-amber-400"></i> ข้อมูลร้านฝากส่ง
+      </h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ร้านค้า / พาร์ทเนอร์ <span class="text-red-400">*</span></label>
+          <select name="partner_id" x-model="partnerId" @change="onPartnerChange()" required
+                  class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+            <option value="">— เลือกร้านค้า —</option>
+            <% partners.forEach(p => { %>
+            <option value="<%= p.id %>" data-unit="<%= p.default_unit %>" data-credit="<%= p.credit_days %>">
+              <%= p.company_name %> (<%= p.partner_code %>)
+            </option>
+            <% }); %>
+          </select>
+          <div class="mt-2">
+            <a href="/freight/partners" target="_blank" class="text-xs text-amber-400 hover:text-amber-300">
+              <i class="fa-solid fa-plus mr-1"></i>เพิ่มร้านค้าใหม่
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Section 2: รายละเอียดสินค้า/พื้นที่ ──────────────────── %>
+    <div class="glass-panel-dark rounded-2xl p-5 border border-white/8 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-box text-amber-400"></i> รายละเอียดสินค้าและพื้นที่
+      </h3>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ประเภท <span class="text-red-400">*</span></label>
+          <select name="unit_type" x-model="unitType" required
+                  class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+            <option value="BOX">📦 กล่อง (BOX)</option>
+            <option value="SACK">🎒 กระสอบ (SACK)</option>
+            <option value="PALLET">🪵 พาเลต (PALLET)</option>
+            <option value="BULK">🗃️ ขนเหมา (BULK)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ชื่อเรียก (ถ้ามี)</label>
+          <input type="text" name="unit_label" placeholder="เช่น กล่องใหญ่, ถุงเสื้อ"
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-400/50">
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">จำนวน <span class="text-red-400">*</span></label>
+          <input type="number" name="quantity" x-model.number="qty" @input="calcTotal()" min="1" required
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50" placeholder="1">
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">น้ำหนักรวม (กก.)</label>
+          <input type="number" name="total_weight_kg" step="0.1" min="0"
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50" placeholder="0.0">
+        </div>
+      </div>
+
+      <%# ขนาด %>
+      <div>
+        <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ขนาดต่อ 1 หน่วย (ซม.) — กว้าง × ยาว × สูง</label>
+        <div class="flex gap-2 items-center">
+          <input type="number" name="dim_w_cm" step="0.5" min="0" placeholder="กว้าง"
+                 class="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+          <span class="text-slate-500">×</span>
+          <input type="number" name="dim_l_cm" step="0.5" min="0" placeholder="ยาว"
+                 class="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+          <span class="text-slate-500">×</span>
+          <input type="number" name="dim_h_cm" step="0.5" min="0" placeholder="สูง"
+                 class="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+          <span class="text-slate-500 text-xs">ซม.</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">รายละเอียดสินค้า</label>
+        <textarea name="cargo_description" rows="2" placeholder="เช่น เสื้อผ้า ยี่ห้อ X จำนวน 500 ตัว..."
+                  class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-400/50"></textarea>
+      </div>
+    </div>
+
+    <%# ── Section 3: ราคา ────────────────────────────────────────── %>
+    <div class="glass-panel-dark rounded-2xl p-5 border border-amber-500/15 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-coins text-amber-400"></i> ราคาและการชำระเงิน
+      </h3>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ราคาต่อหน่วย (บาท) <span class="text-red-400">*</span></label>
+          <input type="number" name="unit_price_thb" x-model.number="unitPrice" @input="calcTotal()" step="0.01" min="0" required
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-amber-500/30 text-amber-300 text-lg font-bold placeholder-slate-600 focus:outline-none focus:border-amber-400"
+                 placeholder="0.00">
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ส่วนลด (บาท)</label>
+          <input type="number" name="discount_thb" x-model.number="discount" @input="calcTotal()" step="0.01" min="0"
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50" placeholder="0.00">
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">VAT %</label>
+          <select name="vat_pct" x-model.number="vatPct" @change="calcTotal()"
+                  class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+            <option value="0">ไม่มี VAT</option>
+            <option value="7">7%</option>
+          </select>
+        </div>
+      </div>
+
+      <%# Total Summary %>
+      <div class="bg-white/5 rounded-xl p-4 border border-white/8">
+        <div class="flex justify-between text-sm text-slate-400 mb-2">
+          <span>ยอดก่อนหักส่วนลด (<span x-text="qty"></span> × ฿<span x-text="unitPrice.toLocaleString()"></span>)</span>
+          <span class="text-white font-semibold">฿<span x-text="(qty * unitPrice).toLocaleString()"></span></span>
+        </div>
+        <div class="flex justify-between text-sm text-slate-400 mb-2" x-show="discount > 0">
+          <span>ส่วนลด</span>
+          <span class="text-red-400">- ฿<span x-text="discount.toLocaleString()"></span></span>
+        </div>
+        <div class="flex justify-between text-sm text-slate-400 mb-2" x-show="vatPct > 0">
+          <span>VAT <span x-text="vatPct"></span>%</span>
+          <span class="text-amber-400">+ ฿<span x-text="vatAmount.toLocaleString()"></span></span>
+        </div>
+        <div class="border-t border-white/10 pt-2 mt-2 flex justify-between">
+          <span class="text-white font-bold">ยอดสุทธิ</span>
+          <span class="text-2xl font-black text-amber-400">฿<span x-text="grandTotal.toLocaleString()"></span></span>
+        </div>
+      </div>
+
+      <%# Payment Type %>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="cursor-pointer p-3 rounded-xl border transition-all"
+               :class="payType === 'PREPAY' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-white/5'">
+          <input type="radio" name="payment_type" value="PREPAY" x-model="payType" class="hidden">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-money-bill-wave text-emerald-400"></i>
+            <div>
+              <div class="text-white font-semibold text-sm">ชำระล่วงหน้า</div>
+              <div class="text-[10px] text-slate-400">จ่ายก่อนขนส่ง</div>
+            </div>
+          </div>
+        </label>
+        <label class="cursor-pointer p-3 rounded-xl border transition-all"
+               :class="payType === 'CREDIT' ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-white/10 bg-white/5'">
+          <input type="radio" name="payment_type" value="CREDIT" x-model="payType" class="hidden">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-credit-card text-indigo-400"></i>
+            <div>
+              <div class="text-white font-semibold text-sm">เครดิต</div>
+              <div class="text-[10px] text-slate-400">ชำระหลังส่ง</div>
+            </div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <%# ── Section 4: ทริปและเส้นทาง ─────────────────────────────── %>
+    <div class="glass-panel-dark rounded-2xl p-5 border border-white/8 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-truck-fast text-amber-400"></i> ทริปและเส้นทาง
+      </h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ทิศทาง</label>
+          <select name="direction" class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+            <option value="TH_TO_LA">🇹🇭 ไทย → ลาว 🇱🇦</option>
+            <option value="LA_TO_TH">🇱🇦 ลาว → ไทย 🇹🇭</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ผูกกับทริป (เลือกได้ทีหลัง)</label>
+          <select name="trip_id" class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+            <option value="">— ยังไม่ระบุทริป —</option>
+            <% trips.forEach(t => { %>
+            <option value="<%= t.id %>">
+              <%= t.trip_no %> (<%= t.direction %>) — <%= t.trip_date ? new Date(t.trip_date).toLocaleDateString('th-TH', {day:'2-digit', month:'short'}) : 'ไม่ระบุวัน' %>
+            </option>
+            <% }); %>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ที่รับสินค้า (ต้นทาง)</label>
+          <input type="text" name="pickup_address" placeholder="ที่อยู่หรือจุดรับสินค้า"
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-400/50">
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">ที่ส่งสินค้า (ปลายทาง)</label>
+          <input type="text" name="delivery_address" placeholder="ที่อยู่หรือจุดส่ง"
+                 class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-400/50">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] text-slate-400 uppercase font-bold mb-1.5">หมายเหตุพิเศษ</label>
+        <textarea name="special_notes" rows="2" placeholder="เงื่อนไขพิเศษ การตกลงเพิ่มเติม..."
+                  class="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-400/50"></textarea>
+      </div>
+    </div>
+
+    <%# Submit %>
+    <div class="flex gap-3 justify-end">
+      <a href="/freight" class="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm font-semibold transition-all">
+        ยกเลิก
+      </a>
+      <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold transition-all hover:shadow-lg hover:shadow-amber-500/25">
+        <i class="fa-solid fa-floppy-disk mr-2"></i> บันทึกการจอง
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function freightForm() {
+  return {
+    partnerId: '',
+    unitType: 'BOX',
+    qty: 1,
+    unitPrice: 0,
+    discount: 0,
+    vatPct: 0,
+    payType: 'PREPAY',
+
+    get vatAmount() {
+      const sub = Math.max(0, this.qty * this.unitPrice - this.discount);
+      return parseFloat((sub * this.vatPct / 100).toFixed(2));
+    },
+    get grandTotal() {
+      const sub = Math.max(0, this.qty * this.unitPrice - this.discount);
+      return parseFloat((sub + this.vatAmount).toFixed(2));
+    },
+
+    calcTotal() { /* reactive via Alpine getters */ },
+
+    onPartnerChange() {
+      const sel = document.querySelector('select[name="partner_id"]');
+      const opt = sel?.selectedOptions[0];
+      if (opt) {
+        const unit = opt.dataset.unit;
+        if (unit) this.unitType = unit;
+        const credit = parseInt(opt.dataset.credit || 0);
+        if (credit > 0) this.payType = 'CREDIT';
+      }
+    },
+  };
+}
+</script>
