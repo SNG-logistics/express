@@ -1,0 +1,348 @@
+<%
+const ST = {
+  ASSIGNED_TO_RIDER:  { icon:'📋', label:'รอรับงาน',    cls:'bg-yellow-100 text-yellow-800' },
+  ACCEPTED_BY_RIDER:  { icon:'✋', label:'รับงานแล้ว',  cls:'bg-blue-100 text-blue-800' },
+  PICKED_UP_BY_RIDER: { icon:'📦', label:'รับของแล้ว',  cls:'bg-purple-100 text-purple-800' },
+  OUT_FOR_DELIVERY:   { icon:'🚴', label:'กำลังส่ง',    cls:'bg-orange-100 text-orange-800' },
+  DELIVERED:          { icon:'✅', label:'ส่งสำเร็จ',   cls:'bg-green-100 text-green-800' },
+  DELIVERY_FAILED:    { icon:'❌', label:'ส่งไม่สำเร็จ',cls:'bg-red-100 text-red-800' },
+};
+const st = ST[order.status] || { icon:'📦', label: order.status, cls:'bg-slate-100 text-slate-800' };
+const hasCOD = parseFloat(order.cod_amount) > 0;
+const canAccept = order.status === 'ASSIGNED_TO_RIDER';
+const canPickup = order.status === 'ACCEPTED_BY_RIDER';
+const canDeliver = ['PICKED_UP_BY_RIDER','OUT_FOR_DELIVERY','ACCEPTED_BY_RIDER'].includes(order.status);
+const canFail    = ['PICKED_UP_BY_RIDER','OUT_FOR_DELIVERY','ACCEPTED_BY_RIDER','ASSIGNED_TO_RIDER'].includes(order.status);
+%>
+<div class="min-h-screen bg-slate-900 text-white pb-24" style="font-family:'Noto Sans Thai',sans-serif;max-width:480px;margin:0 auto;">
+
+  <%# TOP BAR %>
+  <div style="background:#0f172a;padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:50;">
+    <a href="/rider" style="color:#94a3b8;font-size:20px;text-decoration:none;"><i class="fa-solid fa-arrow-left"></i></a>
+    <div style="flex:1;">
+      <div style="font-family:monospace;font-size:16px;font-weight:900;color:#fbbf24;"><%= order.job_no %></div>
+      <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;" class="<%= st.cls %>"><%= st.icon %> <%= st.label %></span>
+    </div>
+  </div>
+
+  <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+
+    <%# CUSTOMER INFO CARD %>
+    <div style="background:#1e293b;border-radius:14px;border:1px solid #334155;overflow:hidden;">
+      <div style="background:#0f172a;padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">ข้อมูลผู้รับ</div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;background:#fbbf24;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
+          <div>
+            <div style="font-size:18px;font-weight:900;color:#f1f5f9;"><%= order.receiver_name_r || order.receiver_name || '—' %></div>
+            <div style="font-size:13px;color:#64748b;"><%= order.receiver_phone || '—' %></div>
+          </div>
+        </div>
+
+        <div style="background:#0f172a;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px;">📍 ที่อยู่</div>
+          <div style="font-size:13px;color:#cbd5e1;line-height:1.5;"><%= order.receiver_address || 'ไม่ระบุที่อยู่' %></div>
+        </div>
+
+        <%# Action Buttons: Call + Map %>
+        <div style="display:flex;gap:8px;">
+          <% if (order.receiver_phone) { %>
+          <a href="tel:<%= order.receiver_phone %>" style="flex:1;background:#22c55e;color:#fff;border-radius:10px;padding:12px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;">
+            <i class="fa-solid fa-phone"></i> โทร
+          </a>
+          <% } %>
+          <% if (order.dest_lat && order.dest_lng) { %>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=<%= order.dest_lat %>,<%= order.dest_lng %>" target="_blank" style="flex:1;background:#3b82f6;color:#fff;border-radius:10px;padding:12px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;">
+            <i class="fa-solid fa-map-location-dot"></i> แผนที่
+          </a>
+          <% } else { %>
+          <a href="https://www.google.com/maps/search/<%= encodeURIComponent(order.receiver_address || '') %>" target="_blank" style="flex:1;background:#3b82f6;color:#fff;border-radius:10px;padding:12px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;">
+            <i class="fa-solid fa-map-location-dot"></i> ค้นหาบนแผนที่
+          </a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <%# PARCEL INFO %>
+    <div style="background:#1e293b;border-radius:14px;border:1px solid #334155;overflow:hidden;">
+      <div style="background:#0f172a;padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">รายละเอียดพัสดุ</div>
+      <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><div style="font-size:10px;color:#64748b;font-weight:700;">จำนวน</div><div style="font-size:16px;font-weight:900;color:#f1f5f9;"><%= order.item_count || 1 %> ชิ้น</div></div>
+        <div><div style="font-size:10px;color:#64748b;font-weight:700;">น้ำหนัก</div><div style="font-size:16px;font-weight:900;color:#f1f5f9;"><%= order.actual_weight || order.weight_kg || '—' %> kg</div></div>
+        <% if (hasCOD) { %>
+        <div style="grid-column:span 2;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#22c55e;font-weight:700;">💰 COD ที่ต้องเก็บ</div>
+          <div style="font-size:20px;font-weight:900;color:#22c55e;">฿<%= Number(order.cod_amount).toLocaleString() %></div>
+        </div>
+        <% } %>
+        <% if (order.notes || order.fail_note) { %>
+        <div style="grid-column:span 2;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#fbbf24;font-weight:700;">📝 หมายเหตุ</div>
+          <div style="font-size:13px;color:#fde68a;"><%= order.notes || order.fail_note || '' %></div>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <%# TIMELINE %>
+    <% if (events && events.length > 0) { %>
+    <div style="background:#1e293b;border-radius:14px;border:1px solid #334155;overflow:hidden;">
+      <div style="background:#0f172a;padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Timeline</div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+        <% events.forEach(ev => { %>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:8px;height:8px;background:#fbbf24;border-radius:50%;flex-shrink:0;margin-top:5px;"></div>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#94a3b8;"><%= new Date(ev.created_at).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}) %></div>
+            <div style="font-size:12px;color:#cbd5e1;"><%= ev.event_type %> <% if(ev.note){ %><span style="color:#64748b;">— <%= ev.note.slice(0,80) %></span><% } %></div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
+  </div>
+
+  <%# FIXED ACTION BAR %>
+  <div style="position:fixed;bottom:0;left:0;right:0;background:#0f172a;border-top:1px solid #1e293b;padding:12px 16px;display:flex;flex-direction:column;gap:8px;max-width:480px;margin:0 auto;" id="actionBar">
+
+    <% if (canAccept) { %>
+    <button onclick="doAction('accept', 'รับงานนี้?')" style="background:#fbbf24;color:#111;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;width:100%;">
+      ✋ รับงาน
+    </button>
+    <% } %>
+
+    <% if (canPickup) { %>
+    <button onclick="doAction('pickup', 'ยืนยันรับสินค้าออกจากคลัง?')" style="background:#8b5cf6;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;width:100%;">
+      📦 รับสินค้าออกคลัง
+    </button>
+    <% } %>
+
+    <% if (canDeliver) { %>
+    <button onclick="openDeliverModal()" style="background:#22c55e;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;width:100%;">
+      ✅ ส่งสำเร็จ
+    </button>
+    <% } %>
+
+    <% if (canFail) { %>
+    <button onclick="openFailModal()" style="background:#334155;color:#f87171;border:1px solid #ef4444;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%;">
+      ❌ ส่งไม่สำเร็จ
+    </button>
+    <% } %>
+  </div>
+
+</div>
+
+<%# ── DELIVER MODAL ── %>
+<div id="deliverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;overflow-y:auto;padding:16px;">
+  <div style="background:#1e293b;border-radius:16px;padding:20px;max-width:440px;margin:0 auto;">
+    <div style="font-size:18px;font-weight:900;color:#22c55e;margin-bottom:16px;">✅ ยืนยันส่งสำเร็จ</div>
+
+    <%# GPS status %>
+    <div id="gpsStatus" style="background:#0f172a;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#64748b;">
+      <i class="fa-solid fa-location-dot"></i> กำลังหา GPS...
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:6px;">ชื่อผู้รับ *</label>
+        <input id="recipientName" type="text" placeholder="กรอกชื่อคนที่รับของ" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:12px;color:#f1f5f9;font-size:15px;outline:none;box-sizing:border-box;">
+      </div>
+
+      <% if (hasCOD) { %>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#22c55e;text-transform:uppercase;display:block;margin-bottom:6px;">💰 COD ที่รับจริง (฿) *</label>
+        <input id="codCollected" type="number" placeholder="0" value="<%= order.cod_amount || 0 %>" style="width:100%;background:#0f172a;border:1.5px solid rgba(34,197,94,.4);border-radius:10px;padding:12px;color:#22c55e;font-size:15px;font-weight:900;outline:none;box-sizing:border-box;">
+      </div>
+      <% } %>
+
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:6px;">📷 รูปหลักฐาน * (อย่างน้อย 1 รูป)</label>
+        <label for="podPhoto" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0f172a;border:2px dashed #334155;border-radius:10px;padding:16px;cursor:pointer;color:#64748b;font-size:13px;font-weight:700;">
+          <i class="fa-solid fa-camera" style="font-size:20px;"></i> แตะเพื่อถ่ายรูป / เลือกรูป
+        </label>
+        <input id="podPhoto" type="file" accept="image/*" multiple capture="environment" style="display:none;" onchange="previewPhotos(this)">
+        <div id="photoPreview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button onclick="closeDeliverModal()" style="flex:1;background:#334155;color:#94a3b8;border:none;border-radius:10px;padding:14px;font-weight:700;cursor:pointer;">ยกเลิก</button>
+      <button id="btnConfirmDeliver" onclick="submitDeliver()" style="flex:2;background:#22c55e;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;">ยืนยันส่งสำเร็จ</button>
+    </div>
+  </div>
+</div>
+
+<%# ── FAIL MODAL ── %>
+<div id="failModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;overflow-y:auto;padding:16px;">
+  <div style="background:#1e293b;border-radius:16px;padding:20px;max-width:440px;margin:0 auto;">
+    <div style="font-size:18px;font-weight:900;color:#ef4444;margin-bottom:16px;">❌ ส่งไม่สำเร็จ</div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:6px;">เหตุผล *</label>
+        <select id="failReason" style="width:100%;background:#0f172a;border:1.5px solid #ef4444;border-radius:10px;padding:12px;color:#f1f5f9;font-size:14px;outline:none;box-sizing:border-box;">
+          <option value="">-- เลือกเหตุผล --</option>
+          <option>ลูกค้าไม่อยู่</option>
+          <option>โทรไม่รับ</option>
+          <option>ที่อยู่ผิด / หาไม่เจอ</option>
+          <option>ลูกค้าขอเลื่อน</option>
+          <option>ลูกค้าปฏิเสธรับ</option>
+          <option>COD ไม่พร้อมจ่าย</option>
+          <option>หาโลเคชันไม่เจอ</option>
+          <option>อื่น ๆ</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:6px;">หมายเหตุเพิ่มเติม</label>
+        <textarea id="failNote" rows="3" placeholder="รายละเอียด..." style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:12px;color:#f1f5f9;font-size:13px;outline:none;resize:none;box-sizing:border-box;"></textarea>
+      </div>
+
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:6px;">วันนัดส่งใหม่ (ถ้ามี)</label>
+        <input id="nextAttempt" type="date" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:12px;color:#f1f5f9;font-size:14px;outline:none;box-sizing:border-box;">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button onclick="closeFailModal()" style="flex:1;background:#334155;color:#94a3b8;border:none;border-radius:10px;padding:14px;font-weight:700;cursor:pointer;">ยกเลิก</button>
+      <button onclick="submitFail()" style="flex:2;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;">บันทึกส่งไม่สำเร็จ</button>
+    </div>
+  </div>
+</div>
+
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+const ORDER_ID = '<%= order.id %>';
+let gpsLat = null, gpsLng = null, gpsAcc = null;
+
+// ── GPS ─────────────────────────────────────────────────────────
+function getGPS() {
+  if (!navigator.geolocation) {
+    document.getElementById('gpsStatus').innerHTML = '⚠️ อุปกรณ์ไม่รองรับ GPS';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gpsLat = pos.coords.latitude;
+      gpsLng = pos.coords.longitude;
+      gpsAcc = Math.round(pos.coords.accuracy);
+      document.getElementById('gpsStatus').innerHTML =
+        `<span style="color:#22c55e;">✅ GPS พร้อม (±${gpsAcc}m)</span>`;
+    },
+    err => {
+      document.getElementById('gpsStatus').innerHTML = `<span style="color:#f59e0b;">⚠️ GPS ไม่พร้อม (${err.message}) — บันทึกได้ แต่จะไม่มี GPS</span>`;
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+// ── Action: Accept / Pickup ─────────────────────────────────────
+async function doAction(action, confirm_msg) {
+  if (!confirm(confirm_msg)) return;
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'กำลังโหลด...';
+  try {
+    const body = { lat: gpsLat, lng: gpsLng };
+    const res = await fetch(`/rider/job/${ORDER_ID}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.success) { location.reload(); }
+    else { alert('❌ ' + data.message); btn.disabled = false; btn.textContent = action === 'accept' ? '✋ รับงาน' : '📦 รับสินค้า'; }
+  } catch(e) { alert('เชื่อมต่อไม่ได้'); btn.disabled = false; }
+}
+
+// ── Deliver Modal ───────────────────────────────────────────────
+function openDeliverModal() {
+  document.getElementById('deliverModal').style.display = '';
+  getGPS();
+}
+function closeDeliverModal() { document.getElementById('deliverModal').style.display = 'none'; }
+
+function previewPhotos(input) {
+  const preview = document.getElementById('photoPreview');
+  preview.innerHTML = '';
+  for (const file of input.files) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style.cssText = 'width:72px;height:72px;border-radius:8px;object-fit:cover;border:2px solid #334155;';
+    preview.appendChild(img);
+  }
+}
+
+async function submitDeliver() {
+  const name   = document.getElementById('recipientName').value.trim();
+  const photos = document.getElementById('podPhoto').files;
+  const cod    = document.getElementById('codCollected')?.value || '0';
+
+  if (!name)          { alert('กรุณากรอกชื่อผู้รับ'); return; }
+  if (!photos.length) { alert('กรุณาถ่ายรูปหลักฐาน'); return; }
+
+  const btn = document.getElementById('btnConfirmDeliver');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
+  const fd = new FormData();
+  fd.append('recipient_name', name);
+  fd.append('cod_collected',  cod);
+  fd.append('lat', gpsLat || '');
+  fd.append('lng', gpsLng || '');
+  fd.append('accuracy', gpsAcc || '');
+  for (const f of photos) fd.append('pod_photos', f);
+
+  try {
+    const res  = await fetch(`/rider/job/${ORDER_ID}/deliver`, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': CSRF },
+      body: fd,
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('✅ ส่งสำเร็จ!');
+      location.href = '/rider';
+    } else {
+      alert('❌ ' + data.message);
+      btn.disabled = false; btn.textContent = 'ยืนยันส่งสำเร็จ';
+    }
+  } catch(e) { alert('เชื่อมต่อไม่ได้'); btn.disabled = false; btn.textContent = 'ยืนยันส่งสำเร็จ'; }
+}
+
+// ── Fail Modal ──────────────────────────────────────────────────
+function openFailModal() { document.getElementById('failModal').style.display = ''; }
+function closeFailModal() { document.getElementById('failModal').style.display = 'none'; }
+
+async function submitFail() {
+  const reason = document.getElementById('failReason').value;
+  const note   = document.getElementById('failNote').value;
+  const next   = document.getElementById('nextAttempt').value;
+  if (!reason) { alert('กรุณาเลือกเหตุผล'); return; }
+
+  const fd = new FormData();
+  fd.append('fail_reason', reason);
+  fd.append('fail_note', note);
+  fd.append('next_attempt_date', next);
+  fd.append('lat', gpsLat || '');
+  fd.append('lng', gpsLng || '');
+
+  try {
+    const res  = await fetch(`/rider/job/${ORDER_ID}/fail`, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': CSRF },
+      body: fd,
+    });
+    const data = await res.json();
+    if (data.success) { alert('บันทึกแล้ว'); location.href = '/rider'; }
+    else alert('❌ ' + data.message);
+  } catch(e) { alert('เชื่อมต่อไม่ได้'); }
+}
+
+// Auto-get GPS on load
+getGPS();
+</script>

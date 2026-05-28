@@ -142,6 +142,10 @@ export const ROLES_READ          = [
   'warehouse_th', 'warehouse_la', 'customs', 'staff',
   'branch_operator', 'customer_service', 'driver_support',
 ];
+/** Rider — last-mile delivery only */
+export const ROLES_RIDER         = ['rider'];
+/** Assign rider — admin, manager, warehouse_la can assign */
+export const ROLES_RIDER_ASSIGN  = ['admin', 'manager', 'warehouse_la', 'warehouse_th'];
 
 // ─── Session Fixation Protection ─────────────────────────────────────────────
 /**

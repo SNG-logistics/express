@@ -26,7 +26,9 @@ import settingsRoutes from './routes/settings.js';
 import partnerRoutes from './routes/partner.js';
 import expensesRoutes from './routes/expenses.js';
 import spaceBookingRoutes from './routes/spaceBooking.js';
+import riderRoutes from './routes/rider.js';
 import * as tracking from './controllers/trackingController.js';
+
 import { i18nMiddleware } from './middleware/i18n.js';
 import pool from './config/db.js';
 
@@ -319,6 +321,8 @@ app.use(dispatchRoutes);
 app.use(partnerRoutes);  // ─ Partner Quotation System
 app.use('/expenses', expensesRoutes);
 app.use(spaceBookingRoutes); // ─ ร้านฝากส่ง (Space Booking)
+app.use(riderRoutes);        // ─ Rider Mode (last-mile delivery)
+
 
 app.get('/', (req, res) => res.redirect('/dashboard'));
 

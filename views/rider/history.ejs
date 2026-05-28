@@ -1,0 +1,71 @@
+<div class="min-h-screen bg-slate-900 text-white pb-6" style="font-family:'Noto Sans Thai',sans-serif;max-width:480px;margin:0 auto;">
+
+  <%# TOP BAR %>
+  <div style="background:#0f172a;padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:50;">
+    <a href="/rider" style="color:#94a3b8;font-size:20px;text-decoration:none;"><i class="fa-solid fa-arrow-left"></i></a>
+    <div style="font-size:16px;font-weight:900;color:#f1f5f9;">ประวัติการส่ง</div>
+  </div>
+
+  <div style="padding:16px;display:flex;flex-direction:column;gap:8px;">
+
+    <% if (!jobs || jobs.length === 0) { %>
+    <div style="text-align:center;padding:60px 20px;color:#64748b;">
+      <i class="fa-solid fa-clock-rotate-left" style="font-size:48px;margin-bottom:12px;display:block;"></i>
+      <div style="font-size:16px;font-weight:700;">ยังไม่มีประวัติ</div>
+    </div>
+    <% } %>
+
+    <% (jobs || []).forEach(job => {
+      const isOk = job.status === 'DELIVERED';
+    %>
+    <div style="background:#1e293b;border-radius:12px;border:1px solid <%= isOk ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)' %>;overflow:hidden;">
+      <div style="background:#0f172a;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-family:monospace;font-size:13px;font-weight:900;color:#fbbf24;"><%= job.job_no %></span>
+        <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;background:<%= isOk ? 'rgba(34,197,94,.2)' : 'rgba(239,68,68,.2)' %>;color:<%= isOk ? '#22c55e' : '#ef4444' %>;">
+          <%= isOk ? '✅ ส่งสำเร็จ' : '❌ ส่งไม่สำเร็จ' %>
+        </span>
+      </div>
+      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:14px;font-weight:800;color:#f1f5f9;"><%= job.receiver_name_r || job.receiver_name || '—' %></div>
+        <% if (isOk && job.recipient_name) { %>
+        <div style="font-size:11px;color:#22c55e;">รับโดย: <%= job.recipient_name %></div>
+        <% } %>
+        <% if (!isOk && job.fail_reason) { %>
+        <div style="font-size:11px;color:#f87171;">เหตุผล: <%= job.fail_reason %></div>
+        <% } %>
+        <div style="font-size:10px;color:#64748b;">
+          <% const dt = job.delivered_at || job.delivery_failed_at; %>
+          <% if (dt) { %>
+          <i class="fa-regular fa-clock"></i> <%= new Date(dt).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %>
+          <% } %>
+          <% if (parseFloat(job.cod_collected_amount) > 0) { %>
+           · COD ฿<%= Number(job.cod_collected_amount).toLocaleString() %>
+          <% } %>
+          <% if (job.gps_verified) { %> · <span style="color:#22c55e;">📍 GPS ✓</span><% } %>
+        </div>
+      </div>
+      <% if (job.pod_photo_url) { %>
+      <div style="padding:0 12px 10px;">
+        <img src="<%= job.pod_photo_url %>" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #334155;">
+      </div>
+      <% } %>
+    </div>
+    <% }) %>
+  </div>
+
+  <%# BOTTOM NAV %>
+  <div style="position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid #334155;display:flex;z-index:100;max-width:480px;margin:0 auto;">
+    <a href="/rider" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-list-check" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">งานของฉัน</span>
+    </a>
+    <a href="/rider/history" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;border-top:2px solid #fbbf24;">
+      <i class="fa-solid fa-clock-rotate-left" style="font-size:18px;color:#fbbf24;"></i>
+      <span style="font-size:9px;color:#fbbf24;font-weight:700;margin-top:3px;text-transform:uppercase;">ประวัติ</span>
+    </a>
+    <a href="/logout" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-right-from-bracket" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ออกจากระบบ</span>
+    </a>
+  </div>
+</div>

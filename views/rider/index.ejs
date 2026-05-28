@@ -1,0 +1,117 @@
+<%
+/* ───── Rider Job List ───── */
+const STATUS_LABEL = {
+  'ASSIGNED_TO_RIDER':  { label: 'รอรับงาน',   cls: 'bg-yellow-100 text-yellow-800' },
+  'ACCEPTED_BY_RIDER':  { label: 'รับงานแล้ว',  cls: 'bg-blue-100 text-blue-800' },
+  'PICKED_UP_BY_RIDER': { label: 'รับของแล้ว',  cls: 'bg-purple-100 text-purple-800' },
+  'OUT_FOR_DELIVERY':   { label: 'กำลังส่ง',    cls: 'bg-orange-100 text-orange-800' },
+};
+%>
+<div class="min-h-screen bg-slate-900 text-white pb-6" style="font-family:'Noto Sans Thai',sans-serif;">
+
+  <%# ── TOP BAR ── %>
+  <div style="background:linear-gradient(135deg,#fbbf24,#f59e0b); padding:16px 20px 20px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <img src="/images/snglogo.png" style="width:40px;height:40px;border-radius:50%;border:2px solid #fff;" onerror="this.style.display='none'">
+      <div style="flex:1;">
+        <div style="font-size:18px;font-weight:900;color:#1c1917;line-height:1;">SNG Rider</div>
+        <div style="font-size:12px;color:#78350f;font-weight:600;"><%= user.username %> · ไรเดอร์</div>
+      </div>
+      <a href="/logout" style="background:rgba(0,0,0,.15);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#1c1917;text-decoration:none;">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </a>
+    </div>
+
+    <%# KPI strip %>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div style="background:rgba(255,255,255,.2);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:#1c1917;"><%= pending %></div>
+        <div style="font-size:10px;color:#78350f;font-weight:700;">ค้างอยู่</div>
+      </div>
+      <div style="background:rgba(255,255,255,.2);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:#1c1917;"><%= todayDelivered %></div>
+        <div style="font-size:10px;color:#78350f;font-weight:700;">ส่งแล้ววันนี้</div>
+      </div>
+      <div style="background:rgba(255,255,255,.2);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:14px;font-weight:900;color:#1c1917;"><%=Number(todayCOD).toLocaleString()%></div>
+        <div style="font-size:10px;color:#78350f;font-weight:700;">COD วันนี้ ฿</div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── JOB LIST ── %>
+  <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+
+    <% if (!jobs || jobs.length === 0) { %>
+    <div style="text-align:center;padding:60px 20px;color:#64748b;">
+      <i class="fa-solid fa-box-open" style="font-size:48px;margin-bottom:12px;display:block;"></i>
+      <div style="font-size:16px;font-weight:700;">ไม่มีงานที่ต้องส่ง</div>
+      <div style="font-size:13px;margin-top:4px;">รอการมอบหมายงานจากแอดมิน</div>
+    </div>
+    <% } %>
+
+    <% (jobs || []).forEach(job => {
+      const st = STATUS_LABEL[job.status] || { label: job.status, cls: 'bg-slate-100 text-slate-800' };
+      const hasCOD = parseFloat(job.cod_amount) > 0;
+    %>
+    <a href="/rider/job/<%= job.id %>" style="text-decoration:none;">
+      <div style="background:#1e293b;border-radius:14px;border:1px solid #334155;overflow:hidden;transition:transform .15s;" onmousedown="this.style.transform='scale(.98)'" onmouseup="this.style.transform=''">
+
+        <%# Header %>
+        <div style="background:#0f172a;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-family:monospace;font-size:14px;font-weight:900;color:#fbbf24;"><%= job.job_no %></div>
+          <span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;" class="<%= st.cls %>"><%= st.label %></span>
+        </div>
+
+        <%# Body %>
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fa-solid fa-user-check" style="color:#94a3b8;width:16px;margin-top:2px;font-size:12px;flex-shrink:0;"></i>
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">ผู้รับ</div>
+              <div style="font-size:15px;font-weight:800;color:#f1f5f9;"><%= job.receiver_name_r || job.receiver_name || '—' %></div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fa-solid fa-location-dot" style="color:#94a3b8;width:16px;margin-top:2px;font-size:12px;flex-shrink:0;"></i>
+            <div style="font-size:12px;color:#94a3b8;line-height:1.4;"><%= (job.receiver_address || 'ไม่ระบุที่อยู่').slice(0,80) %></div>
+          </div>
+
+          <% if (hasCOD) { %>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fa-solid fa-money-bill-wave" style="color:#22c55e;width:16px;font-size:12px;flex-shrink:0;"></i>
+            <div style="font-size:13px;font-weight:900;color:#22c55e;">COD ฿<%= Number(job.cod_amount).toLocaleString() %></div>
+          </div>
+          <% } %>
+        </div>
+
+        <div style="background:#0f172a;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:10px;color:#475569;">
+            <i class="fa-solid fa-box"></i> <%= job.item_count || 1 %> ชิ้น
+            <% if (job.actual_weight || job.weight_kg) { %> · <%= job.actual_weight || job.weight_kg %> kg<% } %>
+          </div>
+          <div style="font-size:12px;color:#fbbf24;font-weight:700;">เปิดงาน <i class="fa-solid fa-chevron-right"></i></div>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+
+  <%# ── BOTTOM NAV ── %>
+  <div style="position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid #334155;display:flex;z-index:100;">
+    <a href="/rider" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;border-top:2px solid #fbbf24;">
+      <i class="fa-solid fa-list-check" style="font-size:18px;color:#fbbf24;"></i>
+      <span style="font-size:9px;color:#fbbf24;font-weight:700;margin-top:3px;text-transform:uppercase;">งานของฉัน</span>
+    </a>
+    <a href="/rider/history" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-clock-rotate-left" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ประวัติ</span>
+    </a>
+    <a href="/logout" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-right-from-bracket" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ออกจากระบบ</span>
+    </a>
+  </div>
+
+</div>

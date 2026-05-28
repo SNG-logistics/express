@@ -13,7 +13,9 @@ import pool from '../config/db.js';
 import { recordLoginAttempt, regenerateSession } from '../middleware/auth.js';
 
 export async function showLogin(req, res) {
-  if (req.session?.user) return res.redirect('/dashboard');
+  if (req.session?.user) {
+    return res.redirect(req.session.user.role === 'rider' ? '/rider' : '/dashboard');
+  }
   res.render('auth/login', { flash: null, title: 'เข้าสู่ระบบ' });
 }
 
@@ -62,7 +64,8 @@ export async function login(req, res) {
       branch_id: user.branch_id || null,
     };
 
-    const returnTo = req.session.returnTo || '/dashboard';
+    const returnTo = req.session.returnTo ||
+      (payload.role === 'rider' ? '/rider' : '/dashboard');
 
     // Regenerate session to prevent session-fixation
     regenerateSession(req, payload, (err) => {
