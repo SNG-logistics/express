@@ -522,10 +522,6 @@ export async function receiveOrder(req, res) {
     await pool.query('UPDATE orders SET status = ? WHERE id = ?', [toStatus, id]);
     await logStatus(id, order.status, toStatus, 'Received into warehouse', req.session.user?.id);
 
-    // ✅ แจ้งเตือน WhatsApp: ของถึงคลังปลายทางแล้ว
-    sendOrderUpdate(id, toStatus).catch(e => console.error('[WA] receiveOrder:', e.message));
-
-
     req.session.flash = { type: 'success', message: 'Order received into warehouse' };
     res.redirect(`/orders/${id}`);
   } catch (err) {
@@ -662,8 +658,8 @@ export async function startDelivery(req, res) {
     await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['OUT_FOR_DELIVERY', id]);
     await logStatus(id, order.status, 'OUT_FOR_DELIVERY', 'Out for delivery', req.session.user?.id);
 
-    // ✅ แจ้งเตือน WhatsApp: ของถึงด่านปลายทาง
-    sendOrderUpdate(id, 'OUT_FOR_DELIVERY').catch(e => console.error('[WA] startDelivery:', e.message));
+    // ไม่แจ้ง WhatsApp ที่จุดนี้
+
 
 
     req.session.flash = { type: 'success', message: 'Order out for delivery' };
