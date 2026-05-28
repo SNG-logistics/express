@@ -305,7 +305,11 @@ export async function sendOrderUpdate(orderId, newStatus) {
         const jobNo = order.job_no;
 
         switch (newStatus) {
+            case 'ARRIVED_BORDER_WH':
+                message = `🏁 *SNG EXPRESS*\nພັດສະດຸ ${jobNo} **ຮອດດ່ານຊາຍແດນປາຍທາງແລ້ວ** \nກຳລັງດຳເນີນພິທີການ ລໍຖ້າໜ້ອຍໜຶ່ງ 🇱🇦`;
+                break;
             case 'AT_DEST_WH': {
+
                 let branchInfo = '';
                 if (order.branch_name) {
                     branchInfo = `\n(ສາຂາ: ${order.branch_name}${order.branch_phone ? ' ໂທ: ' + order.branch_phone : ''})`;
@@ -313,6 +317,9 @@ export async function sendOrderUpdate(orderId, newStatus) {
                 message = `📦 *SNG EXPRESS* \nພັດສະດຸລູກຄ້າ ${jobNo} **ຮອດສຳນັກງານແລ້ວ** \nລູກຄ້າສາມາດມາຮັບເອງ ຫຼື ໃຫ້ໄລເດີ້ໄປສົ່ງກໍໄດ້ (ອາດມີຄ່າບໍລິການຕາມໄລຍະທາງ) \nສະຖານະ: ຕິດຕໍ່ແອດມິນໄດ້ເລີຍ${branchInfo}`;
                 break;
             }
+            case 'OUT_FOR_DELIVERY':
+                message = `🚚 *SNG Logistics* \nພັດສະດຸ ${jobNo} **ກຳລັງນຳສົ່ງໄປຫາທ່ານ** \nລໍຖ້າຮັບໂທລະສັບຈາກໄລເດີ້ໄດ້ເລີຍເດີ້!`;
+                break;
             case 'DELIVERED':
                 message = `✅ *SNG Logistics* \nພັດສະດຸລູກຄ້າ ${jobNo} **ສິນຄ້າຮອດມືລູກຄ້າຮຽບຮ້ອຍແລ້ວເດີ້** \nຂອບໃຈທີ່ໃຊ້ບໍລິການຂອງເຮົາ SNG`;
                 break;

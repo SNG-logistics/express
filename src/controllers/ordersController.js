@@ -1,7 +1,8 @@
 import pool from '../config/db.js';
 import { ORDER_STATUS, ORDER_STATUS_LABELS } from '../constants/statuses.js';
 import { canTransitionOrder, getNextOrderStatuses, canCloseOrder } from '../constants/transitions.js';
-// import { sendOrderUpdate } from '../services/whatsappService.js';
+import { sendOrderUpdate } from '../services/whatsappService.js';
+
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
 
@@ -521,8 +522,9 @@ export async function receiveOrder(req, res) {
     await pool.query('UPDATE orders SET status = ? WHERE id = ?', [toStatus, id]);
     await logStatus(id, order.status, toStatus, 'Received into warehouse', req.session.user?.id);
 
-    // Notify WhatsApp
-    // sendOrderUpdate(id, toStatus);
+    // ✅ แจ้งเตือน WhatsApp: ของถึงคลังปลายทางแล้ว
+    sendOrderUpdate(id, toStatus).catch(e => console.error('[WA] receiveOrder:', e.message));
+
 
     req.session.flash = { type: 'success', message: 'Order received into warehouse' };
     res.redirect(`/orders/${id}`);
@@ -623,8 +625,9 @@ export async function arriveDestinationWh(req, res) {
     await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['AT_DEST_WH', id]);
     await logStatus(id, order.status, 'AT_DEST_WH', 'Received destination warehouse', req.session.user?.id);
 
-    // Notify WhatsApp
-    // sendOrderUpdate(id, 'AT_DEST_WH');
+    // ✅ แจ้งเตือน WhatsApp: ของถึงโกดัง SNG ลาว (AT_DEST_WH)
+    sendOrderUpdate(id, 'AT_DEST_WH').catch(e => console.error('[WA] arriveDestWH:', e.message));
+
 
     req.session.flash = { type: 'success', message: 'Order received at destination warehouse' };
     res.redirect(`/orders/${id}`);
@@ -659,8 +662,9 @@ export async function startDelivery(req, res) {
     await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['OUT_FOR_DELIVERY', id]);
     await logStatus(id, order.status, 'OUT_FOR_DELIVERY', 'Out for delivery', req.session.user?.id);
 
-    // Notify WhatsApp
-    // sendOrderUpdate(id, 'OUT_FOR_DELIVERY');
+    // ✅ แจ้งเตือน WhatsApp: ของถึงด่านปลายทาง
+    sendOrderUpdate(id, 'OUT_FOR_DELIVERY').catch(e => console.error('[WA] startDelivery:', e.message));
+
 
     req.session.flash = { type: 'success', message: 'Order out for delivery' };
     res.redirect(`/orders/${id}`);
@@ -706,8 +710,9 @@ export async function markDelivered(req, res) {
     await pool.query(updateQuery, params);
     await logStatus(id, order.status, 'DELIVERED', note, req.session.user?.id);
 
-    // Notify WhatsApp
-    // sendOrderUpdate(id, 'DELIVERED');
+    // ✅ แจ้งเตือน WhatsApp: ส่งสำเร็จ
+    sendOrderUpdate(id, 'DELIVERED').catch(e => console.error('[WA] delivered:', e.message));
+
 
     req.session.flash = { type: 'success', message: 'บันทึกการจัดส่งสำเร็จแล้ว' };
     res.redirect(`/orders/${id}`);
