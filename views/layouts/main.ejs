@@ -137,6 +137,7 @@
           <i class="fa-solid fa-boxes-stacked"></i>
           <span>ออเดอร์</span>
         </a>
+        <% if (can && can.useScanner) { %>
         <a href="/scanner" class="<%= title?.includes('สแกน') || title?.includes('Scanner') ? 'active' : '' %>">
           <i class="fa-solid fa-qrcode"></i>
           <span>สแกน</span>
@@ -145,6 +146,8 @@
           <i class="fa-solid fa-shield-halved"></i>
           <span>คัดกรอง</span>
         </a>
+        <% } %>
+
         <a href="#" onclick="toggleSidebar(); return false;">
           <i class="fa-solid fa-bars"></i>
           <span>เมนู</span>

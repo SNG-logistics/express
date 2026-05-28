@@ -266,7 +266,7 @@ app.use((req, res, next) => {
     processCustoms:    has('admin','manager','customs'),
     customsClear:      has('admin','manager','customs'),  // used in customs/create.ejs inline buttons
     // Scanner
-    useScanner:        has('admin','manager','dispatcher','warehouse_th','warehouse_la','branch_operator','driver_support'),
+    useScanner:        has('admin','manager','dispatcher','warehouse_th','warehouse_la','branch_operator','driver_support','rider'),
     // Customers
     editCustomer:      has('admin','manager','dispatcher'),
     deleteCustomer:    has('admin','manager'),

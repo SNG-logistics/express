@@ -123,7 +123,8 @@ export const ROLES_WAREHOUSE     = ['admin', 'manager', 'dispatcher', 'warehouse
 /** Order creation + basic edits */
 export const ROLES_ORDER_WRITE   = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la', 'staff'];
 /** Scanner / quick status update — drivers can also scan */
-export const ROLES_SCANNER       = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la', 'branch_operator', 'driver_support'];
+export const ROLES_SCANNER       = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la', 'branch_operator', 'driver_support', 'rider'];
+
 /** Delivery field actions — dispatcher + driver can start/complete delivery */
 export const ROLES_DELIVERY_WRITE = ['admin', 'manager', 'dispatcher', 'driver_support', 'branch_operator'];
 /** COD collection in the field (driver can collect COD at door) */
