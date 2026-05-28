@@ -428,7 +428,7 @@
               <% shippingRates.forEach(r => { %>
               <option value="<%= r.id %>" data-price="<%= r.price %>" data-label="<%= r.name %>"
                 <%= draft?.service_type == r.id ? 'selected' : '' %>>
-                <%= r.name %> — ฿<%= Number(r.price).toLocaleString() %>
+                <%= r.name %>
               </option>
               <% }) %>
             <% } else { %>
