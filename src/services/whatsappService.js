@@ -309,20 +309,23 @@ export async function sendOrderUpdate(orderId, newStatus) {
                 message = `🏁 *SNG EXPRESS*\nພັດສະດຸ ${jobNo} **ຮອດດ່ານຊາຍແດນປາຍທາງແລ້ວ** \nກຳລັງດຳເນີນພິທີການ ລໍຖ້າໜ້ອຍໜຶ່ງ 🇱🇦`;
                 break;
             case 'AT_DEST_WH': {
-
+                const receiverName = order.receiver_name ? `ທ່ານ *${order.receiver_name}*` : 'ລູກຄ້າ';
                 let branchInfo = '';
                 if (order.branch_name) {
                     branchInfo = `\n(ສາຂາ: ${order.branch_name}${order.branch_phone ? ' ໂທ: ' + order.branch_phone : ''})`;
                 }
-                message = `📦 *SNG EXPRESS* \nພັດສະດຸລູກຄ້າ ${jobNo} **ຮອດສຳນັກງານແລ້ວ** \nລູກຄ້າສາມາດມາຮັບເອງ ຫຼື ໃຫ້ໄລເດີ້ໄປສົ່ງກໍໄດ້ (ອາດມີຄ່າບໍລິການຕາມໄລຍະທາງ) \nສະຖານະ: ຕິດຕໍ່ແອດມິນໄດ້ເລີຍ${branchInfo}`;
+                message = `📦 *SNG EXPRESS*\nພັດສະດຸ ${jobNo} ປາຍທາງຫາ ${receiverName} *ຮອດສຳນັກງານແລ້ວ*\nລູກຄ້າສາມາດມາຮັບເອງ ຫຼື ໃຫ້ໄລເດີ້ໄປສົ່ງກໍໄດ້ (ອາດມີຄ່າບໍລິການຕາມໄລຍະທາງ)\nສະຖານະ: ຕິດຕໍ່ແອດມິນໄດ້ເລີຍ${branchInfo}`;
                 break;
             }
             case 'OUT_FOR_DELIVERY':
                 message = `🚚 *SNG Logistics* \nພັດສະດຸ ${jobNo} **ກຳລັງນຳສົ່ງໄປຫາທ່ານ** \nລໍຖ້າຮັບໂທລະສັບຈາກໄລເດີ້ໄດ້ເລີຍເດີ້!`;
                 break;
-            case 'DELIVERED':
-                message = `✅ *SNG Logistics* \nພັດສະດຸລູກຄ້າ ${jobNo} **ສິນຄ້າຮອດມືລູກຄ້າຮຽບຮ້ອຍແລ້ວເດີ້** \nຂອບໃຈທີ່ໃຊ້ບໍລິການຂອງເຮົາ SNG`;
+            case 'DELIVERED': {
+                const rcvName = order.receiver_name ? `ທ່ານ *${order.receiver_name}*` : 'ລູກຄ້າ';
+                message = `✅ *SNG Logistics*\nພັດສະດຸ ${jobNo} ຂອງ ${rcvName} *ສົ່ງຮອດມືແລ້ວ*\nຂອບໃຈທີ່ໃຊ້ບໍລິການ SNG Express 🙏`;
                 break;
+            }
+
             default:
                 // ไม่ต้องแจ้งเตือนสถานะอื่น เพื่อไม่ให้รบกวนลูกค้ามากเกินไป
                 return;
