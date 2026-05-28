@@ -1,0 +1,379 @@
+<%#
+  views/scanner/lookup.ejs — ค้นหาพัสดุ (Read-only)
+  Data: recentSearches[], user
+%>
+<%
+  const STATUS_LABELS = {
+    'NEW':'📥 ใหม่ (รอรับ)',
+    'RECEIVED_WH_TH':'🏭 รับเข้าคลังไทยแล้ว',
+    'RECEIVED_WH_LA':'🏭 รับเข้าคลังลาวแล้ว',
+    'ON_TRUCK':'🚚 ขึ้นรถแล้ว (กำลังเดินทาง)',
+    'CROSSING_BORDER':'🛃 กำลังข้ามแดน',
+    'CUSTOMS_HOLD':'⚠️ ติดศุลกากร (รอดำเนินการ)',
+    'CUSTOMS_CLEARED':'✅ ผ่านศุลกากรแล้ว',
+    'ARRIVED_BORDER_WH':'🏁 ถึงด่านปลายทาง',
+    'AT_DEST_WH':'📦 ถึงโกดัง SNG ลาวแล้ว (รอนำจ่าย)',
+    'OUT_FOR_DELIVERY':'🛵 ออกจัดส่งแล้ว (ไรเดอร์กำลังส่ง)',
+    'DELIVERED':'✅ ส่งสำเร็จแล้ว',
+    'DELIVERY_FAILED':'❌ ส่งไม่สำเร็จ',
+    'RETURN_TO_SENDER':'↩️ คืนผู้ส่ง',
+    'CLOSED':'🔒 ปิดงานแล้ว',
+    'CUSTOMS_REJECTED':'🚫 ศุลกากรปฏิเสธ',
+    'BRANCH_TRANSFER':'🔀 ส่งต่อสาขา',
+    'BRANCH_RECEIVED':'📬 สาขารับแล้ว',
+  };
+  const STATUS_COLORS = {
+    'NEW':'bg-slate-500/15 text-slate-300 border-slate-500/20',
+    'RECEIVED_WH_TH':'bg-blue-500/15 text-blue-300 border-blue-500/20',
+    'RECEIVED_WH_LA':'bg-blue-500/15 text-blue-300 border-blue-500/20',
+    'ON_TRUCK':'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
+    'CROSSING_BORDER':'bg-purple-500/15 text-purple-300 border-purple-500/20',
+    'CUSTOMS_HOLD':'bg-amber-500/15 text-amber-300 border-amber-500/20',
+    'AT_DEST_WH':'bg-teal-500/15 text-teal-300 border-teal-500/20',
+    'OUT_FOR_DELIVERY':'bg-cyan-500/15 text-cyan-300 border-cyan-500/20',
+    'DELIVERED':'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
+    'DELIVERY_FAILED':'bg-red-500/15 text-red-300 border-red-500/20',
+    'CLOSED':'bg-slate-600/15 text-slate-400 border-slate-600/20',
+  };
+%>
+
+<div class="max-w-2xl mx-auto space-y-5"
+     x-data="lookupApp()"
+     x-init="init()"
+     @keydown.window="handleGlobalKeydown($event)">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3">
+    <a href="/scanner" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div class="flex-1">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-magnifying-glass text-amber-400"></i>
+        ค้นหาพัสดุ
+      </h2>
+      <p class="text-slate-400 text-xs mt-0.5">สแกนหรือพิมพ์เลข Job เพื่อเช็คว่าพัสดุอยู่ที่ไหน</p>
+    </div>
+    <!-- Mode badge -->
+    <span class="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-bold flex items-center gap-1.5">
+      <i class="fa-solid fa-eye"></i> READ ONLY
+    </span>
+  </div>
+
+  <!-- Search Box -->
+  <div class="glass-panel-dark rounded-2xl p-5 border border-white/8">
+    <div class="relative">
+      <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xl"></i>
+      <input type="text"
+        x-ref="lookupInput"
+        x-model="query"
+        @keydown.enter.prevent="lookup()"
+        :disabled="loading"
+        class="w-full pl-14 pr-28 py-4 rounded-xl bg-white/5 border-2 border-amber-500/40 text-white text-lg font-mono placeholder-slate-600 focus:outline-none focus:border-amber-400/70 transition-all"
+        placeholder="SNG-YYMMDD-XXXX"
+        autocomplete="off" autofocus>
+      <button @click="lookup()" :disabled="loading || !query.trim()"
+        class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold disabled:opacity-40 transition-all">
+        <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
+        <template x-if="!loading"><span><i class="fa-solid fa-search mr-1"></i>ค้นหา</span></template>
+      </button>
+    </div>
+
+    <!-- Error -->
+    <div x-show="lookupError" x-cloak class="mt-3 flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+      <i class="fa-solid fa-circle-xmark"></i>
+      <span x-text="lookupError"></span>
+    </div>
+
+    <!-- Camera -->
+    <div class="mt-4">
+      <button @click="toggleCamera()" type="button"
+        class="w-full px-4 py-3 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-semibold text-sm transition-all flex items-center justify-center gap-2">
+        <i class="fa-solid fa-camera text-slate-400"></i>
+        <span x-text="cameraActive ? 'ปิดกล้องสแกน' : 'สแกนด้วยกล้องมือถือ'"></span>
+      </button>
+    </div>
+    <div x-show="cameraActive" x-collapse class="mt-4">
+      <div class="p-2 bg-black rounded-xl overflow-hidden border border-white/10 relative">
+        <div id="qr-reader-lookup" class="w-full"></div>
+        <div class="absolute inset-0 border-2 border-amber-500/50 rounded-xl pointer-events-none animate-pulse" x-show="cameraActive"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result Card -->
+  <div x-show="order" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 -translate-y-2"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       class="glass-panel-dark rounded-2xl overflow-hidden border border-amber-500/20">
+
+    <!-- Status Hero -->
+    <div class="p-6 text-center border-b border-white/8"
+         :class="{
+           'bg-emerald-500/5': order?.status === 'DELIVERED',
+           'bg-red-500/5': order?.status === 'DELIVERY_FAILED' || order?.status === 'CUSTOMS_HOLD',
+           'bg-amber-500/5': order?.status === 'AT_DEST_WH',
+           'bg-cyan-500/5': order?.status === 'OUT_FOR_DELIVERY',
+           'bg-indigo-500/5': order?.status === 'ON_TRUCK',
+         }">
+      <div class="text-4xl mb-2" x-text="statusEmoji(order?.status)"></div>
+      <div class="font-mono font-black text-white text-xl" x-text="order?.job_no"></div>
+      <div class="mt-2">
+        <span class="px-4 py-2 rounded-xl text-sm font-bold border inline-block"
+              :class="statusColor(order?.status)"
+              x-text="statusFull(order?.status)"></span>
+      </div>
+      <!-- Direction -->
+      <div class="text-slate-400 text-xs mt-2" x-text="order?.direction === 'TH_TO_LA' ? '🇹🇭 ไทย → ลาว 🇱🇦' : '🇱🇦 ลาว → ไทย 🇹🇭'"></div>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="p-5 grid grid-cols-2 gap-4 border-b border-white/5">
+      <!-- Sender -->
+      <div class="space-y-0.5">
+        <div class="text-[10px] text-slate-500 uppercase font-bold">📤 ผู้ส่ง</div>
+        <div class="text-white font-semibold text-sm" x-text="order?.sender_name || '–'"></div>
+        <div class="text-slate-500 text-xs" x-text="order?.sender_phone || ''"></div>
+      </div>
+      <!-- Receiver -->
+      <div class="space-y-0.5">
+        <div class="text-[10px] text-slate-500 uppercase font-bold">📥 ผู้รับ</div>
+        <div class="text-white font-semibold text-sm" x-text="order?.receiver_name || '–'"></div>
+        <div class="text-slate-500 text-xs" x-text="order?.receiver_phone || ''"></div>
+      </div>
+    </div>
+
+    <!-- Trip info (if on truck) -->
+    <div x-show="order?.trip_no" class="px-5 py-3 border-b border-white/5 flex items-center gap-3 bg-indigo-500/5">
+      <i class="fa-solid fa-truck text-indigo-400"></i>
+      <div>
+        <div class="text-indigo-300 text-sm font-bold">อยู่ในรถทริป: <span x-text="order?.trip_no"></span></div>
+        <div class="text-slate-500 text-xs" x-text="order?.trip_status ? 'สถานะทริป: ' + order.trip_status : ''"></div>
+      </div>
+    </div>
+
+    <!-- Rider info (if out for delivery) -->
+    <div x-show="order?.rider_name" class="px-5 py-3 border-b border-white/5 flex items-center gap-3 bg-cyan-500/5">
+      <i class="fa-solid fa-person-biking text-cyan-400"></i>
+      <div>
+        <div class="text-cyan-300 text-sm font-bold">ไรเดอร์: <span x-text="order?.rider_name"></span></div>
+        <div class="text-slate-500 text-xs" x-text="order?.rider_phone ? '📞 ' + order.rider_phone : ''"></div>
+      </div>
+    </div>
+
+    <!-- Key dates -->
+    <div class="px-5 py-4 space-y-2 border-b border-white/5">
+      <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">ไทม์ไลน์</div>
+      <template x-if="order?.created_at">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">📋 สร้างออเดอร์</span>
+          <span class="text-slate-300" x-text="fmtDate(order?.created_at)"></span>
+        </div>
+      </template>
+      <template x-if="order?.picked_up_at">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">🏭 รับเข้าคลัง</span>
+          <span class="text-slate-300" x-text="fmtDate(order?.picked_up_at)"></span>
+        </div>
+      </template>
+      <template x-if="order?.out_for_delivery_at">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">🛵 ออกจัดส่ง</span>
+          <span class="text-slate-300" x-text="fmtDate(order?.out_for_delivery_at)"></span>
+        </div>
+      </template>
+      <template x-if="order?.delivered_at">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">✅ ส่งสำเร็จ</span>
+          <span class="text-emerald-400 font-semibold" x-text="fmtDate(order?.delivered_at)"></span>
+        </div>
+      </template>
+      <template x-if="order?.delivery_failed_at">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">❌ ส่งไม่สำเร็จ</span>
+          <span class="text-red-400 font-semibold" x-text="fmtDate(order?.delivery_failed_at)"></span>
+        </div>
+      </template>
+      <!-- Last update -->
+      <div class="flex justify-between text-xs pt-1 border-t border-white/5">
+        <span class="text-slate-500">🕐 อัปเดตล่าสุด</span>
+        <span class="text-amber-400" x-text="fmtDate(order?.updated_at)"></span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="px-5 py-4 flex gap-3 flex-wrap">
+      <a :href="'/orders/' + order?.id"
+         class="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm font-semibold transition-all flex items-center justify-center gap-2">
+        <i class="fa-solid fa-eye"></i> ดูรายละเอียดเต็ม
+      </a>
+      <button @click="resetLookup()"
+         class="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 text-sm font-semibold transition-all flex items-center gap-2">
+        <i class="fa-solid fa-rotate-right"></i> ค้นหาใหม่
+      </button>
+    </div>
+  </div>
+
+  <!-- Recent Searches -->
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <div class="px-5 py-4 border-b border-white/6">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> ค้นหาล่าสุด
+      </h3>
+    </div>
+    <% if (recentSearches && recentSearches.length > 0) { %>
+    <div class="divide-y divide-white/5 max-h-64 overflow-y-auto">
+      <% recentSearches.forEach(s => { %>
+      <button onclick="quickLookup('<%= s.job_no %>')"
+        class="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-colors text-left">
+        <div class="flex items-center gap-3">
+          <div class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-box text-slate-500 text-xs"></i>
+          </div>
+          <div>
+            <div class="font-mono font-bold text-white text-sm"><%= s.job_no %></div>
+            <div class="text-slate-500 text-[11px]"><%= s.sender_name %> → <%= s.receiver_name %></div>
+          </div>
+        </div>
+        <span class="text-[10px] px-2 py-0.5 rounded border
+          <%= STATUS_COLORS[s.status] || 'bg-slate-500/15 text-slate-300 border-slate-500/20' %>">
+          <%= (STATUS_LABELS[s.status] || s.status).replace(/^[^\s]+\s/, '').split('(')[0].trim() %>
+        </span>
+      </button>
+      <% }); %>
+    </div>
+    <% } else { %>
+    <div class="px-5 py-8 text-center text-slate-600 text-sm">ยังไม่มีประวัติการค้นหา</div>
+    <% } %>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+const CSRF_TOKEN = '<%= csrfToken %>';
+
+const STATUS_FULL_MAP = <%- JSON.stringify(STATUS_LABELS) %>;
+const STATUS_COLOR_MAP = <%- JSON.stringify(STATUS_COLORS) %>;
+const STATUS_EMOJI_MAP = {
+  'NEW':'📥','RECEIVED_WH_TH':'🏭','RECEIVED_WH_LA':'🏭',
+  'ON_TRUCK':'🚚','CROSSING_BORDER':'🛃','CUSTOMS_HOLD':'⚠️',
+  'CUSTOMS_CLEARED':'✅','ARRIVED_BORDER_WH':'🏁','AT_DEST_WH':'📦',
+  'OUT_FOR_DELIVERY':'🛵','DELIVERED':'✅','DELIVERY_FAILED':'❌',
+  'CLOSED':'🔒','RETURN_TO_SENDER':'↩️',
+};
+
+function quickLookup(jobNo) {
+  const el = document.querySelector('[x-ref="lookupInput"]');
+  if (el && el._x_dataStack) {
+    const data = Alpine.$data(el.closest('[x-data]'));
+    data.query = jobNo;
+    data.lookup();
+  }
+}
+
+function lookupApp() {
+  return {
+    query: '',
+    order: null,
+    loading: false,
+    lookupError: null,
+    cameraActive: false,
+    html5Scanner: null,
+    barcodeBuffer: '',
+    lastKeyTime: 0,
+
+    statusFull(s)  { return STATUS_FULL_MAP[s] || s || '–'; },
+    statusColor(s) { return STATUS_COLOR_MAP[s] || 'bg-slate-500/15 text-slate-300 border-slate-500/20'; },
+    statusEmoji(s) { return STATUS_EMOJI_MAP[s] || '📦'; },
+
+    fmtDate(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      return dt.toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'2-digit' })
+        + ' ' + dt.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+    },
+
+    init() {
+      this.$nextTick(() => this.$refs.lookupInput?.focus());
+    },
+
+    handleGlobalKeydown(e) {
+      if (e.target.tagName === 'INPUT' && e.target !== this.$refs.lookupInput) return;
+      if (e.target.tagName === 'TEXTAREA') return;
+      const now = Date.now();
+      if (now - this.lastKeyTime > 50) this.barcodeBuffer = '';
+      this.lastKeyTime = now;
+      if (e.key === 'Enter') {
+        if (this.barcodeBuffer.length > 3) {
+          e.preventDefault();
+          this.query = this.barcodeBuffer;
+          this.barcodeBuffer = '';
+          this.lookup();
+        }
+        return;
+      }
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey) this.barcodeBuffer += e.key;
+    },
+
+    toggleCamera() {
+      this.cameraActive ? this.stopCamera() : this.startCamera();
+    },
+
+    startCamera() {
+      this.cameraActive = true;
+      this.$nextTick(() => {
+        this.html5Scanner = new Html5QrcodeScanner(
+          "qr-reader-lookup",
+          { fps: 10, qrbox: { width: 300, height: 150 },
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] },
+          false
+        );
+        this.html5Scanner.render((text) => {
+          this.stopCamera();
+          this.query = text;
+          this.lookup();
+        }, () => {});
+      });
+    },
+
+    stopCamera() {
+      this.cameraActive = false;
+      this.html5Scanner?.clear().catch(() => {});
+    },
+
+    async lookup() {
+      const q = this.query.trim();
+      if (!q) return;
+      this.loading = true;
+      this.lookupError = null;
+      this.order = null;
+      try {
+        const res = await fetch('/scanner/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ barcode: q }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.order = data.order;
+        } else {
+          this.lookupError = `ไม่พบพัสดุ "${q}" — ลองตรวจสอบเลข Job อีกครั้ง`;
+        }
+      } catch {
+        this.lookupError = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    resetLookup() {
+      this.order = null;
+      this.query = '';
+      this.lookupError = null;
+      this.$nextTick(() => this.$refs.lookupInput?.focus());
+    },
+  };
+}
+</script>

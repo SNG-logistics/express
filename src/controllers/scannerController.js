@@ -86,6 +86,29 @@ export async function showQuickScan(req, res) {
   }
 }
 
+// ─── GET /scanner/lookup — Read-only parcel location lookup ───────────────────
+export async function showLookup(req, res) {
+  try {
+    const [recentSearches] = await pool.query(
+      `SELECT o.id, o.job_no, o.status, o.updated_at,
+              s.name AS sender_name, r.name AS receiver_name
+       FROM orders o
+       LEFT JOIN customers s ON o.sender_id = s.id
+       LEFT JOIN customers r ON o.receiver_id = r.id
+       ORDER BY o.updated_at DESC
+       LIMIT 10`
+    );
+    res.render('scanner/lookup', {
+      user: req.session.user,
+      title: 'ค้นหาพัสดุ',
+      recentSearches,
+    });
+  } catch (error) {
+    console.error('[Scanner] showLookup error:', error);
+    res.status(500).render('errors/500', { user: req.session.user, title: 'Error' });
+  }
+}
+
 // ─── GET /scanner/receive — Batch receive screen ───────────────────────────────
 export async function showReceive(req, res) {
   try {

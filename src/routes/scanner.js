@@ -27,6 +27,7 @@ router.get('/scanner',                         requireLogin, requireRole(ROLES_S
 router.get('/scanner/pda',                     requireLogin, requireRole(ROLES_SCANNER), scanner.showPda);
 router.get('/scanner/auto',                    requireLogin, requireRole(ROLES_SCANNER), scanner.showAutoScan);
 router.get('/scanner/quick',                   requireLogin, requireRole(ROLES_SCANNER), scanner.showQuickScan);
+router.get('/scanner/lookup',                  requireLogin, requireRole(ROLES_SCANNER), scanner.showLookup);
 router.get('/scanner/receive',                 requireLogin, requireRole(ROLES_SCANNER), scanner.showReceive);
 router.get('/scanner/handoff/:tripId',         requireLogin, requireRole(ROLES_SCANNER), scanner.showHandoff);
 
