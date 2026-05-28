@@ -12,6 +12,7 @@
     "migrate-db": "node scripts/migrate_db.js",
     "migrate-expenses": "node scripts/migrate_expenses.mjs",
     "migrate-011": "node run_migration_011.js",
+    "fix-rider": "node fix_rider_role.js",
 
     "clean": "node scripts/clean_and_restart.js",
     "force-update": "node scripts/force_update.js",
