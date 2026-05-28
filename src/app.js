@@ -209,7 +209,16 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(csrf());
+app.use(csrf({
+  value: (req) => {
+    // Accept from: body._csrf, query._csrf, or X-CSRF-Token header (for fetch/AJAX)
+    return req.body?._csrf
+      || req.query?._csrf
+      || req.headers['x-csrf-token']
+      || req.headers['x-xsrf-token'];
+  }
+}));
+
 
 app.use((req, res, next) => {
   res.locals.csrfToken = req.csrfToken();

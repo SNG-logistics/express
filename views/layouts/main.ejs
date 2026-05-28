@@ -6,6 +6,11 @@
   <title><%= title || 'SNG Logistics | ขนส่งไทย-ลาว' %></title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="SNG Logistics — ระบบจัดการขนส่งสินค้าไทย-ลาว">
+  <!-- CSRF token สำหรับ fetch/AJAX ทุก request -->
+  <% if (typeof csrfToken !== 'undefined') { %>
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  <% } %>
+
 
   <!-- Google Fonts: Noto Sans Thai + Lao + Prompt -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
