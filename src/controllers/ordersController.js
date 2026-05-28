@@ -84,8 +84,9 @@ export async function list(req, res) {
 
     const role = req.session.user?.role || '';
     const can = {
-      createOrder: ['admin','staff','manager','thai_warehouse','customer_service'].includes(role),
-      useScanner:  ['admin','staff','manager','thai_warehouse','lao_warehouse','dispatcher'].includes(role),
+      createOrder: ['admin','staff','manager','warehouse_th','thai_warehouse','customer_service'].includes(role),
+      useScanner:  ['admin','staff','manager','warehouse_th','warehouse_la','thai_warehouse','lao_warehouse','dispatcher'].includes(role),
+
     };
 
     res.render('orders/list', {
@@ -143,7 +144,8 @@ export async function showCreate(req, res) {
 
   const role = req.session.user?.role || '';
   const can = {
-    createOrder: ['admin','staff','manager','thai_warehouse','customer_service'].includes(role),
+    createOrder: ['admin','staff','manager','warehouse_th','thai_warehouse','customer_service'].includes(role),
+
   };
 
   res.render('orders/new', {
@@ -451,7 +453,8 @@ export async function detail(req, res) {
     viewRevenue:   ['admin','manager','finance','dispatcher'].includes(role),
     viewFinancials:['admin','manager','finance'].includes(role),
     manageCustoms: ['admin','manager','dispatcher'].includes(role),
-    resolveFlag:   ['admin','manager','dispatcher','thai_warehouse'].includes(role),
+    resolveFlag:   ['admin','manager','dispatcher','warehouse_th','thai_warehouse'].includes(role),
+
   };
 
   res.render('orders/detail', {
@@ -496,8 +499,9 @@ export async function receiveOrder(req, res) {
 
   // Role Validation
   const user = req.session.user;
-  const isThaiWH = user && user.role === 'thai_warehouse';
-  const isLaoWH = user && user.role === 'lao_warehouse';
+  const isThaiWH = user && ['warehouse_th','thai_warehouse'].includes(user.role);
+  const isLaoWH  = user && ['warehouse_la','lao_warehouse'].includes(user.role);
+
   const isAdmin = user && ['admin', 'manager'].includes(user.role);
 
   if (isThaiWH && toStatus !== 'RECEIVED_WH_TH') {
