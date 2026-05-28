@@ -402,6 +402,11 @@
     background:   "#ffffff",
     lineColor:    "#000000"
   });
+
+  // ปิดหน้าต่างอัตโนมัติหลังปริ้นเสร็จ
+  window.onafterprint = function() {
+    setTimeout(() => window.close(), 300);
+  };
 </script>
 </body>
 </html>
