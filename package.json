@@ -14,10 +14,11 @@
     "migrate-011": "node run_migration_011.js",
     "fix-rider": "node fix_rider_role.js",
     "fix-rates": "node fix_rates_tables.js",
-
     "clean": "node scripts/clean_and_restart.js",
     "force-update": "node scripts/force_update.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "migrate-crm": "node scripts/run_crm_migration.mjs",
+    "check-crm": "node scripts/run_crm_migration.mjs --check"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.0",
@@ -35,7 +36,8 @@
     "helmet": "^8.1.0",
     "multer": "^2.0.2",
     "mysql2": "^3.10.0",
-    "pino": "^9.0.0"
+    "pino": "^9.0.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

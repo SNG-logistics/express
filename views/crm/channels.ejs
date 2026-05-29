@@ -1,0 +1,182 @@
+<%# views/crm/channels.ejs — Channel Configuration (crm_admin only) %>
+<link rel="stylesheet" href="/css/crm.css">
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <div class="crm-header-icon"><i class="fa-solid fa-tower-broadcast"></i></div>
+    <h1>ช่องทางการสื่อสาร (Channels)</h1>
+    <div style="margin-left:auto;">
+      <a href="/crm" class="btn-crm btn-crm-secondary btn-crm-sm">
+        <i class="fa-solid fa-arrow-left"></i> Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;max-width:800px;">
+
+    <%# Flash %>
+    <% if (typeof flash !== 'undefined' && flash) { %>
+    <div style="padding:12px 16px;border-radius:10px;
+                background:<%= flash.type === 'error' ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.12)' %>;
+                border:1px solid <%= flash.type === 'error' ? 'rgba(248,113,113,0.3)' : 'rgba(52,211,153,0.3)' %>;
+                color:<%= flash.type === 'error' ? '#f87171' : '#34d399' %>;
+                font-size:0.82rem;">
+      <i class="fa-solid <%= flash.type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check' %>"></i>
+      <%= flash.message %>
+    </div>
+    <% } %>
+
+    <%# WhatsApp %>
+    <div class="crm-card">
+      <div class="crm-card-header">
+        <h3><i class="fa-brands fa-whatsapp" style="color:#25D366;margin-right:8px;"></i>WhatsApp (Baileys)</h3>
+        <% const waStatus = typeof waConnectionStatus !== 'undefined' ? waConnectionStatus : 'UNKNOWN'; %>
+        <span class="crm-badge <%= waStatus === 'CONNECTED' ? 'crm-badge-open' : waStatus === 'QR_READY' ? 'crm-badge-warning' : 'crm-badge-resolved' %>">
+          <%= waStatus %>
+        </span>
+      </div>
+      <div class="crm-card-body" style="font-size:0.82rem;color:#94a3b8;line-height:1.7;">
+        <p>WhatsApp เชื่อมต่อผ่าน Baileys (multi-device) — <strong style="color:#f1f5f9;">ใช้ QR scan เพื่อเชื่อมบัญชี</strong></p>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <a href="/whatsapp" class="btn-crm btn-crm-secondary btn-crm-sm">
+            <i class="fa-solid fa-qrcode"></i> จัดการ WhatsApp
+          </a>
+        </div>
+        <div style="margin-top:10px;padding:10px;background:rgba(37,211,102,0.06);border-radius:8px;border:1px solid rgba(37,211,102,0.15);font-size:0.75rem;">
+          <i class="fa-solid fa-circle-check" style="color:#34d399;"></i>
+          ข้อความขาเข้าจาก WhatsApp จะถูกส่งเข้า CRM Inbox โดยอัตโนมัติเมื่อเชื่อมต่อแล้ว
+        </div>
+      </div>
+    </div>
+
+    <%# Facebook Messenger %>
+    <div class="crm-card">
+      <div class="crm-card-header">
+        <h3><i class="fa-brands fa-facebook" style="color:#1877F2;margin-right:8px;"></i>Facebook Messenger</h3>
+        <span class="crm-badge crm-badge-normal">WEBHOOK</span>
+      </div>
+      <div class="crm-card-body">
+        <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:14px;">
+          ตั้งค่า Webhook URL และ Page Access Token ใน Facebook Developer Console แล้วกรอกข้อมูลด้านล่าง
+        </p>
+
+        <div style="background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.78rem;">
+          <div style="font-weight:700;color:#818cf8;margin-bottom:6px;"><i class="fa-solid fa-link"></i> Webhook URL ของคุณ:</div>
+          <code style="background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:6px;font-size:0.75rem;display:block;word-break:break-all;">
+            <%= (process.env.APP_URL || 'https://your-domain.com') %>/webhooks/facebook
+          </code>
+        </div>
+
+        <form method="POST" action="/crm/channels/save">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="channel_type" value="FACEBOOK">
+          <div style="display:grid;gap:12px;">
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Page ID *</label>
+              <input type="text" name="page_id" class="crm-search-input" style="width:100%;"
+                     placeholder="123456789012345"
+                     value="<%= (channels.find(c=>c.channel_type==='FACEBOOK')?.page_id) || '' %>">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Page Access Token *</label>
+              <input type="password" name="access_token" class="crm-search-input" style="width:100%;"
+                     placeholder="EAAxxxxxxxx..."
+                     value="">
+              <div style="font-size:0.65rem;color:#64748b;margin-top:3px;">
+                ✳️ ถ้าไม่ต้องการเปลี่ยน token ให้เว้นว่างไว้
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Verify Token *</label>
+              <input type="text" name="verify_token" class="crm-search-input" style="width:100%;"
+                     placeholder="ตั้งเองได้ เช่น sng_fb_webhook_2024">
+              <div style="font-size:0.65rem;color:#64748b;margin-top:3px;">
+                ใส่ค่าเดียวกับ FB_VERIFY_TOKEN ใน .env
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Channel Name</label>
+              <input type="text" name="channel_name" class="crm-search-input" style="width:100%;"
+                     placeholder="SNG Express - Facebook"
+                     value="<%= (channels.find(c=>c.channel_type==='FACEBOOK')?.channel_name) || 'SNG Express - Facebook' %>">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;">
+              <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm">
+                <i class="fa-solid fa-save"></i> บันทึก Facebook Channel
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <%# LINE OA %>
+    <div class="crm-card">
+      <div class="crm-card-header">
+        <h3><i class="fa-brands fa-line" style="color:#00B900;margin-right:8px;"></i>LINE OA</h3>
+        <span class="crm-badge crm-badge-normal">WEBHOOK</span>
+      </div>
+      <div class="crm-card-body">
+        <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:14px;">
+          เปิดใช้ Messaging API ใน LINE Developers Console แล้วตั้ง Webhook URL ด้านล่าง
+        </p>
+
+        <div style="background:rgba(0,185,0,0.06);border:1px solid rgba(0,185,0,0.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.78rem;">
+          <div style="font-weight:700;color:#4ade80;margin-bottom:6px;"><i class="fa-solid fa-link"></i> Webhook URL:</div>
+          <code style="background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:6px;font-size:0.75rem;display:block;word-break:break-all;">
+            <%= (process.env.APP_URL || 'https://your-domain.com') %>/webhooks/line
+          </code>
+        </div>
+
+        <form method="POST" action="/crm/channels/save">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="channel_type" value="LINE_OA">
+          <div style="display:grid;gap:12px;">
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Bot User ID (LINE UID)</label>
+              <input type="text" name="page_id" class="crm-search-input" style="width:100%;"
+                     placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                     value="<%= (channels.find(c=>c.channel_type==='LINE_OA')?.page_id) || '' %>">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Channel Access Token *</label>
+              <input type="password" name="access_token" class="crm-search-input" style="width:100%;"
+                     placeholder="Long-lived channel access token...">
+              <div style="font-size:0.65rem;color:#64748b;margin-top:3px;">
+                ✳️ ถ้าไม่ต้องการเปลี่ยน token ให้เว้นว่างไว้
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Channel Secret (สำหรับ verify signature)</label>
+              <input type="password" name="webhook_secret" class="crm-search-input" style="width:100%;"
+                     placeholder="Channel Secret จาก LINE Developers">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Channel Name</label>
+              <input type="text" name="channel_name" class="crm-search-input" style="width:100%;"
+                     placeholder="SNG Express - LINE OA"
+                     value="<%= (channels.find(c=>c.channel_type==='LINE_OA')?.channel_name) || 'SNG Express - LINE OA' %>">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;">
+              <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm">
+                <i class="fa-solid fa-save"></i> บันทึก LINE Channel
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <%# ENV Reminder %>
+    <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:12px;padding:16px;">
+      <div style="font-size:0.8rem;font-weight:700;color:#fbbf24;margin-bottom:8px;">
+        <i class="fa-solid fa-triangle-exclamation"></i> ตรวจสอบ .env ให้ครบ
+      </div>
+      <div style="font-size:0.75rem;color:#94a3b8;line-height:1.8;font-family:monospace;">
+        FB_VERIFY_TOKEN=<span style="color:#fbbf24;">your_verify_token</span><br>
+        (ACCESS TOKEN เก็บในฐานข้อมูล ไม่ต้องใส่ใน .env)
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,143 @@
+<%# views/crm/cases.ejs — รายการเคส / Tickets %>
+<link rel="stylesheet" href="/css/crm.css">
+
+<%
+const caseTypeTh = {
+  TRACKING_ISSUE:'ติดตามพัสดุ', DELAYED_DELIVERY:'สินค้าล่าช้า',
+  CHANGE_ADDRESS:'เปลี่ยนที่อยู่', COD_ISSUE:'ปัญหา COD',
+  MISSING_ITEM:'ของหาย', DAMAGED_ITEM:'สินค้าเสียหาย',
+  PRODUCT_INQUIRY:'สอบถามสินค้า', PAYMENT_ISSUE:'ปัญหาชำระเงิน', OTHER:'อื่น ๆ',
+};
+const caseStatusTh = {
+  OPEN:'เปิดอยู่', IN_PROGRESS:'กำลังดำเนิน', WAITING:'รอลูกค้า',
+  RESOLVED:'แก้ไขแล้ว', CLOSED:'ปิดแล้ว',
+};
+const priorityTh = { LOW:'ต่ำ', NORMAL:'ปกติ', HIGH:'สูง', URGENT:'ด่วนมาก' };
+const caseStatusBadge = {
+  OPEN:'crm-badge-open', IN_PROGRESS:'crm-badge-normal',
+  WAITING:'crm-badge-pending', RESOLVED:'crm-badge-resolved', CLOSED:'crm-badge-closed',
+};
+%>
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <div class="crm-header-icon"><i class="fa-solid fa-ticket"></i></div>
+    <h1>เคส / Tickets</h1>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <a href="/crm/cases/new" class="btn-crm btn-crm-primary btn-crm-sm">
+        <i class="fa-solid fa-plus"></i> เปิดเคสใหม่
+      </a>
+    </div>
+  </div>
+
+  <%# Filter Bar %>
+  <form method="GET" action="/crm/cases">
+    <div class="crm-filter-bar">
+      <input type="text" name="search" placeholder="🔍 Case No, หัวข้อ, ชื่อลูกค้า..."
+             value="<%= filters.search || '' %>" style="min-width:220px;">
+      <select name="status">
+        <option value="">ทุกสถานะ</option>
+        <% Object.entries(caseStatusTh).forEach(([val, label]) => { %>
+        <option value="<%= val %>" <%= filters.status === val ? 'selected' : '' %>><%= label %></option>
+        <% }) %>
+      </select>
+      <select name="type">
+        <option value="">ทุกประเภท</option>
+        <% Object.entries(caseTypeTh).forEach(([val, label]) => { %>
+        <option value="<%= val %>" <%= filters.type === val ? 'selected' : '' %>><%= label %></option>
+        <% }) %>
+      </select>
+      <select name="priority">
+        <option value="">ทุกความสำคัญ</option>
+        <% [['URGENT','🔴 ด่วนมาก'],['HIGH','🟠 สูง'],['NORMAL','🟡 ปกติ'],['LOW','🟢 ต่ำ']].forEach(([val,label]) => { %>
+        <option value="<%= val %>" <%= filters.priority === val ? 'selected' : '' %>><%= label %></option>
+        <% }) %>
+      </select>
+      <% if (can.superviseCrm) { %>
+      <select name="assignee">
+        <option value="">ทุกผู้รับผิดชอบ</option>
+        <% agents.forEach(a => { %>
+        <option value="<%= a.id %>" <%= String(filters.assignee) === String(a.id) ? 'selected' : '' %>><%= a.name || a.username %></option>
+        <% }) %>
+      </select>
+      <% } %>
+      <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm">
+        <i class="fa-solid fa-search"></i> กรอง
+      </button>
+      <a href="/crm/cases" class="btn-crm btn-crm-secondary btn-crm-sm">
+        <i class="fa-solid fa-xmark"></i> ล้าง
+      </a>
+    </div>
+  </form>
+
+  <%# ตาราง Cases %>
+  <div class="crm-table-wrap">
+    <% if (cases.length === 0) { %>
+    <div class="crm-empty-state">
+      <i class="fa-solid fa-ticket"></i>
+      <p>ไม่พบเคสที่ตรงกับตัวกรอง</p>
+    </div>
+    <% } else { %>
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>เลขเคส</th>
+          <th>ลูกค้า</th>
+          <th>ประเภท</th>
+          <th>หัวข้อ</th>
+          <th>ความสำคัญ</th>
+          <th>สถานะ</th>
+          <th>ผู้รับผิดชอบ</th>
+          <th>ออเดอร์</th>
+          <th>เปิดเมื่อ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cases.forEach(c => { %>
+        <tr>
+          <td>
+            <a href="/crm/cases/<%= c.id %>" style="font-weight:700;color:#fb923c;font-family:monospace;">
+              <%= c.case_no %>
+            </a>
+          </td>
+          <td style="font-size:0.8rem;font-weight:600;"><%= c.customer_name %></td>
+          <td>
+            <span style="font-size:0.68rem;padding:2px 6px;background:rgba(129,140,248,0.1);border-radius:4px;color:#a5b4fc;">
+              <%= caseTypeTh[c.case_type] || c.case_type %>
+            </span>
+          </td>
+          <td style="font-size:0.78rem;max-width:200px;">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<%= c.subject %>">
+              <%= c.subject %>
+            </div>
+          </td>
+          <td><span class="crm-badge crm-badge-<%= c.priority.toLowerCase() %>"><%= priorityTh[c.priority] || c.priority %></span></td>
+          <td>
+            <span class="crm-badge <%= caseStatusBadge[c.case_status] || '' %>">
+              <%= caseStatusTh[c.case_status] || c.case_status %>
+            </span>
+          </td>
+          <td style="font-size:0.75rem;color:#94a3b8;"><%= c.assignee_name || '—' %></td>
+          <td style="font-size:0.72rem;">
+            <% if (c.related_job_no) { %>
+            <a href="/orders?search=<%= c.related_job_no %>" style="color:#818cf8;">
+              <i class="fa-solid fa-box"></i> <%= c.related_job_no %>
+            </a>
+            <% } else { %>—<% } %>
+          </td>
+          <td style="font-size:0.72rem;color:#64748b;">
+            <%= new Date(c.opened_at).toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'2-digit' }) %>
+          </td>
+          <td>
+            <a href="/crm/cases/<%= c.id %>" class="btn-crm btn-crm-secondary btn-crm-icon btn-crm-sm">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>

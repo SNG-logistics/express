@@ -1,0 +1,135 @@
+<%# views/crm/case-new.ejs — เปิดเคสใหม่ %>
+<link rel="stylesheet" href="/css/crm.css">
+
+<%
+// แผนที่แปล case_type → ภาษาไทย
+const caseTypeLabels = {
+  TRACKING_ISSUE:   'ติดตามพัสดุ / ถามสถานะ',
+  DELAYED_DELIVERY: 'สินค้าล่าช้า',
+  CHANGE_ADDRESS:   'เปลี่ยนที่อยู่จัดส่ง',
+  COD_ISSUE:        'ปัญหา COD / เก็บเงินปลายทาง',
+  MISSING_ITEM:     'ของหาย / ไม่ได้รับสินค้า',
+  DAMAGED_ITEM:     'สินค้าเสียหาย',
+  PRODUCT_INQUIRY:  'สอบถามสินค้า / ราคา',
+  PAYMENT_ISSUE:    'ปัญหาการชำระเงิน',
+  OTHER:            'อื่น ๆ',
+};
+
+// แผนที่แปล priority → ภาษาไทย
+const priorityLabels = {
+  LOW:    '🟢 ต่ำ',
+  NORMAL: '🟡 ปกติ',
+  HIGH:   '🟠 สูง',
+  URGENT: '🔴 ด่วนมาก',
+};
+%>
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <a href="/crm/cases" style="color:#94a3b8;text-decoration:none;font-size:0.85rem;">
+      <i class="fa-solid fa-arrow-left"></i> เคสทั้งหมด
+    </a>
+    <div class="crm-header-icon"><i class="fa-solid fa-ticket"></i></div>
+    <h1>เปิดเคสใหม่</h1>
+  </div>
+
+  <div style="max-width:700px;padding:24px;">
+    <form method="POST" action="/crm/cases">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% if (typeof query !== 'undefined' && query) { %>
+      <input type="hidden" name="customer_id" value="<%= query.customer_id || '' %>">
+      <input type="hidden" name="conversation_id" value="<%= query.conversation_id || '' %>">
+      <% } %>
+
+      <div style="display:grid;gap:16px;">
+
+        <%# ลูกค้า %>
+        <div>
+          <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+            <i class="fa-solid fa-user"></i> ลูกค้า *
+          </label>
+          <select name="customer_id" required class="crm-search-input" style="width:100%;">
+            <option value="">— เลือกลูกค้า —</option>
+            <% (customers || []).forEach(c => { %>
+            <option value="<%= c.id %>"><%= c.full_name %> <%= c.phone ? '· ' + c.phone : '' %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <%# ประเภทเคส + ความสำคัญ %>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+              <i class="fa-solid fa-tag"></i> ประเภทเคส *
+            </label>
+            <select name="case_type" required class="crm-search-input" style="width:100%;">
+              <% Object.entries(caseTypeLabels).forEach(([val, label]) => { %>
+              <option value="<%= val %>"><%= label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+              <i class="fa-solid fa-arrow-up"></i> ความสำคัญ *
+            </label>
+            <select name="priority" required class="crm-search-input" style="width:100%;">
+              <% Object.entries(priorityLabels).forEach(([val, label]) => { %>
+              <option value="<%= val %>"><%= label %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <%# หัวข้อ %>
+        <div>
+          <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+            <i class="fa-solid fa-heading"></i> หัวข้อเคส *
+          </label>
+          <input type="text" name="subject" required class="crm-search-input" style="width:100%;"
+                 placeholder="สรุปปัญหาสั้น ๆ">
+        </div>
+
+        <%# รายละเอียด %>
+        <div>
+          <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+            <i class="fa-solid fa-align-left"></i> รายละเอียด
+          </label>
+          <textarea name="description" class="crm-reply-textarea" style="min-height:100px;"
+                    placeholder="รายละเอียดปัญหา อาการที่พบ หรือสิ่งที่ต้องการ..."></textarea>
+        </div>
+
+        <%# Job No + Assign %>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+              <i class="fa-solid fa-box"></i> Job No (ออเดอร์ที่เกี่ยวข้อง)
+            </label>
+            <input type="text" name="related_job_no" class="crm-search-input" style="width:100%;"
+                   placeholder="เช่น SNG-2026-001">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.78rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+              <i class="fa-solid fa-user-check"></i> มอบหมายให้
+            </label>
+            <select name="assigned_to" class="crm-search-input" style="width:100%;">
+              <option value="">— ไม่ระบุ —</option>
+              <% (agents || []).forEach(a => { %>
+              <option value="<%= a.id %>"><%= a.name || a.username %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <%# ปุ่ม %>
+        <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;">
+          <a href="/crm/cases" class="btn-crm btn-crm-secondary">
+            <i class="fa-solid fa-xmark"></i> ยกเลิก
+          </a>
+          <button type="submit" class="btn-crm btn-crm-primary">
+            <i class="fa-solid fa-ticket"></i> เปิดเคส
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

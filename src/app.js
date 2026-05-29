@@ -27,6 +27,13 @@ import partnerRoutes from './routes/partner.js';
 import expensesRoutes from './routes/expenses.js';
 import spaceBookingRoutes from './routes/spaceBooking.js';
 import riderRoutes from './routes/rider.js';
+import crmRoutes from './routes/crm.js';           // ─ Omnichannel CRM
+import webhookRoutes from './routes/webhooks.js';   // ─ FB + LINE webhooks (public)
+import webhookSimRoutes from './routes/webhookSim.js'; // ─ Dev simulator (blocked in prod)
+import { setIo } from './services/channelService.js'; // ─ Socket.io ref
+import { startSlaChecker } from './services/automationService.js'; // ─ SLA engine
+import { createServer } from 'http';                // ─ Socket.io needs raw http server
+import { Server as SocketIO } from 'socket.io';    // ─ Real-time CRM inbox
 import * as tracking from './controllers/trackingController.js';
 
 import { i18nMiddleware } from './middleware/i18n.js';
@@ -143,6 +150,13 @@ app.set('views', path.join(__dirname, '../views'));
 app.use(expressLayouts);
 app.set('layout', 'layouts/main');
 
+// ─── Force UTF-8 charset on all HTML responses ────────────────────────────────
+app.use((_req, res, next) => {
+  res.charset = 'utf-8';
+  next();
+});
+
+
 // ─── Security Headers ───────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: false,  // EJS inline scripts; enable when migrating to external JS
@@ -211,19 +225,24 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(csrf({
-  value: (req) => {
-    // Accept from: body._csrf, query._csrf, or X-CSRF-Token header (for fetch/AJAX)
-    return req.body?._csrf
+// Paths that must NOT be CSRF-protected (JSON APIs / external webhooks)
+const CSRF_SKIP = ['/webhooks/', '/dev/webhook-sim/send'];
+
+app.use((req, res, next) => {
+  const skip = CSRF_SKIP.some(prefix => req.path.startsWith(prefix));
+  if (skip) return next();
+  return csrf({
+    value: (req) =>
+      req.body?._csrf
       || req.query?._csrf
       || req.headers['x-csrf-token']
-      || req.headers['x-xsrf-token'];
-  }
-}));
+      || req.headers['x-xsrf-token'],
+  })(req, res, next);
+});
 
 
 app.use((req, res, next) => {
-  res.locals.csrfToken = req.csrfToken();
+  res.locals.csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : '';
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;
   next();
@@ -285,6 +304,17 @@ app.use((req, res, next) => {
     branchPortal:      has('admin','manager','branch_operator'),
     // ร้านฝากส่ง
     manageFreight:     has('admin','manager','dispatcher','finance','staff'),
+    // ─── CRM ──────────────────────────────────────────────────────────────
+    // View the CRM section in sidebar + access /crm routes
+    viewCrm:           has('admin','manager','crm_admin','crm_supervisor','crm_agent',
+                           'sales_agent','logistics_support','finance_support'),
+    // CRM Admin — full control: settings, automation, all teams, merge customers
+    manageCrm:         has('admin','crm_admin'),
+    // CRM Supervisor — assign/reassign, team reports, SLA oversight
+    superviseCrm:      has('admin','crm_admin','crm_supervisor'),
+    // Use the inbox (reply, note, tag, close conversations)
+    useInbox:          has('admin','crm_admin','crm_supervisor','crm_agent',
+                           'sales_agent','logistics_support','finance_support'),
   };
 
   next();
@@ -322,6 +352,9 @@ app.use(partnerRoutes);  // ─ Partner Quotation System
 app.use('/expenses', expensesRoutes);
 app.use(spaceBookingRoutes); // ─ ร้านฝากส่ง (Space Booking)
 app.use(riderRoutes);        // ─ Rider Mode (last-mile delivery)
+app.use(webhookRoutes);      // ─ FB + LINE public webhooks (NO auth)
+app.use(webhookSimRoutes);   // ─ Dev webhook simulator (prod-blocked)
+app.use(crmRoutes);          // ─ Omnichannel CRM
 
 
 app.get('/', (req, res) => res.redirect('/dashboard'));
@@ -400,10 +433,49 @@ const PORT = process.env.PORT || 3000;
 
 export default app;
 
+// ─── Socket.io Real-time Server ───────────────────────────────────────────────
+const httpServer = createServer(app);
+const io = new SocketIO(httpServer, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+  transports: ['websocket', 'polling'],
+});
+
+io.on('connection', (socket) => {
+  // CRM agents join a shared room for inbox updates
+  socket.on('crm:join', (data) => {
+    socket.join('crm:inbox');
+    // Supervisors also join the supervisors-only alert room
+    if (data?.role && ['admin','crm_admin','crm_supervisor'].includes(data.role)) {
+      socket.join('crm:supervisors');
+    }
+    console.log(`[Socket.io] Client ${socket.id} joined crm:inbox (role: ${data?.role || 'unknown'})`);
+  });
+
+  // Agent joins a specific conversation room for typing indicators
+  socket.on('crm:join_conversation', ({ conversationId }) => {
+    if (conversationId) socket.join(`crm:conv:${conversationId}`);
+  });
+
+  // Typing indicator relay
+  socket.on('crm:typing', ({ conversationId, agentName, isTyping }) => {
+    socket.to(`crm:conv:${conversationId}`).emit('crm:typing', { agentName, isTyping });
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`[Socket.io] Client ${socket.id} disconnected`);
+  });
+});
+
+// Pass io to channel service so inbound messages can emit events
+setIo(io);
+
 await initDb();
-app.listen(PORT, () => {
-  console.log(`✅ SNG Logistics running at http://localhost:${PORT}`);
+startSlaChecker(io); // Phase 5 — periodic SLA breach check
+
+httpServer.listen(PORT, () => {
+  console.log(`✅ SNG Logistics + CRM running at http://localhost:${PORT}`);
   console.log(`   NODE_ENV : ${process.env.NODE_ENV || 'development'}`);
   console.log(`   DB_HOST  : ${process.env.DB_HOST}`);
+  console.log(`   Socket.io: enabled (CRM real-time inbox)`);
 });
 

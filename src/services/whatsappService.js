@@ -22,6 +22,8 @@ export const getQr = () => qrCodeData;
 export const getStatus = () => connectionStatus;
 export const getLastError = () => lastError;
 export const getLogs = () => logs;
+/** Expose active Baileys socket for CRM outbound sending */
+export const getSock = () => (isClientReady ? sock : null);
 
 import fs from 'fs';
 import path from 'path';
@@ -165,6 +167,15 @@ async function startSock() {
                 qrCodeData = null;
                 lastError = null;
                 reconnectAttempts = 0;
+
+                // Attach CRM bridge — routes inbound WA messages to CRM inbox
+                // Use .then() instead of await because this callback is not async
+                import('./waToCrmBridge.js').then(({ attachCrmBridge }) => {
+                    attachCrmBridge(sock);
+                    addLog('CRM bridge attached — inbound WA messages will flow to inbox');
+                }).catch(bridgeErr => {
+                    console.warn('[WhatsApp] CRM bridge attach failed:', bridgeErr.message);
+                });
             }
         });
 

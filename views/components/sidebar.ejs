@@ -107,6 +107,78 @@
       <span><%= t('nav.customers') %></span>
     </a>
 
+    <%# ── CRM ลูกค้า Section ────────────────────────────────── %>
+    <% if (can.viewCrm) { %>
+    <div class="sidebar-section-title" style="margin-top:4px;"
+         title="Omnichannel CRM">
+      <%= lang === 'lo' ? 'CRM ລູກຄ້າ' : 'CRM ลูกค้า' %>
+    </div>
+
+    <a href="/crm"
+       class="sidebar-link <%= currentPath === '/crm' ? 'active' : '' %>">
+      <i class="fa-solid fa-chart-line" style="color:#818cf8;"></i>
+      <span><%= lang === 'lo' ? 'Dashboard CRM' : 'CRM Dashboard' %></span>
+    </a>
+
+    <% if (can.useInbox) { %>
+    <a href="/crm/inbox"
+       class="sidebar-link <%= currentPath.startsWith('/crm/inbox') ? 'active' : '' %>">
+      <i class="fa-solid fa-inbox" style="color:#34d399;"></i>
+      <span>
+        <%= lang === 'lo' ? 'ກ່ອງຂໍ້ຄວາມ' : 'กล่องข้อความรวม' %>
+        <%# Badge for unread count — rendered client-side via JS %>
+        <span id="crm-unread-badge"
+              style="display:none;margin-left:auto;background:#ef4444;color:#fff;
+                     font-size:0.65rem;font-weight:700;padding:1px 6px;
+                     border-radius:999px;min-width:18px;text-align:center;"
+        ></span>
+      </span>
+    </a>
+    <% } %>
+
+    <a href="/crm/customers"
+       class="sidebar-link <%= currentPath.startsWith('/crm/customers') ? 'active' : '' %>">
+      <i class="fa-solid fa-address-card" style="color:#60a5fa;"></i>
+      <span><%= lang === 'lo' ? 'ຂໍ້ມູນລູກຄ້າ 360°' : 'ลูกค้า 360°' %></span>
+    </a>
+
+    <a href="/crm/cases"
+       class="sidebar-link <%= currentPath.startsWith('/crm/cases') ? 'active' : '' %>">
+      <i class="fa-solid fa-ticket" style="color:#fb923c;"></i>
+      <span><%= lang === 'lo' ? 'ເຄດ / Ticket' : 'เคส / Ticket' %></span>
+    </a>
+
+    <% if (can.manageCrm) { %>
+    <a href="/crm/automation"
+       class="sidebar-link <%= currentPath.startsWith('/crm/automation') ? 'active' : '' %>">
+      <i class="fa-solid fa-robot" style="color:#a78bfa;"></i>
+      <span><%= lang === 'lo' ? 'ລະບົບອັດຕະໂນມັດ' : 'ระบบอัตโนมัติ' %></span>
+    </a>
+    <a href="/crm/quick-replies"
+       class="sidebar-link <%= currentPath.startsWith('/crm/quick-replies') ? 'active' : '' %>">
+      <i class="fa-solid fa-reply-all" style="color:#fb923c;"></i>
+      <span><%= lang === 'lo' ? 'ຕອບໄວ' : 'ตอบด่วน (Quick Reply)' %></span>
+    </a>
+    <% } %>
+
+    <% if (can.superviseCrm) { %>
+    <a href="/crm/reports"
+       class="sidebar-link <%= currentPath.startsWith('/crm/reports') ? 'active' : '' %>">
+      <i class="fa-solid fa-chart-bar" style="color:#fbbf24;"></i>
+      <span><%= lang === 'lo' ? 'ລາຍງານທີມ' : 'รายงานทีมแชต' %></span>
+    </a>
+    <% } %>
+
+    <% if (can.manageCrm) { %>
+    <a href="/crm/channels"
+       class="sidebar-link <%= currentPath.startsWith('/crm/channels') ? 'active' : '' %>">
+      <i class="fa-solid fa-tower-broadcast" style="color:#38bdf8;"></i>
+      <span><%= lang === 'lo' ? 'ຊ່ອງທາງແຊດ' : 'ช่องทางแชต' %></span>
+    </a>
+    <% } %>
+
+    <% } %>
+
     <% if (can.manageBranches) { %>
     <a href="/branches"
        class="sidebar-link <%= currentPath.startsWith('/branches') ? 'active' : '' %>">
@@ -228,26 +300,38 @@
         <%# Role badge %>
         <span class="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5
           <%= {
-            admin: 'bg-red-500/20 text-red-400',
-            manager: 'bg-purple-500/20 text-purple-400',
-            dispatcher: 'bg-blue-500/20 text-blue-400',
-            finance: 'bg-emerald-500/20 text-emerald-400',
-            customs: 'bg-amber-500/20 text-amber-400',
-            warehouse_th: 'bg-orange-500/20 text-orange-400',
-            warehouse_la: 'bg-orange-500/20 text-orange-400',
-            branch_operator: 'bg-teal-500/20 text-teal-400',
-            staff: 'bg-slate-500/20 text-slate-400',
+            admin:            'bg-red-500/20 text-red-400',
+            manager:          'bg-purple-500/20 text-purple-400',
+            dispatcher:       'bg-blue-500/20 text-blue-400',
+            finance:          'bg-emerald-500/20 text-emerald-400',
+            customs:          'bg-amber-500/20 text-amber-400',
+            warehouse_th:     'bg-orange-500/20 text-orange-400',
+            warehouse_la:     'bg-orange-500/20 text-orange-400',
+            branch_operator:  'bg-teal-500/20 text-teal-400',
+            staff:            'bg-slate-500/20 text-slate-400',
+            crm_admin:        'bg-indigo-500/20 text-indigo-400',
+            crm_supervisor:   'bg-violet-500/20 text-violet-400',
+            crm_agent:        'bg-cyan-500/20 text-cyan-400',
+            sales_agent:      'bg-pink-500/20 text-pink-400',
+            logistics_support:'bg-sky-500/20 text-sky-400',
+            finance_support:  'bg-lime-500/20 text-lime-400',
           }[currentUser?.role] || 'bg-slate-500/20 text-slate-400' %>">
           <%= {
-            admin: '⚡ Admin',
-            manager: '👔 Manager',
-            dispatcher: '🚛 Dispatcher',
-            finance: '💰 Finance',
-            customs: '🛃 Customs',
-            warehouse_th: '🏭 คลังไทย',
-            warehouse_la: '🏭 คลังลาว',
-            branch_operator: '🏪 สาขา',
-            staff: '👤 Staff',
+            admin:            '⚡ Admin',
+            manager:          '👔 Manager',
+            dispatcher:       '🚛 Dispatcher',
+            finance:          '💰 Finance',
+            customs:          '🛃 Customs',
+            warehouse_th:     '🏭 คลังไทย',
+            warehouse_la:     '🏭 คลังลาว',
+            branch_operator:  '🏪 สาขา',
+            staff:            '👤 Staff',
+            crm_admin:        '🛡️ CRM Admin',
+            crm_supervisor:   '👁️ CRM Sup',
+            crm_agent:        '💬 CRM Agent',
+            sales_agent:      '💸 Sales',
+            logistics_support:'🚚 Logistics',
+            finance_support:  '💳 Finance',
           }[currentUser?.role] || currentUser?.role || 'User' %>
         </span>
       </div>

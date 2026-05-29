@@ -1,0 +1,331 @@
+<%#
+  views/crm/inbox.ejs — Unified Omnichannel Inbox
+  Phase 3 — Thai fixed (written by Node.js)
+%>
+<link rel="stylesheet" href="/css/crm.css">
+
+<%
+const statusTh  = { OPEN:'กำลังดำเนินการ', PENDING:'รอการตอบกลับ', RESOLVED:'แก้ไขแล้ว', CLOSED:'ปิดแล้ว' };
+const priorityTh = { LOW:'ต่ำ', NORMAL:'ปกติ', HIGH:'สูง', URGENT:'ด่วนมาก' };
+const channelIcon  = { FACEBOOK:'fa-brands fa-facebook', WHATSAPP:'fa-brands fa-whatsapp', LINE_OA:'fa-brands fa-line' };
+const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80' };
+%>
+
+<div class="crm-page" data-crm-conv-id="<%= activeConversation ? activeConversation.id : '' %>">
+
+  <%# LEFT: Conversation List %>
+  <div class="crm-list-panel">
+    <div class="crm-list-header">
+      <form method="GET" action="/crm/inbox" class="crm-search-form">
+        <% if (activeConversation) { %><input type="hidden" name="id" value="<%= activeConversation.id %>"><% } %>
+        <div class="crm-filter-bar" style="flex-wrap:wrap;gap:6px;">
+          <input type="text" name="search" placeholder="🔍 ค้นหาชื่อ / ข้อความ" value="<%= filters.search || '' %>" class="crm-search-input" style="flex:1;min-width:120px;">
+          <select name="channelType" class="crm-search-input" style="min-width:100px;">
+            <option value="">ทุกช่องทาง</option>
+            <option value="FACEBOOK" <%= filters.channelType==='FACEBOOK'?'selected':'' %>>Facebook</option>
+            <option value="WHATSAPP" <%= filters.channelType==='WHATSAPP'?'selected':'' %>>WhatsApp</option>
+            <option value="LINE_OA"  <%= filters.channelType==='LINE_OA' ?'selected':'' %>>LINE OA</option>
+          </select>
+          <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm">กรอง</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button type="submit" name="status" value=""     class="btn-crm btn-crm-sm <%= (filters.status||'')=== ''         ? 'btn-crm-primary':'btn-crm-secondary' %>" style="font-size:0.7rem;padding:4px 8px;">ทั้งหมด</button>
+          <button type="submit" name="status" value="OPEN" class="btn-crm btn-crm-sm <%= (filters.status||'')=== 'OPEN'      ? 'btn-crm-primary':'btn-crm-secondary' %>" style="font-size:0.7rem;padding:4px 8px;">🟢 เปิด</button>
+          <button type="submit" name="status" value="PENDING" class="btn-crm btn-crm-sm <%= (filters.status||'')==='PENDING' ? 'btn-crm-primary':'btn-crm-secondary' %>" style="font-size:0.7rem;padding:4px 8px;">🟡 รอ</button>
+          <button type="submit" name="status" value="RESOLVED" class="btn-crm btn-crm-sm <%= (filters.status||'')==='RESOLVED'? 'btn-crm-primary':'btn-crm-secondary' %>" style="font-size:0.7rem;padding:4px 8px;">✅ เสร็จ</button>
+        </div>
+        <% if (queues && queues.length > 0) { %>
+        <select name="queueId" class="crm-search-input" style="width:100%;margin-top:6px;font-size:0.72rem;">
+          <option value="">— ทุก Queue —</option>
+          <% queues.forEach(q => { %><option value="<%= q.id %>" <%= filters.queueId==q.id?'selected':'' %>><%= q.queue_name %></option><% }) %>
+        </select>
+        <% } %>
+      </form>
+    </div>
+
+    <div class="crm-conv-list" id="convList">
+      <% if (!conversations || conversations.length === 0) { %>
+      <div class="crm-empty-state">
+        <i class="fa-regular fa-comments"></i>
+        <p>ไม่พบการสนทนา</p>
+        <small style="color:#475569;">ลองเปลี่ยนตัวกรอง หรือรอข้อความใหม่</small>
+      </div>
+      <% } %>
+      <% (conversations || []).forEach(conv => { %>
+      <%
+        const isActive = activeConversation && activeConversation.id == conv.id;
+        const cIcon  = channelIcon[conv.channel_type]  || 'fa-solid fa-comment';
+        const cColor = channelColor[conv.channel_type] || '#94a3b8';
+        const timeAgo = conv.last_message_at ? new Date(conv.last_message_at).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}) : '';
+        const statusBadge = {OPEN:'crm-badge-open',PENDING:'crm-badge-pending',RESOLVED:'crm-badge-resolved',CLOSED:'crm-badge-closed'}[conv.status]||'crm-badge-normal';
+      %>
+      <a href="/crm/inbox/<%= conv.id %>" class="crm-conv-item <%= isActive ? 'active' : '' %>">
+        <div class="crm-conv-item-avatar">
+          <%= (conv.customer_name || '?').charAt(0).toUpperCase() %>
+          <span class="crm-conv-channel-badge" style="background:<%= cColor %>20;color:<%= cColor %>;"><i class="<%= cIcon %>"></i></span>
+        </div>
+        <div class="crm-conv-item-body">
+          <div class="crm-conv-item-top">
+            <span class="crm-conv-item-name"><%= conv.customer_name || 'ไม่ทราบชื่อ' %></span>
+            <span class="crm-conv-item-time"><%= timeAgo %></span>
+          </div>
+          <div class="crm-conv-item-preview">
+            <% if (conv.unread_count > 0) { %><span class="crm-unread-dot"><%= conv.unread_count %></span><% } %>
+            <%= (conv.last_message_text||'').slice(0,50)||'...' %>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:3px;">
+            <span class="crm-badge <%= statusBadge %>" style="font-size:0.6rem;"><%= statusTh[conv.status]||conv.status %></span>
+            <% if (conv.assigned_agent_name) { %><span style="font-size:0.6rem;color:#64748b;">@<%= conv.assigned_agent_name %></span><% } %>
+          </div>
+        </div>
+      </a>
+      <% }) %>
+    </div>
+  </div>
+
+  <%# CENTER: Chat Window %>
+  <div class="crm-chat-panel">
+    <% if (!activeConversation) { %>
+    <div class="crm-empty-state" style="height:100%;justify-content:center;">
+      <i class="fa-regular fa-comments"></i>
+      <p style="font-size:1rem;">เลือกการสนทนาจากรายการ</p>
+    </div>
+    <% } else { %>
+
+    <div class="crm-chat-header">
+      <% const hIcon=channelIcon[activeConversation.channel_type]||'fa-solid fa-comment'; const hColor=channelColor[activeConversation.channel_type]||'#94a3b8'; %>
+      <i class="<%= hIcon %>" style="color:<%= hColor %>;font-size:1.1rem;"></i>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><%= activeConversation.customer_name||'ไม่ทราบชื่อ' %></div>
+        <div style="font-size:0.68rem;color:#64748b;"><%= activeConversation.channel_type %> · #<%= activeConversation.id %><% if(activeConversation.subject){%> · <%=activeConversation.subject%><%}%></div>
+      </div>
+      <% if (can.agentCrm) { %>
+      <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/status" style="display:flex;align-items:center;gap:6px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <select name="status" class="crm-search-input" style="font-size:0.72rem;padding:4px 8px;" onchange="this.form.submit()">
+          <% ['OPEN','PENDING','RESOLVED','CLOSED'].forEach(s=>{ %>
+          <option value="<%= s %>" <%=activeConversation.status===s?'selected':''%>><%= statusTh[s]||s %></option>
+          <% }) %>
+        </select>
+      </form>
+      <% } %>
+      <% if (can.superviseCrm) { %>
+      <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/assign" style="display:flex;gap:4px;align-items:center;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <select name="to_agent_id" class="crm-search-input" style="font-size:0.72rem;padding:4px 8px;">
+          <option value="">— มอบหมาย —</option>
+          <% (agents||[]).forEach(a=>{%><option value="<%=a.id%>" <%=activeConversation.assigned_agent_id==a.id?'selected':''%>><%=a.name%></option><%})%>
+        </select>
+        <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm"><i class="fa-solid fa-user-check"></i></button>
+      </form>
+      <% } %>
+    </div>
+
+    <div class="crm-messages" id="messagesContainer">
+      <% (messages||[]).forEach(msg=>{ %>
+      <% const isAgent=msg.sender_type==='AGENT'||msg.sender_type==='BOT'; const isNote=msg.sender_type==='NOTE'; %>
+      <% if (isNote) { %>
+      <div class="crm-note-bubble">
+        <i class="fa-solid fa-lock" style="color:#fbbf24;font-size:0.65rem;"></i>
+        <span style="font-size:0.72rem;font-weight:600;color:#fbbf24;"><%= msg.sender_name||'ทีม' %></span>
+        <span class="crm-note-text"><%= msg.content_text %></span>
+        <span style="font-size:0.62rem;color:#64748b;margin-left:auto;"><%= msg.sent_at?new Date(msg.sent_at).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit'}):'' %></span>
+      </div>
+      <% } else { %>
+      <div class="crm-message-row <%= isAgent?'agent':'customer' %>">
+        <% if(!isAgent){%><div class="crm-msg-avatar"><%=(activeConversation.customer_name||'?').charAt(0).toUpperCase()%></div><%}%>
+        <div class="crm-message-bubble <%= isAgent?'agent':'customer' %>">
+          <%if(!isAgent&&msg.sender_name){%><div style="font-size:0.65rem;font-weight:600;color:<%=hColor%>;margin-bottom:3px;"><%=msg.sender_name%></div><%}%>
+          <%= msg.content_text %>
+          <div class="crm-msg-time">
+            <%= msg.sent_at?new Date(msg.sent_at).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit'}):'' %>
+            <% if(isAgent){%> &middot; <span style="color:#60a5fa;"><%= msg.sender_name||'เจ้าหน้าที่' %></span><%}%>
+          </div>
+        </div>
+      </div>
+      <% } %>
+      <% }) %>
+    </div>
+
+    <div class="crm-reply-bar" style="position:relative;">
+      <div id="qrPanel" class="crm-qr-panel" style="display:none;">
+        <div style="padding:8px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid rgba(255,255,255,0.06);">ตอบด่วน (Quick Reply)</div>
+        <% if (quickReplies && quickReplies.length > 0) { %>
+          <% quickReplies.forEach(qr=>{%>
+          <div class="crm-qr-item" onclick="useQuickReply(this.dataset.text)" data-text="<%= qr.content_text.replace(/"/g,'&quot;') %>">
+            <% if(qr.shortcut_key){%><span class="crm-qr-shortcut"><%=qr.shortcut_key%></span><%}%>
+            <span class="crm-qr-title"><%= qr.title %></span>
+            <div class="crm-qr-preview"><%= qr.content_text.substring(0,80) %>...</div>
+          </div>
+          <% }) %>
+        <% } else { %>
+          <div style="padding:16px;text-align:center;color:#64748b;font-size:0.78rem;">ยังไม่มี Quick Reply</div>
+        <% } %>
+      </div>
+
+      <div class="crm-reply-top">
+        <button type="button" id="tabReply" onclick="switchTab('reply')" class="btn-crm btn-crm-primary btn-crm-sm" style="opacity:1;"><i class="fa-solid fa-reply"></i> ตอบลูกค้า</button>
+        <button type="button" id="tabNote"  onclick="switchTab('note')"  class="btn-crm btn-crm-secondary btn-crm-sm"><i class="fa-solid fa-lock"></i> โน้ตภายใน</button>
+        <button type="button" onclick="toggleQrPanel()" class="btn-crm btn-crm-secondary btn-crm-sm"><i class="fa-solid fa-bolt"></i> ตอบด่วน</button>
+        <button type="button" onclick="loadSuggestions()" class="btn-crm btn-crm-sm" style="background:rgba(167,139,250,0.12);color:#a78bfa;border:1px solid rgba(167,139,250,0.25);margin-left:auto;"><i class="fa-solid fa-wand-magic-sparkles"></i> คำแนะนำ</button>
+      </div>
+
+      <div id="suggestPanel" style="display:none;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:10px;margin:0 0 8px;padding:8px;">
+        <div style="font-size:0.68rem;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;"><i class="fa-solid fa-wand-magic-sparkles"></i> คำแนะนำจากระบบ (คลิกเพื่อใช้)</div>
+        <div id="suggestList"><div style="color:#64748b;font-size:0.78rem;">กำลังโหลด...</div></div>
+      </div>
+
+      <div id="replySection">
+        <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/reply" id="replyForm">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <textarea name="message_text" id="messageTextarea" class="crm-reply-textarea"
+                    placeholder="พิมพ์ข้อความตอบกลับ... (/ เพื่อเปิด Quick Reply)"
+                    rows="3" onkeydown="handleReplyKeydown(event)"></textarea>
+          <div class="crm-reply-actions">
+            <div class="crm-reply-left-actions">
+              <button type="button" class="btn-crm btn-crm-secondary btn-crm-icon" disabled><i class="fa-solid fa-paperclip"></i></button>
+            </div>
+            <button type="submit" class="btn-crm btn-crm-primary"><i class="fa-solid fa-paper-plane"></i> ส่ง</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="noteSection" style="display:none;">
+        <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/note">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <textarea name="note_text" class="crm-reply-textarea" style="border-color:rgba(251,191,36,0.3);"
+                    placeholder="โน้ตภายใน — ลูกค้าจะไม่เห็นข้อความนี้..." rows="3"></textarea>
+          <div class="crm-reply-actions">
+            <span style="font-size:0.72rem;color:#fbbf24;"><i class="fa-solid fa-lock"></i> เฉพาะทีม</span>
+            <button type="submit" class="btn-crm" style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);"><i class="fa-solid fa-sticky-note"></i> บันทึกโน้ต</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <%# RIGHT: Customer Context Panel %>
+  <div class="crm-context-panel">
+    <% if (activeConversation) { %>
+    <div class="crm-context-section">
+      <div class="crm-context-avatar"><%= (activeConversation.customer_name||'?').charAt(0).toUpperCase() %></div>
+      <div class="crm-context-customer-name"><%= activeConversation.customer_name %></div>
+      <div style="text-align:center;margin-bottom:10px;">
+        <% const ctypes={LEAD:'crm-badge-normal',CUSTOMER:'crm-badge-open',VIP:'crm-badge-warning',BLACKLIST:'crm-badge-urgent'}; %>
+        <span class="crm-badge <%= ctypes[activeConversation.customer_type]||'crm-badge-normal' %>"><%= activeConversation.customer_type %></span>
+      </div>
+      <% if(activeConversation.customer_phone){%>
+      <div class="crm-context-field"><span class="field-label"><i class="fa-solid fa-phone"></i> เบอร์</span><span class="field-value"><%= activeConversation.customer_phone %></span></div>
+      <%}%>
+      <% if(activeConversation.customer_id){%>
+      <a href="/crm/customers/<%= activeConversation.customer_id %>" class="btn-crm btn-crm-secondary" style="width:100%;justify-content:center;margin-top:6px;"><i class="fa-solid fa-user-circle"></i> ดูโปรไฟล์เต็ม</a>
+      <%}%>
+    </div>
+    <div class="crm-context-section">
+      <div class="crm-context-section-title"><i class="fa-solid fa-tags"></i> แท็ก</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+        <% (convTags||[]).forEach(t=>{%><span class="crm-tag" style="background:<%=t.tag_color||'#334155'%>22;color:<%=t.tag_color||'#94a3b8'%>;border-color:<%=t.tag_color||'#475569'%>44;"><%=t.tag_name%></span><%})%>
+      </div>
+      <% if(can.agentCrm){%>
+      <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/tag" style="display:flex;gap:4px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <select name="tag_id" class="crm-search-input" style="flex:1;font-size:0.72rem;">
+          <option value="">+ เพิ่มแท็ก</option>
+          <% (tags||[]).forEach(t=>{%><option value="<%=t.id%>"><%=t.tag_name%></option><%})%>
+        </select>
+        <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm btn-crm-icon"><i class="fa-solid fa-plus"></i></button>
+      </form>
+      <%}%>
+    </div>
+    <div class="crm-context-section">
+      <div class="crm-context-section-title"><i class="fa-solid fa-lock" style="color:#fbbf24;"></i> โน้ตภายใน</div>
+      <% (notes||[]).slice(0,3).forEach(n=>{%>
+      <div style="font-size:0.72rem;color:#94a3b8;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <span style="font-weight:600;color:#f1f5f9;"><%=n.user_name||'ทีม'%>:</span> <%=n.note_text%>
+        <div style="font-size:0.6rem;color:#475569;margin-top:2px;"><%=n.created_at?new Date(n.created_at).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''%></div>
+      </div>
+      <%})%>
+    </div>
+    <% } else { %>
+    <div class="crm-empty-state" style="height:100%;justify-content:center;">
+      <i class="fa-solid fa-user-circle"></i>
+      <p style="font-size:0.8rem;">เลือกบทสนทนาเพื่อดูข้อมูลลูกค้า</p>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+const msgContainer = document.getElementById('messagesContainer');
+if (msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
+
+function switchTab(tab) {
+  const r=document.getElementById('replySection'),n=document.getElementById('noteSection');
+  const tr=document.getElementById('tabReply'),tn=document.getElementById('tabNote');
+  if(tab==='reply'){r.style.display='block';n.style.display='none';tr.className='btn-crm btn-crm-primary btn-crm-sm';tn.className='btn-crm btn-crm-secondary btn-crm-sm';}
+  else{r.style.display='none';n.style.display='block';tr.className='btn-crm btn-crm-secondary btn-crm-sm';tn.className='btn-crm btn-crm-primary btn-crm-sm';tn.style.opacity='1';}
+}
+function useQuickReply(text){
+  const ta=document.getElementById('messageTextarea');
+  if(ta){ta.value=text;ta.focus();}
+  document.getElementById('qrPanel').style.display='none';
+  switchTab('reply');
+}
+function handleReplyKeydown(e){
+  if(e.key==='/'&&e.target.value===''){e.preventDefault();toggleQrPanel();}
+  if(e.key==='Escape'){document.getElementById('qrPanel').style.display='none';document.getElementById('suggestPanel').style.display='none';}
+  if(e.ctrlKey&&e.key==='Enter')document.getElementById('replyForm')?.submit();
+}
+function pollUnread(){
+  fetch('/api/crm/inbox/unread',{credentials:'same-origin'})
+    .then(r=>r.json()).then(data=>{
+      const badge=document.getElementById('crm-unread-badge');
+      if(badge){badge.textContent=data.count>0?data.count:'';badge.style.display=data.count>0?'inline-block':'none';}
+    }).catch(()=>{});
+}
+pollUnread();setInterval(pollUnread,30000);
+
+function toggleQrPanel(){
+  const p=document.getElementById('qrPanel');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+const CONV_ID=(document.querySelector('[data-crm-conv-id]')||{}).dataset?.crmConvId||'';
+
+async function loadSuggestions(){
+  if(!CONV_ID)return;
+  const panel=document.getElementById('suggestPanel'),list=document.getElementById('suggestList');
+  panel.style.display='block';
+  list.innerHTML='<div style="color:#64748b;font-size:0.78rem;">กำลังโหลดคำแนะนำ...</div>';
+  try{
+    const res=await fetch('/api/crm/inbox/'+CONV_ID+'/suggestions',{credentials:'same-origin'});
+    const data=await res.json();
+    if(!data.ok||!data.suggestions.length){
+      list.innerHTML='<div style="color:#64748b;font-size:0.78rem;">ไม่พบคำแนะนำ</div>';return;
+    }
+    list.innerHTML=data.suggestions.map(s=>{
+      const preview=s.content_text.length>100?s.content_text.substring(0,100)+'...':s.content_text;
+      return '<div class="_sug" style="cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid rgba(167,139,250,0.15);background:rgba(30,41,59,0.8);margin-bottom:4px;">'
+        +'<div style="font-size:0.72rem;font-weight:700;color:#a78bfa;margin-bottom:3px;">'+s.title+'</div>'
+        +'<div style="font-size:0.78rem;color:#cbd5e1;line-height:1.5;">'+preview+'</div></div>';
+    }).join('');
+    document.querySelectorAll('._sug').forEach((el,i)=>{
+      const text=data.suggestions[i].content_text;
+      el.addEventListener('click',()=>useSuggestion(text));
+      el.addEventListener('mouseover',()=>el.style.borderColor='rgba(167,139,250,0.4)');
+      el.addEventListener('mouseout', ()=>el.style.borderColor='rgba(167,139,250,0.15)');
+    });
+  }catch(err){
+    list.innerHTML='<div style="color:#f87171;font-size:0.78rem;">โหลดล้มเหลว: '+err.message+'</div>';
+  }
+}
+function useSuggestion(text){
+  const ta=document.getElementById('messageTextarea');
+  if(ta){ta.value=text;ta.focus();}
+  document.getElementById('suggestPanel').style.display='none';
+  switchTab('reply');
+}
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/crm-realtime.js"></script>

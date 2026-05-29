@@ -148,6 +148,22 @@ export const ROLES_RIDER         = ['rider'];
 /** Assign rider — admin, manager, warehouse_la can assign */
 export const ROLES_RIDER_ASSIGN  = ['admin', 'manager', 'warehouse_la', 'warehouse_th'];
 
+// ─── CRM Role Groups ──────────────────────────────────────────────────────────
+/** CRM Admin — full CRM access, all teams, all conversations, settings */
+export const ROLES_CRM_ADMIN      = ['admin', 'crm_admin'];
+/** CRM Supervisor — view all conversations in own team, assign/reassign, SLA */
+export const ROLES_CRM_SUPERVISOR = ['admin', 'crm_admin', 'crm_supervisor'];
+/** Any CRM agent role — can access inbox, reply, add notes, manage own queue */
+export const ROLES_CRM_AGENT      = [
+  'admin', 'crm_admin', 'crm_supervisor', 'crm_agent',
+  'sales_agent', 'logistics_support', 'finance_support',
+];
+/** All staff allowed to VIEW CRM (including legacy manager) */
+export const ROLES_CRM_VIEW       = [
+  'admin', 'manager', 'crm_admin', 'crm_supervisor', 'crm_agent',
+  'sales_agent', 'logistics_support', 'finance_support',
+];
+
 // ─── Session Fixation Protection ─────────────────────────────────────────────
 /**
  * Regenerate session ID after login to prevent session-fixation attacks.

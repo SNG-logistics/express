@@ -1,0 +1,198 @@
+<%# views/crm/quick-replies.ejs — Quick Reply Management %>
+<link rel="stylesheet" href="/css/crm.css">
+<style>
+.qr-card{background:#1e293b;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:20px;transition:border-color 0.2s;}
+.qr-card:hover{border-color:rgba(129,140,248,0.35);}
+.qr-shortcut{font-family:monospace;background:rgba(129,140,248,0.12);color:#a5b4fc;padding:2px 8px;border-radius:5px;font-size:0.72rem;}
+.qr-cat{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;background:rgba(255,255,255,0.05);padding:2px 7px;border-radius:4px;}
+.qr-body{font-size:0.82rem;color:#cbd5e1;line-height:1.6;margin:8px 0;}
+.edit-form{display:none;margin-top:12px;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;}
+.edit-form.open{display:block;}
+</style>
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <div class="crm-header-icon"><i class="fa-solid fa-reply-all"></i></div>
+    <h1>Quick Reply</h1>
+    <span style="font-size:0.72rem;color:#64748b;margin-left:6px;align-self:center;">
+      <%= replies.length %> รายการ
+    </span>
+    <div style="margin-left:auto;">
+      <button onclick="document.getElementById('newForm').classList.toggle('open')" class="btn-crm btn-crm-primary btn-crm-sm">
+        <i class="fa-solid fa-plus"></i> เพิ่มใหม่
+      </button>
+    </div>
+  </div>
+
+  <%# Flash Message %>
+  <% if (flash && flash.message) { %>
+  <div style="margin:0 24px 16px;padding:10px 16px;border-radius:8px;font-size:0.82rem;
+              background:<%= flash.type==='success' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)' %>;
+              color:<%= flash.type==='success' ? '#34d399' : '#f87171' %>;
+              border:1px solid <%= flash.type==='success' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' %>;">
+    <i class="fa-solid fa-<%= flash.type==='success' ? 'check' : 'exclamation-triangle' %>"></i>
+    <%= flash.message %>
+  </div>
+  <% } %>
+
+  <%# Add New Form %>
+  <div id="newForm" class="edit-form open" style="margin:0 24px 20px;background:#1e293b;border-radius:14px;padding:20px;border:1px solid rgba(129,140,248,0.25);">
+    <div style="font-weight:700;color:#818cf8;margin-bottom:14px;font-size:0.9rem;">
+      <i class="fa-solid fa-plus"></i> เพิ่ม Quick Reply ใหม่
+    </div>
+    <form method="POST" action="/crm/quick-replies">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label class="crm-label">ชื่อ / หัวข้อ *</label>
+          <input type="text" name="title" required class="crm-search-input" style="width:100%;" placeholder="เช่น ทักทายลูกค้า">
+        </div>
+        <div>
+          <label class="crm-label">Shortcut (ไม่บังคับ)</label>
+          <input type="text" name="shortcut_key" class="crm-search-input" style="width:100%;" placeholder="/hi">
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="crm-label">ข้อความ *</label>
+        <textarea name="content_text" required class="crm-reply-textarea" style="min-height:80px;" placeholder="ข้อความที่จะส่ง..."></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div>
+          <label class="crm-label">หมวดหมู่</label>
+          <input type="text" name="category" class="crm-search-input" style="width:100%;" placeholder="greeting, logistics, cod, complaint...">
+        </div>
+        <div>
+          <label class="crm-label">ภาษา</label>
+          <select name="language" class="crm-search-input" style="width:100%;">
+            <option value="th">🇹🇭 ไทย</option>
+            <option value="lo">🇱🇦 ลาว</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button type="button" onclick="document.getElementById('newForm').classList.remove('open')" class="btn-crm btn-crm-secondary">ยกเลิก</button>
+        <button type="submit" class="btn-crm btn-crm-primary"><i class="fa-solid fa-floppy-disk"></i> บันทึก</button>
+      </div>
+    </form>
+  </div>
+
+  <%# Filter Bar %>
+  <form method="GET" action="/crm/quick-replies" style="margin:0 24px 16px;">
+    <div class="crm-filter-bar">
+      <input type="text" name="search" placeholder="🔍 ค้นหาชื่อ / shortcut / เนื้อหา"
+             value="<%= filters.search || '' %>" style="min-width:220px;">
+      <select name="category">
+        <option value="">ทุกหมวด</option>
+        <% categories.forEach(c => { %>
+        <option value="<%= c %>" <%= filters.category === c ? 'selected' : '' %>><%= c %></option>
+        <% }) %>
+      </select>
+      <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm"><i class="fa-solid fa-search"></i> กรอง</button>
+      <a href="/crm/quick-replies" class="btn-crm btn-crm-secondary btn-crm-sm"><i class="fa-solid fa-xmark"></i> ล้าง</a>
+    </div>
+  </form>
+
+  <%# Grid of Quick Replies %>
+  <div style="padding:0 24px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;">
+    <% if (replies.length === 0) { %>
+    <div class="crm-empty-state" style="grid-column:1/-1;">
+      <i class="fa-solid fa-reply-all"></i>
+      <p>ยังไม่มี Quick Reply — เพิ่มใหม่ด้านบน</p>
+    </div>
+    <% } %>
+    <% replies.forEach(r => { %>
+    <div class="qr-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-weight:700;color:#f1f5f9;font-size:0.88rem;"><%= r.title %></span>
+        <% if (r.shortcut_key) { %><span class="qr-shortcut"><%= r.shortcut_key %></span><% } %>
+        <% if (r.category) { %><span class="qr-cat"><%= r.category %></span><% } %>
+        <span style="margin-left:auto;font-size:0.7rem;color:#64748b;">
+          <%= r.language === 'th' ? '🇹🇭' : r.language === 'lo' ? '🇱🇦' : '🇬🇧' %>
+        </span>
+      </div>
+      <div class="qr-body"><%= r.content_text %></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="toggleEdit(<%= r.id %>)" class="btn-crm btn-crm-secondary btn-crm-sm">
+          <i class="fa-solid fa-pen"></i> แก้ไข
+        </button>
+        <button onclick="deleteQr(<%= r.id %>, this)" class="btn-crm btn-crm-sm" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.2);">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+      <%# Inline Edit Form %>
+      <div id="editForm_<%= r.id %>" class="edit-form">
+        <form onsubmit="saveEdit(<%= r.id %>, this, event)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+              <label class="crm-label">ชื่อ *</label>
+              <input type="text" name="title" required class="crm-search-input" style="width:100%;" value="<%= r.title %>">
+            </div>
+            <div>
+              <label class="crm-label">Shortcut</label>
+              <input type="text" name="shortcut_key" class="crm-search-input" style="width:100%;" value="<%= r.shortcut_key || '' %>">
+            </div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <label class="crm-label">ข้อความ *</label>
+            <textarea name="content_text" required class="crm-reply-textarea" style="min-height:70px;"><%= r.content_text %></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+              <label class="crm-label">หมวดหมู่</label>
+              <input type="text" name="category" class="crm-search-input" style="width:100%;" value="<%= r.category || '' %>">
+            </div>
+            <div>
+              <label class="crm-label">ภาษา</label>
+              <select name="language" class="crm-search-input" style="width:100%;">
+                <option value="th" <%= r.language==='th'?'selected':'' %>>🇹🇭 ไทย</option>
+                <option value="lo" <%= r.language==='lo'?'selected':'' %>>🇱🇦 ลาว</option>
+                <option value="en" <%= r.language==='en'?'selected':'' %>>🇬🇧 English</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button type="button" onclick="toggleEdit(<%= r.id %>)" class="btn-crm btn-crm-secondary btn-crm-sm">ยกเลิก</button>
+            <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm"><i class="fa-solid fa-floppy-disk"></i> บันทึก</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+</div>
+
+<script>
+const CSRF = '<%= csrfToken %>';
+
+function toggleEdit(id) {
+  const el = document.getElementById('editForm_' + id);
+  el.classList.toggle('open');
+}
+
+async function saveEdit(id, form, evt) {
+  evt.preventDefault();
+  const fd = new FormData(form);
+  const body = Object.fromEntries(fd);
+  body._csrf = CSRF;
+  const res = await fetch('/crm/quick-replies/' + id + '/update', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.ok) { location.reload(); }
+  else { alert('บันทึกล้มเหลว: ' + data.error); }
+}
+
+async function deleteQr(id, btn) {
+  if (!confirm('ลบ Quick Reply นี้?')) return;
+  btn.disabled = true;
+  const res = await fetch('/crm/quick-replies/' + id + '/delete', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ _csrf: CSRF })
+  });
+  const data = await res.json();
+  if (data.ok) { btn.closest('.qr-card').remove(); }
+  else { alert('ลบล้มเหลว: ' + data.error); btn.disabled = false; }
+}
+</script>

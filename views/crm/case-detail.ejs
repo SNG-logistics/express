@@ -1,0 +1,158 @@
+<%# views/crm/case-detail.ejs — Case Detail + Resolution %>
+<link rel="stylesheet" href="/css/crm.css">
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <a href="/crm/cases" style="color:#94a3b8;text-decoration:none;font-size:0.85rem;">
+      <i class="fa-solid fa-arrow-left"></i> เคสทั้งหมด
+    </a>
+    <div class="crm-header-icon"><i class="fa-solid fa-ticket"></i></div>
+    <h1><%= case.case_no %></h1>
+    <%
+      const cs = { OPEN:'crm-badge-open', IN_PROGRESS:'crm-badge-normal', WAITING:'crm-badge-pending', RESOLVED:'crm-badge-resolved', CLOSED:'crm-badge-closed' };
+      const ps = { URGENT:'crm-badge-urgent', HIGH:'crm-badge-high', NORMAL:'crm-badge-normal', LOW:'crm-badge-low' };
+    %>
+    <span class="crm-badge <%= cs[case.case_status] || '' %>"><%= case.case_status.replace('_',' ') %></span>
+    <span class="crm-badge <%= ps[case.priority] || '' %>"><%= case.priority %></span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;padding:20px 24px;">
+
+    <%# Main Content %>
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <%# Case Info %>
+      <div class="crm-card">
+        <div class="crm-card-header">
+          <h3><i class="fa-solid fa-circle-info" style="color:#818cf8;margin-right:6px;"></i>รายละเอียดเคส</h3>
+        </div>
+        <div class="crm-card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:3px;">ลูกค้า</div>
+              <a href="/crm/customers/<%= case.crm_customer_id %>" style="color:#818cf8;font-weight:600;font-size:0.85rem;">
+                <%= case.customer_name %>
+              </a>
+            </div>
+            <div>
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:3px;">ประเภท</div>
+              <span style="font-size:0.82rem;"><%= case.case_type.replace(/_/g,' ') %></span>
+            </div>
+            <div>
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Assignee</div>
+              <span style="font-size:0.82rem;"><%= case.assignee_name || '— ไม่ได้ Assign —' %></span>
+            </div>
+            <div>
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Order</div>
+              <% if (case.order_job_no) { %>
+              <a href="/orders?search=<%= case.order_job_no %>" style="color:#818cf8;font-size:0.82rem;">
+                <i class="fa-solid fa-box"></i> <%= case.order_job_no %>
+              </a>
+              <% } else { %>
+              <span style="font-size:0.82rem;color:#64748b;">—</span>
+              <% } %>
+            </div>
+            <div>
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:3px;">เปิดเมื่อ</div>
+              <span style="font-size:0.82rem;"><%= new Date(case.opened_at).toLocaleString('th-TH') %></span>
+            </div>
+            <% if (case.resolved_at) { %>
+            <div>
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:3px;">แก้ไขเมื่อ</div>
+              <span style="font-size:0.82rem;color:#34d399;"><%= new Date(case.resolved_at).toLocaleString('th-TH') %></span>
+            </div>
+            <% } %>
+          </div>
+
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Subject</div>
+            <div style="font-size:0.9rem;font-weight:600;"><%= case.subject %></div>
+          </div>
+
+          <% if (case.description) { %>
+          <div style="margin-top:12px;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:6px;">รายละเอียด</div>
+            <div style="font-size:0.82rem;color:#94a3b8;white-space:pre-wrap;line-height:1.6;"><%= case.description %></div>
+          </div>
+          <% } %>
+
+          <% if (case.resolution_note) { %>
+          <div style="margin-top:12px;padding:12px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);border-radius:10px;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#34d399;margin-bottom:6px;">
+              <i class="fa-solid fa-circle-check"></i> Resolution Note
+            </div>
+            <div style="font-size:0.82rem;white-space:pre-wrap;line-height:1.6;"><%= case.resolution_note %></div>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <%# Resolve Case Form %>
+      <% if (!['RESOLVED','CLOSED'].includes(case.case_status)) { %>
+      <div class="crm-card">
+        <div class="crm-card-header">
+          <h3><i class="fa-solid fa-circle-check" style="color:#34d399;margin-right:6px;"></i>ปิด / Resolve เคสนี้</h3>
+        </div>
+        <div class="crm-card-body">
+          <form method="POST" action="/crm/cases/<%= case.id %>/resolve">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <textarea name="resolution_note" class="crm-reply-textarea"
+                      placeholder="บันทึกวิธีแก้ไข / หมายเหตุการปิดเคส..."
+                      rows="3" required></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+              <button type="submit" class="btn-crm btn-crm-success">
+                <i class="fa-solid fa-circle-check"></i> ปิดเคส (Resolved)
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <% } %>
+
+    </div>
+
+    <%# Right Sidebar: Quick Links %>
+    <div>
+      <div class="crm-card">
+        <div class="crm-card-header"><h3>Quick Links</h3></div>
+        <div class="crm-card-body" style="display:flex;flex-direction:column;gap:8px;">
+          <a href="/crm/customers/<%= case.crm_customer_id %>"
+             class="btn-crm btn-crm-secondary" style="justify-content:center;">
+            <i class="fa-solid fa-id-card"></i> Customer 360
+          </a>
+          <% if (case.conversation_id) { %>
+          <a href="/crm/inbox/<%= case.conversation_id %>"
+             class="btn-crm btn-crm-secondary" style="justify-content:center;">
+            <i class="fa-solid fa-comments"></i> ดูการสนทนา
+          </a>
+          <% } %>
+          <% if (case.related_order_id) { %>
+          <a href="/orders/<%= case.related_order_id %>"
+             class="btn-crm btn-crm-secondary" style="justify-content:center;">
+            <i class="fa-solid fa-box"></i> ดู Order
+          </a>
+          <% } %>
+        </div>
+      </div>
+
+      <%# Status Info %>
+      <div class="crm-card" style="margin-top:12px;">
+        <div class="crm-card-header"><h3>สถานะ</h3></div>
+        <div class="crm-card-body">
+          <div class="crm-context-field">
+            <span class="field-label">Status</span>
+            <span class="crm-badge <%= cs[case.case_status] %>"><%= case.case_status.replace('_',' ') %></span>
+          </div>
+          <div class="crm-context-field">
+            <span class="field-label">Priority</span>
+            <span class="crm-badge <%= ps[case.priority] %>"><%= case.priority %></span>
+          </div>
+          <div class="crm-context-field">
+            <span class="field-label">เปิดโดย</span>
+            <span class="field-value" style="font-size:0.72rem;">#<%= case.created_by || '—' %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

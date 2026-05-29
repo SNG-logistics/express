@@ -1,0 +1,114 @@
+<%# views/crm/customers.ejs — Customer 360 List %>
+<link rel="stylesheet" href="/css/crm.css">
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <div class="crm-header-icon"><i class="fa-solid fa-address-card"></i></div>
+    <h1>Customer 360</h1>
+    <div style="margin-left:auto;">
+      <a href="/crm" class="btn-crm btn-crm-secondary btn-crm-sm">
+        <i class="fa-solid fa-arrow-left"></i> Dashboard
+      </a>
+    </div>
+  </div>
+
+  <%# Filter Bar %>
+  <form method="GET" action="/crm/customers">
+    <div class="crm-filter-bar">
+      <input type="text" name="search" placeholder="🔍 ชื่อ, เบอร์, อีเมล..."
+             value="<%= filters.search || '' %>" style="min-width:220px;">
+      <select name="type">
+        <option value="">ทุกประเภท</option>
+        <% ['LEAD','CUSTOMER','VIP','BLACKLIST'].forEach(t => { %>
+        <option value="<%= t %>" <%= filters.type === t ? 'selected' : '' %>><%= t %></option>
+        <% }) %>
+      </select>
+      <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm">
+        <i class="fa-solid fa-search"></i> ค้นหา
+      </button>
+    </div>
+  </form>
+
+  <%# Customers Table %>
+  <div class="crm-table-wrap">
+    <% if (customers.length === 0) { %>
+    <div class="crm-empty-state">
+      <i class="fa-solid fa-users"></i>
+      <p>ไม่พบลูกค้าที่ค้นหา</p>
+    </div>
+    <% } else { %>
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>ลูกค้า</th>
+          <th>ประเภท</th>
+          <th>เบอร์โทร</th>
+          <th>จังหวัด</th>
+          <th>การสนทนา</th>
+          <th>เคสเปิด</th>
+          <th>อัปเดต</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% customers.forEach(c => { %>
+        <% const ctypes = { LEAD:'crm-badge-normal', CUSTOMER:'crm-badge-open', VIP:'crm-badge-warning', BLACKLIST:'crm-badge-urgent' }; %>
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.78rem;color:#fff;flex-shrink:0;">
+                <%= (c.full_name || '?').charAt(0).toUpperCase() %>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:0.83rem;"><%= c.full_name %></div>
+                <% if (c.email) { %><div style="font-size:0.68rem;color:#64748b;"><%= c.email %></div><% } %>
+              </div>
+            </div>
+          </td>
+          <td><span class="crm-badge <%= ctypes[c.customer_type] || 'crm-badge-normal' %>"><%= c.customer_type %></span></td>
+          <td style="font-size:0.78rem;"><%= c.phone || '—' %></td>
+          <td style="font-size:0.78rem;"><%= c.province || '—' %></td>
+          <td style="text-align:center;">
+            <span style="font-weight:700;color:#818cf8;"><%= c.total_conversations || 0 %></span>
+          </td>
+          <td style="text-align:center;">
+            <% if (c.open_cases > 0) { %>
+              <span class="crm-badge crm-badge-urgent"><%= c.open_cases %></span>
+            <% } else { %>
+              <span style="color:#64748b;">—</span>
+            <% } %>
+          </td>
+          <td style="font-size:0.72rem;color:#64748b;">
+            <%= c.updated_at ? new Date(c.updated_at).toLocaleDateString('th-TH') : '—' %>
+          </td>
+          <td>
+            <a href="/crm/customers/<%= c.id %>" class="btn-crm btn-crm-secondary btn-crm-sm">
+              <i class="fa-solid fa-eye"></i> 360
+            </a>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <%# Pagination %>
+  <% if (filters.page > 1 || customers.length === 40) { %>
+  <div style="display:flex;gap:8px;padding:16px 24px;align-items:center;">
+    <% if (filters.page > 1) { %>
+    <a href="?search=<%= filters.search || '' %>&type=<%= filters.type || '' %>&page=<%= filters.page - 1 %>"
+       class="btn-crm btn-crm-secondary btn-crm-sm">
+      <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
+    </a>
+    <% } %>
+    <span style="font-size:0.78rem;color:#94a3b8;">หน้า <%= filters.page %></span>
+    <% if (customers.length === 40) { %>
+    <a href="?search=<%= filters.search || '' %>&type=<%= filters.type || '' %>&page=<%= filters.page + 1 %>"
+       class="btn-crm btn-crm-secondary btn-crm-sm">
+      ถัดไป <i class="fa-solid fa-chevron-right"></i>
+    </a>
+    <% } %>
+  </div>
+  <% } %>
+</div>

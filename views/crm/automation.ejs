@@ -1,0 +1,196 @@
+<%# views/crm/automation.ejs — Automation Rules (crm_admin only) %>
+<link rel="stylesheet" href="/css/crm.css">
+
+<div class="crm-page" style="height:auto;">
+  <div class="crm-header">
+    <div class="crm-header-icon"><i class="fa-solid fa-robot"></i></div>
+    <h1>Automation Rules</h1>
+    <div style="margin-left:auto;">
+      <button class="btn-crm btn-crm-primary btn-crm-sm"
+              onclick="document.getElementById('ruleModal').style.display='flex'">
+        <i class="fa-solid fa-plus"></i> เพิ่ม Rule
+      </button>
+    </div>
+  </div>
+
+  <div class="crm-scrollable" style="padding:20px 24px;">
+
+    <%# Active Rules %>
+    <div style="margin-bottom:8px;font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.07em;">
+      <i class="fa-solid fa-bolt" style="color:#a78bfa;"></i> Rules ที่ใช้งานอยู่ (<%= rules.filter(r=>r.is_active).length %>)
+    </div>
+
+    <% if (rules.length === 0) { %>
+    <div class="crm-empty-state">
+      <i class="fa-solid fa-robot"></i>
+      <p>ยังไม่มี Automation Rule<br>คลิก "เพิ่ม Rule" เพื่อเริ่มต้น</p>
+    </div>
+    <% } %>
+
+    <% rules.forEach(rule => { %>
+    <%
+      let conds = [];
+      let acts = [];
+      try { conds = JSON.parse(rule.conditions_json || '[]'); } catch(e) {}
+      try { acts  = JSON.parse(rule.actions_json   || '[]'); } catch(e) {}
+    %>
+    <div class="crm-rule-card" style="<%= !rule.is_active ? 'opacity:0.5;' : '' %>">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div>
+          <div class="rule-name"><%= rule.rule_name %></div>
+          <% if (rule.description) { %>
+          <div style="font-size:0.73rem;color:#94a3b8;margin-top:2px;"><%= rule.description %></div>
+          <% } %>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          <% if (!rule.is_active) { %>
+          <span style="font-size:0.65rem;color:#64748b;padding:2px 7px;border:1px solid rgba(100,116,139,0.3);border-radius:999px;">DISABLED</span>
+          <% } %>
+          <span style="font-size:0.68rem;color:#64748b;">Priority: <%= rule.priority %></span>
+          <button onclick="deleteRule(<%= rule.id %>, '<%= rule.rule_name %>')"
+                  class="btn-crm btn-crm-danger btn-crm-icon btn-crm-sm" title="ลบ rule">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="crm-rule-meta">
+        <span class="crm-badge crm-badge-normal" style="font-size:0.65rem;">
+          <i class="fa-solid fa-bolt"></i> <%= rule.trigger_type.replace('_',' ') %>
+        </span>
+
+        <span style="font-size:0.65rem;color:#64748b;">IF</span>
+        <% conds.forEach(c => { %>
+        <span class="crm-condition-pill">
+          <%= c.field %> <%= c.operator %> "<%= Array.isArray(c.value) ? c.value.join(', ') : c.value %>"
+        </span>
+        <% }) %>
+        <% if (conds.length === 0) { %><span class="crm-condition-pill">ทุกกรณี</span><% } %>
+
+        <span style="font-size:0.65rem;color:#64748b;">→</span>
+        <% acts.forEach(a => { %>
+        <span class="crm-action-pill">
+          <i class="fa-solid fa-play"></i>
+          <%= a.type.replace(/_/g,' ') %>
+          <% if (a.params && Object.keys(a.params).length > 0) { %>
+            (<%= Object.values(a.params).join(', ') %>)
+          <% } %>
+        </span>
+        <% }) %>
+      </div>
+
+      <div style="margin-top:6px;font-size:0.65rem;color:#475569;">
+        สร้างโดย: <%= rule.creator_name || '—' %> ·
+        <%= new Date(rule.created_at).toLocaleDateString('th-TH') %>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+
+  <%# Add Rule Modal %>
+  <div id="ruleModal"
+       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;">
+      <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-weight:700;font-size:1rem;"><i class="fa-solid fa-robot" style="color:#a78bfa;margin-right:8px;"></i>เพิ่ม Automation Rule</div>
+        <button onclick="document.getElementById('ruleModal').style.display='none'"
+                class="btn-crm btn-crm-secondary btn-crm-icon">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form method="POST" action="/crm/automation" style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:#94a3b8;margin-bottom:5px;">Rule Name *</label>
+          <input type="text" name="rule_name" required class="crm-search-input" style="width:100%;" placeholder="ชื่อ rule">
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:#94a3b8;margin-bottom:5px;">คำอธิบาย</label>
+          <input type="text" name="description" class="crm-search-input" style="width:100%;" placeholder="optional">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;color:#94a3b8;margin-bottom:5px;">Trigger Type *</label>
+            <select name="trigger_type" required class="crm-search-input" style="width:100%;">
+              <% ['NEW_CONVERSATION','NEW_MESSAGE','STATUS_CHANGE','SLA_BREACH'].forEach(t => { %>
+              <option value="<%= t %>"><%= t.replace(/_/g,' ') %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;color:#94a3b8;margin-bottom:5px;">Priority</label>
+            <input type="number" name="priority" class="crm-search-input" style="width:100%;" value="10" min="1" max="100">
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:#94a3b8;margin-bottom:5px;">
+            Conditions JSON *
+            <span style="font-weight:400;color:#64748b;"> — อาร์เรย์ของ {"field","operator","value"}</span>
+          </label>
+          <textarea name="conditions_json" required class="crm-reply-textarea" rows="3"
+                    placeholder='[{"field":"message_text","operator":"contains_any","value":["ของถึงไหน","ทวงของ"]}]'
+                    style="font-family:monospace;font-size:0.75rem;">[]</textarea>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:#94a3b8;margin-bottom:5px;">
+            Actions JSON *
+            <span style="font-weight:400;color:#64748b;"> — อาร์เรย์ของ {"type","params"}</span>
+          </label>
+          <textarea name="actions_json" required class="crm-reply-textarea" rows="3"
+                    placeholder='[{"type":"assign_queue","params":{"queue_id":1}},{"type":"add_tag","params":{"tag_name":"ถามสถานะพัสดุ"}}]'
+                    style="font-family:monospace;font-size:0.75rem;">[]</textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" name="is_active" id="isActive" value="1" checked style="width:16px;height:16px;accent-color:#818cf8;">
+          <label for="isActive" style="font-size:0.8rem;cursor:pointer;">เปิดใช้งานทันที</label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);">
+          <button type="button" onclick="document.getElementById('ruleModal').style.display='none'"
+                  class="btn-crm btn-crm-secondary">ยกเลิก</button>
+          <button type="submit" class="btn-crm btn-crm-primary">
+            <i class="fa-solid fa-save"></i> บันทึก Rule
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <%# Action Types Reference %>
+  <div style="padding:0 24px 24px;">
+    <div style="background:rgba(129,140,248,0.06);border:1px solid rgba(129,140,248,0.15);border-radius:12px;padding:16px;">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:#818cf8;margin-bottom:10px;">
+        <i class="fa-solid fa-circle-info"></i> Action Types ที่รองรับ
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+        <% [
+          ['assign_queue', '{"queue_id": 1}'],
+          ['assign_agent', '{"agent_id": 5}'],
+          ['add_tag', '{"tag_name": "ถามสถานะ"}'],
+          ['send_quick_reply', '{"shortcut": "/hi"}'],
+          ['change_priority', '{"priority": "HIGH"}'],
+          ['notify_supervisor', '{"message": "..."}'],
+          ['change_status', '{"status": "PENDING"}'],
+        ].forEach(([type, params]) => { %>
+        <div style="font-size:0.72rem;padding:6px 10px;background:rgba(0,0,0,0.2);border-radius:6px;font-family:monospace;">
+          <span style="color:#34d399;">type:</span> <%= type %><br>
+          <span style="color:#94a3b8;">params:</span> <span style="color:#fbbf24;"><%= params %></span>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function deleteRule(id, name) {
+  if (!confirm(`ลบ rule "${name}" ใช่ไหม?`)) return;
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  fetch('/crm/automation/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrf }
+  }).then(r => r.json()).then(data => {
+    if (data.ok) location.reload();
+    else alert('ลบไม่สำเร็จ: ' + data.error);
+  });
+}
+</script>

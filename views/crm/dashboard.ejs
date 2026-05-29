@@ -1,0 +1,156 @@
+<%# views/crm/dashboard.ejs — CRM Dashboard %><link rel="stylesheet" href="/css/crm.css">
+
+<div class="crm-page" style="height:auto;">
+
+  <%# Header %>
+  <div class="crm-header">
+    <div class="crm-header-icon"><i class="fa-solid fa-chart-line"></i></div>
+    <h1>CRM Dashboard</h1>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <% if (can.useInbox) { %>
+      <a href="/crm/inbox" class="btn-crm btn-crm-primary btn-crm-sm">
+        <i class="fa-solid fa-inbox"></i> Unified Inbox
+      </a>
+      <% } %>
+      <% if (can.manageCrm) { %>
+      <a href="/crm/automation" class="btn-crm btn-crm-secondary btn-crm-sm">
+        <i class="fa-solid fa-robot"></i> Automation
+      </a>
+      <% } %>
+    </div>
+  </div>
+
+  <%# KPI Cards %>
+  <div class="crm-kpi-grid">
+    <div class="crm-kpi-card accent">
+      <div class="kpi-label"><i class="fa-solid fa-comments"></i> Open Conversations</div>
+      <div class="kpi-value"><%= kpis.open_conversations %></div>
+      <div class="kpi-sub">กำลังดำเนินการ</div>
+    </div>
+    <div class="crm-kpi-card warning">
+      <div class="kpi-label"><i class="fa-solid fa-clock"></i> Pending</div>
+      <div class="kpi-value"><%= kpis.pending_conversations %></div>
+      <div class="kpi-sub">รอการตอบกลับ</div>
+    </div>
+    <div class="crm-kpi-card danger">
+      <div class="kpi-label"><i class="fa-solid fa-triangle-exclamation"></i> SLA Overdue</div>
+      <div class="kpi-value"><%= kpis.overdue_sla %></div>
+      <div class="kpi-sub">เกินเวลา SLA</div>
+    </div>
+    <div class="crm-kpi-card">
+      <div class="kpi-label"><i class="fa-solid fa-ticket"></i> Open Cases</div>
+      <div class="kpi-value"><%= kpis.open_cases %></div>
+      <div class="kpi-sub">เคสที่ยังเปิดอยู่</div>
+    </div>
+  </div>
+
+  <%# Charts Row %>
+  <div class="crm-charts-grid">
+
+    <%# Channel Volume %>
+    <div class="crm-chart-card">
+      <div class="crm-chart-title"><i class="fa-solid fa-chart-pie" style="color:var(--crm-accent);margin-right:6px;"></i>Channel Volume วันนี้</div>
+      <% const chLabels = kpis.channelVolume.map(c => c.channel_type); %>
+      <% const chData   = kpis.channelVolume.map(c => c.cnt); %>
+      <% if (kpis.channelVolume.length === 0) { %>
+        <div class="crm-empty-state" style="padding:24px;">
+          <i class="fa-solid fa-chart-pie"></i>
+          <p>ยังไม่มีข้อมูลวันนี้</p>
+        </div>
+      <% } else { %>
+        <canvas id="channelChart" height="180"></canvas>
+        <script>
+          new Chart(document.getElementById('channelChart'), {
+            type: 'doughnut',
+            data: {
+              labels: <%- JSON.stringify(chLabels) %>,
+              datasets: [{ data: <%- JSON.stringify(chData) %>,
+                backgroundColor: ['#3b82f6','#22c55e','#10b981'],
+                borderColor: 'transparent', borderWidth: 0 }]
+            },
+            options: { plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } } }
+          });
+        </script>
+      <% } %>
+    </div>
+
+    <%# Agent Workload %>
+    <div class="crm-chart-card">
+      <div class="crm-chart-title"><i class="fa-solid fa-users" style="color:var(--crm-green);margin-right:6px;"></i>Agent Workload</div>
+      <% if (kpis.agentWorkload.length === 0) { %>
+        <div class="crm-empty-state" style="padding:24px;">
+          <i class="fa-solid fa-users"></i>
+          <p>ยังไม่มีการสนทนาที่ assign</p>
+        </div>
+      <% } else { %>
+        <canvas id="agentChart" height="180"></canvas>
+        <script>
+          new Chart(document.getElementById('agentChart'), {
+            type: 'bar',
+            data: {
+              labels: <%- JSON.stringify(kpis.agentWorkload.map(a => a.agent_name)) %>,
+              datasets: [{
+                label: 'Conversations',
+                data: <%- JSON.stringify(kpis.agentWorkload.map(a => a.conversation_count)) %>,
+                backgroundColor: 'rgba(129,140,248,0.5)',
+                borderColor: '#818cf8',
+                borderWidth: 1,
+                borderRadius: 6,
+              }]
+            },
+            options: {
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+              }
+            }
+          });
+        </script>
+      <% } %>
+    </div>
+  </div>
+
+  <%# Top Tags + Queue List %>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 24px 24px;">
+
+    <%# Top Tags %>
+    <div class="crm-chart-card">
+      <div class="crm-chart-title"><i class="fa-solid fa-tags" style="color:var(--crm-orange);margin-right:6px;"></i>Top Tags</div>
+      <% if (kpis.topTags.length === 0) { %>
+        <div class="crm-empty-state" style="padding:16px;"><p>ยังไม่มี tag</p></div>
+      <% } else { %>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <% kpis.topTags.forEach(tag => { %>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="crm-tag" style="background:<%= tag.tag_color %>22;color:<%= tag.tag_color %>;border-color:<%= tag.tag_color %>44;">
+              <%= tag.tag_name %>
+            </span>
+            <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:999px;height:6px;overflow:hidden;">
+              <div style="height:100%;background:<%= tag.tag_color %>;border-radius:999px;width:<%= Math.min(100, (tag.usage_count / (kpis.topTags[0]?.usage_count || 1)) * 100) %>%;"></div>
+            </div>
+            <span style="font-size:0.72rem;color:#94a3b8;min-width:24px;text-align:right;"><%= tag.usage_count %></span>
+          </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <%# Queues %>
+    <div class="crm-chart-card">
+      <div class="crm-chart-title"><i class="fa-solid fa-layer-group" style="color:var(--crm-accent);margin-right:6px;"></i>Queues</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <% queues.forEach(q => { %>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:0.78rem;">
+          <span><%= q.queue_name %></span>
+          <span class="crm-badge crm-badge-normal"><%= q.queue_type %></span>
+        </div>
+        <% }) %>
+        <% if (queues.length === 0) { %>
+          <div class="crm-empty-state" style="padding:12px;"><p>ไม่มี queue</p></div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+</div>
