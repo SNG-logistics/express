@@ -9,10 +9,15 @@ const rootDir = path.join(__dirname, '..');
 console.log('🚀 Starting Plesk deploy command...');
 
 try {
-  // 1. Git Pull
-  console.log('1️⃣ Fetching latest code and resetting local changes...');
-  execSync('git fetch origin main', { stdio: 'inherit', cwd: rootDir });
-  execSync('git reset --hard origin/main', { stdio: 'inherit', cwd: rootDir });
+  // 1. Git Pull (if .git exists)
+  const hasGit = fs.existsSync(path.join(rootDir, '.git'));
+  if (hasGit) {
+    console.log('1️⃣ Fetching latest code and resetting local changes...');
+    execSync('git fetch origin main', { stdio: 'inherit', cwd: rootDir });
+    execSync('git reset --hard origin/main', { stdio: 'inherit', cwd: rootDir });
+  } else {
+    console.log('1️⃣ Skipping Git operations: .git directory not found (assuming Plesk managed file updates).');
+  }
 
   // 2. Install dependencies
   console.log('2️⃣ Installing npm dependencies...');
