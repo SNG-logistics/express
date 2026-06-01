@@ -5,6 +5,7 @@
   "main": "app.js",
   "scripts": {
     "dev": "nodemon src/app.js",
+    "deploy": "node scripts/deploy.js",
     "start": "node scripts/kill_port.js && node src/app.js",
     "seed-admin": "node scripts/seed_admin.js",
     "diagnose": "node scripts/diagnose_system.js",
