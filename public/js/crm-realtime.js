@@ -21,6 +21,43 @@ const CrmRealtime = (() => {
   let _socket = null;
   let _opts   = {};
   let _typingTimeout = null;
+  let _audioCtx = null;
+
+  // ── Web Audio Chime Notification ──────────────────────────────────────────
+  function playNotificationSound() {
+    try {
+      if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (_audioCtx.state === 'suspended') {
+        _audioCtx.resume();
+      }
+      
+      const playTone = (freq, startTime, duration) => {
+        const osc = _audioCtx.createOscillator();
+        const gainNode = _audioCtx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        
+        gainNode.gain.setValueAtTime(0.15, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        
+        osc.connect(gainNode);
+        gainNode.connect(_audioCtx.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+      
+      const now = _audioCtx.currentTime;
+      // High quality dual-tone chime (A5: 880Hz + C#6: 1109Hz)
+      playTone(880, now, 0.25);
+      playTone(1109, now + 0.08, 0.35);
+    } catch (e) {
+      console.warn('[CRM RT] Sound playback failed:', e);
+    }
+  }
 
   // ── Toast notification ──────────────────────────────────────────────────────
   function showToast(message, type = 'info', duration = 5000) {
@@ -192,6 +229,7 @@ const CrmRealtime = (() => {
         const icon = chIcons[data.channelType] || '💬';
 
         showToast(`${icon} ${data.senderName || 'ลูกค้า'} ส่งข้อความใหม่ (${ch})`, 'info');
+        playNotificationSound();
 
         // If this message is for the currently open conversation, reload the page
         if (data.conversationId && String(data.conversationId) === String(_opts.conversationId)) {
@@ -204,6 +242,7 @@ const CrmRealtime = (() => {
       _socket.on('crm:new_conversation', (data) => {
         console.log('[CRM RT] new_conversation:', data);
         showToast(`🆕 การสนทนาใหม่จาก ${data.senderName || 'ลูกค้า'} (${data.channelType})`, 'info', 8000);
+        playNotificationSound();
       });
 
       _socket.on('crm:typing', (data) => {

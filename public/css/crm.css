@@ -25,10 +25,15 @@
 }
 
 /* ── Page wrapper ────────────────────────────────────────────────────────────── */
+main:has(.crm-inbox-layout) {
+  padding: 0 !important;
+  height: calc(100vh - 60px) !important;
+  overflow: hidden;
+}
 .crm-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px);   /* fill viewport minus top bar if present */
+  height: 100%;
   background: transparent;
   color: var(--crm-text);
   font-family: 'Inter', 'Outfit', system-ui, sans-serif;
@@ -178,13 +183,49 @@
   scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 .crm-conv-item {
-  display: block;
+  display: flex;
+  gap: 12px;
+  align-items: center;
   padding: 12px 14px;
   border-bottom: 1px solid var(--crm-border);
   cursor: pointer;
   transition: background 0.15s;
   text-decoration: none;
   color: inherit;
+}
+.crm-conv-item-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.crm-conv-channel-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  background: #0f172a;
+  border: 1.5px solid #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.crm-conv-item-body {
+  flex: 1;
+  min-width: 0;
 }
 .crm-conv-item:hover { background: var(--crm-surface-hover); }
 .crm-conv-item.active {
