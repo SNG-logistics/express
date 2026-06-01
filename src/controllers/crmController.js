@@ -6,6 +6,7 @@
 import * as svc from '../services/crmService.js';
 import { generateSmartReplies, classifyIntent, checkAiHealth } from '../services/aiService.js';
 import pool from '../config/db.js';
+import { sendOutbound } from '../services/channelService.js';
 
 // ─── Shared render helper ────────────────────────────────────────────────────
 function crmRender(res, view, data = {}) {
@@ -114,7 +115,7 @@ export async function sendMessage(req, res) {
       return res.redirect(`/crm/inbox/${convId}`);
     }
 
-    await svc.createMessage({
+    const messageId = await svc.createMessage({
       conversationId: convId,
       senderType: 'AGENT',
       senderUserId: user.id,
@@ -122,6 +123,15 @@ export async function sendMessage(req, res) {
       messageType: 'TEXT',
       contentText: message_text.trim(),
     });
+
+    // Send the outbound message via integrated channel
+    const sendResult = await sendOutbound({ conversationId: convId, text: message_text.trim() });
+    if (sendResult && !sendResult.sent) {
+      console.warn(`[CRM] sendOutbound failed for conversation ${convId}: ${sendResult.reason}`);
+      // Update message delivery status to FAILED
+      await pool.query('UPDATE crm_messages SET delivery_status = ? WHERE id = ?', ['FAILED', messageId]);
+      req.session.flash = { type: 'error', message: `ส่งข้อความไม่สำเร็จ: ${sendResult.reason || 'ช่องทางการเชื่อมต่อปิดอยู่'}` };
+    }
 
     return res.redirect(`/crm/inbox/${convId}`);
   } catch (err) {
