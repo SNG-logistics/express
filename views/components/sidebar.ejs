@@ -91,9 +91,14 @@
 
     <% if (can.viewFinancials) { %>
     <a href="/expenses"
-       class="sidebar-link <%= currentPath.startsWith('/expenses') ? 'active' : '' %>">
+       class="sidebar-link <%= (currentPath.startsWith('/expenses') && !currentPath.includes('/pl')) ? 'active' : '' %>">
       <i class="fa-solid fa-wallet text-amber-400"></i>
       <span>บัญชีรายจ่าย</span>
+    </a>
+    <a href="/expenses/pl"
+       class="sidebar-link <%= currentPath.includes('/expenses/pl') ? 'active' : '' %>">
+      <i class="fa-solid fa-chart-line text-emerald-400"></i>
+      <span>รายงานกำไร-ขาดทุน</span>
     </a>
     <% } %>
     <% } %>
@@ -223,12 +228,7 @@
     <% if (can.manageRates || can.viewFinancials) { %>
     <div class="sidebar-section-title"><%= lang === 'lo' ? 'ລະບົບ' : 'ระบบ' %></div>
 
-    <% if (can.viewFinancials) { %>
-    <a href="#" class="sidebar-link opacity-50 cursor-not-allowed">
-      <i class="fa-solid fa-chart-bar"></i>
-      <span><%= lang === 'lo' ? 'ລາຍງານ' : 'รายงาน' %> <span class="text-[10px] text-slate-500 ml-1"><%= lang === 'lo' ? 'ໄວໆນີ້' : 'เร็วๆ นี้' %></span></span>
-    </a>
-    <% } %>
+
 
     <% if (can.manageRates) { %>
     <a href="/settings/rates"

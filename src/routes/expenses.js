@@ -50,6 +50,9 @@ router.get('/export', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.ex
 // Print Report (A4 PDF/Paper layout)
 router.get('/print', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.printReport);
 
+// P&L Profit and Loss Report
+router.get('/pl', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.plReport);
+
 // Create Expense Form
 router.get('/new', requireAnyRole(ROLES_EXPENSES_ADD), expensesController.newExpense);
 

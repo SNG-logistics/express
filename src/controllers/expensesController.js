@@ -393,3 +393,243 @@ export async function printReport(req, res) {
     res.status(500).send('Error generating report: ' + err.message);
   }
 }
+
+// ─── P&L PROFIT AND LOSS REPORT ───────────────────────────────────────────────
+export async function plReport(req, res) {
+  try {
+    const { start_date, end_date, group_by, print } = req.query;
+    const now = new Date();
+    
+    // Default dates
+    // Default start_date is first day of current month to today
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const todayStr = now.toISOString().split('T')[0];
+    
+    const start = start_date || firstDayOfMonth;
+    const end = end_date || todayStr;
+    const groupBy = group_by || 'day'; // 'day', 'month', 'year'
+
+    // 1. Fetch latest exchange rates
+    const [[rateTHB_LAK]] = await pool.query(
+      `SELECT rate FROM exchange_rates WHERE pair = 'THB_LAK' ORDER BY created_at DESC LIMIT 1`
+    );
+    const [[rateUSD_THB]] = await pool.query(
+      `SELECT rate FROM exchange_rates WHERE pair = 'USD_THB' ORDER BY created_at DESC LIMIT 1`
+    );
+    const rates = {
+      thb_lak: Number(rateTHB_LAK?.rate) || 580,
+      usd_thb: Number(rateUSD_THB?.rate) || 36,
+    };
+
+    // 2. Fetch orders (revenue) created in range
+    const [orders] = await pool.query(`
+      SELECT id, job_no, price_amount, price_currency, status, created_at
+      FROM orders
+      WHERE created_at >= ? AND created_at <= ?
+        AND status NOT IN ('CUSTOMS_REJECTED', 'RETURN_TO_SENDER')
+      ORDER BY created_at ASC
+    `, [start + ' 00:00:00', end + ' 23:59:59']);
+
+    // 3. Fetch expenses (costs) created in range
+    const [expenses] = await pool.query(`
+      SELECT id, category, type, description, amount, currency, expense_date, trip_id
+      FROM expenses
+      WHERE expense_date >= ? AND expense_date <= ?
+      ORDER BY expense_date ASC
+    `, [start, end]);
+
+    // 4. Get company settings
+    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
+    // Helper functions for currency conversion
+    const convertAmount = (amount, cur) => {
+      const amt = Number(amount) || 0;
+      let thb = 0;
+      let lak = 0;
+      if (cur === 'THB' || !cur) {
+        thb = amt;
+        lak = amt * rates.thb_lak;
+      } else if (cur === 'LAK') {
+        thb = amt / rates.thb_lak;
+        lak = amt;
+      } else if (cur === 'USD') {
+        thb = amt * rates.usd_thb;
+        lak = (amt * rates.usd_thb) * rates.thb_lak;
+      } else {
+        thb = amt;
+        lak = amt * rates.thb_lak;
+      }
+      return { thb, lak };
+    };
+
+    const formatDateKey = (dateVal) => {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return 'N/A';
+      
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      
+      if (groupBy === 'day') {
+        return `${y}-${m}-${day}`;
+      } else if (groupBy === 'year') {
+        return `${y}`;
+      } else {
+        return `${y}-${m}`;
+      }
+    };
+
+    // 5. Aggregate in JS based on groupBy level
+    const plData = {}; // key: group key (e.g. '2026-06-02' or '2026-06' or '2026')
+
+    const getGroupObj = (key) => {
+      if (!plData[key]) {
+        plData[key] = {
+          key,
+          orderCount: 0,
+          revenueThb: 0,
+          revenueLak: 0,
+          tripCostThb: 0,
+          tripCostLak: 0,
+          capitalCostThb: 0,
+          capitalCostLak: 0,
+          adminCostThb: 0,
+          adminCostLak: 0,
+          otherCostThb: 0,
+          otherCostLak: 0,
+          totalCostThb: 0,
+          totalCostLak: 0,
+          netProfitThb: 0,
+          netProfitLak: 0,
+          marginPct: 0
+        };
+      }
+      return plData[key];
+    };
+
+    // Process Revenues (orders)
+    for (const order of orders) {
+      const key = formatDateKey(order.created_at);
+      const g = getGroupObj(key);
+      const { thb, lak } = convertAmount(order.price_amount, order.price_currency);
+      g.orderCount += 1;
+      g.revenueThb += thb;
+      g.revenueLak += lak;
+    }
+
+    // Process Expenses
+    for (const exp of expenses) {
+      const key = formatDateKey(exp.expense_date);
+      const g = getGroupObj(key);
+      const { thb, lak } = convertAmount(exp.amount, exp.currency);
+
+      if (exp.category === 'TRIP') {
+        g.tripCostThb += thb;
+        g.tripCostLak += lak;
+      } else if (exp.category === 'CAPITAL') {
+        g.capitalCostThb += thb;
+        g.capitalCostLak += lak;
+      } else if (exp.category === 'ADMIN') {
+        g.adminCostThb += thb;
+        g.adminCostLak += lak;
+      } else {
+        g.otherCostThb += thb;
+        g.otherCostLak += lak;
+      }
+
+      g.totalCostThb += thb;
+      g.totalCostLak += lak;
+    }
+
+    // Calculate Nets and margins
+    const list = Object.values(plData).sort((a, b) => {
+      return a.key.localeCompare(b.key);
+    });
+
+    let grandRevenueThb = 0;
+    let grandRevenueLak = 0;
+    let grandTripCostThb = 0;
+    let grandTripCostLak = 0;
+    let grandCapitalCostThb = 0;
+    let grandCapitalCostLak = 0;
+    let grandAdminCostThb = 0;
+    let grandAdminCostLak = 0;
+    let grandOtherCostThb = 0;
+    let grandOtherCostLak = 0;
+    let grandTotalCostThb = 0;
+    let grandTotalCostLak = 0;
+    let grandOrderCount = 0;
+
+    for (const g of list) {
+      g.netProfitThb = g.revenueThb - g.totalCostThb;
+      g.netProfitLak = g.revenueLak - g.totalCostLak;
+      g.marginPct = g.revenueThb > 0 ? (g.netProfitThb / g.revenueThb) * 100 : 0;
+
+      // Add to grand totals
+      grandRevenueThb += g.revenueThb;
+      grandRevenueLak += g.revenueLak;
+      grandTripCostThb += g.tripCostThb;
+      grandTripCostLak += g.tripCostLak;
+      grandCapitalCostThb += g.capitalCostThb;
+      grandCapitalCostLak += g.capitalCostLak;
+      grandAdminCostThb += g.adminCostThb;
+      grandAdminCostLak += g.adminCostLak;
+      grandOtherCostThb += g.otherCostThb;
+      grandOtherCostLak += g.otherCostLak;
+      grandTotalCostThb += g.totalCostThb;
+      grandTotalCostLak += g.totalCostLak;
+      grandOrderCount += g.orderCount;
+    }
+
+    const grandNetProfitThb = grandRevenueThb - grandTotalCostThb;
+    const grandNetProfitLak = grandRevenueLak - grandTotalCostLak;
+    const grandMarginPct = grandRevenueThb > 0 ? (grandNetProfitThb / grandRevenueThb) * 100 : 0;
+
+    const summary = {
+      orderCount: grandOrderCount,
+      revenueThb: grandRevenueThb,
+      revenueLak: grandRevenueLak,
+      tripCostThb: grandTripCostThb,
+      tripCostLak: grandTripCostLak,
+      capitalCostThb: grandCapitalCostThb,
+      capitalCostLak: grandCapitalCostLak,
+      adminCostThb: grandAdminCostThb,
+      adminCostLak: grandAdminCostLak,
+      otherCostThb: grandOtherCostThb,
+      otherCostLak: grandOtherCostLak,
+      totalCostThb: grandTotalCostThb,
+      totalCostLak: grandTotalCostLak,
+      netProfitThb: grandNetProfitThb,
+      netProfitLak: grandNetProfitLak,
+      marginPct: grandMarginPct
+    };
+
+    const renderData = {
+      user: req.session.user,
+      title: 'รายงานกำไร-ขาดทุน (P&L)',
+      list,
+      summary,
+      rates,
+      company,
+      filters: {
+        start_date: start,
+        end_date: end,
+        group_by: groupBy
+      }
+    };
+
+    if (print === '1' || print === 'true') {
+      res.render('expenses/pl_print', {
+        layout: false,
+        ...renderData
+      });
+    } else {
+      res.render('expenses/pl', renderData);
+    }
+
+  } catch (err) {
+    console.error('[Expenses.plReport]', err);
+    res.status(500).send('Error generating P&L report: ' + err.message);
+  }
+}

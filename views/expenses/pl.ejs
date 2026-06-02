@@ -1,0 +1,303 @@
+<div class="max-w-7xl mx-auto space-y-6" x-data="{ displayCurrency: 'THB' }">
+
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-black text-white flex items-center gap-3">
+        <i class="fa-solid fa-chart-line text-amber-400"></i> รายงานกำไร-ขาดทุน (P&L Report)
+      </h1>
+      <p class="text-slate-400 mt-1">สรุปภาพรวมรายรับ (จากค่าขนส่ง) เปรียบเทียบกับรายจ่ายแยกตามหมวดหมู่</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Currency Switcher -->
+      <div class="bg-white/5 border border-white/10 rounded-xl p-1 flex gap-1">
+        <button @click="displayCurrency = 'THB'"
+                :class="displayCurrency === 'THB' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-white'"
+                class="px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5">
+          🇹🇭 THB
+        </button>
+        <button @click="displayCurrency = 'LAK'"
+                :class="displayCurrency === 'LAK' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:text-white'"
+                class="px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5">
+          🇱🇦 LAK
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Summaries -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    
+    <!-- 1. Total Revenue -->
+    <div class="glass-panel-dark p-6 rounded-2xl border border-amber-500/20 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-amber-500/10 group-hover:text-amber-500/20 transition-colors">
+        <i class="fa-solid fa-coins text-8xl"></i>
+      </div>
+      <div class="relative z-10 space-y-2">
+        <h3 class="text-xs font-bold text-amber-400/80 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 bg-amber-400 rounded-full"></span>รายรับรวม (Revenue)
+        </h3>
+        <div>
+          <div x-show="displayCurrency === 'THB'" class="text-2xl font-black text-white tabular-nums">
+            ฿ <%= (Number(summary.revenueThb) || 0).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+          </div>
+          <div x-show="displayCurrency === 'LAK'" class="text-2xl font-black text-white tabular-nums">
+            ₭ <%= (Number(summary.revenueLak) || 0).toLocaleString('th-TH', {maximumFractionDigits: 0}) %>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">จากพัสดุฝากส่งทั้งหมด <span class="font-bold text-white"><%= summary.orderCount %></span> รายการ</p>
+      </div>
+    </div>
+
+    <!-- 2. Total Cost -->
+    <div class="glass-panel-dark p-6 rounded-2xl border border-red-500/20 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-red-500/10 group-hover:text-red-500/20 transition-colors">
+        <i class="fa-solid fa-wallet text-8xl"></i>
+      </div>
+      <div class="relative z-10 space-y-2">
+        <h3 class="text-xs font-bold text-red-400/80 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 bg-red-400 rounded-full"></span>รายจ่ายรวม (Costs)
+        </h3>
+        <div>
+          <div x-show="displayCurrency === 'THB'" class="text-2xl font-black text-white tabular-nums">
+            ฿ <%= (Number(summary.totalCostThb) || 0).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+          </div>
+          <div x-show="displayCurrency === 'LAK'" class="text-2xl font-black text-white tabular-nums">
+            ₭ <%= (Number(summary.totalCostLak) || 0).toLocaleString('th-TH', {maximumFractionDigits: 0}) %>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">ค่าใช้จ่ายรอบรถ, เงินลงทุน, และบริหาร</p>
+      </div>
+    </div>
+
+    <!-- 3. Net Profit / Loss -->
+    <div class="glass-panel-dark p-6 rounded-2xl border <%= summary.netProfitThb >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20' %> relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 <%= summary.netProfitThb >= 0 ? 'text-emerald-500/10 group-hover:text-emerald-500/20' : 'text-rose-500/10 group-hover:text-rose-500/20' %> transition-colors">
+        <i class="fa-solid <%= summary.netProfitThb >= 0 ? 'fa-square-trend-up' : 'fa-square-trend-down' %> text-8xl"></i>
+      </div>
+      <div class="relative z-10 space-y-2">
+        <h3 class="text-xs font-bold <%= summary.netProfitThb >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80' %> uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 <%= summary.netProfitThb >= 0 ? 'bg-emerald-400' : 'bg-rose-400' %> rounded-full"></span>กำไร/ขาดทุนสุทธิ (Net P&L)
+        </h3>
+        <div>
+          <div x-show="displayCurrency === 'THB'" class="text-2xl font-black <%= summary.netProfitThb >= 0 ? 'text-emerald-400' : 'text-rose-400' %> tabular-nums">
+            ฿ <%= (Number(summary.netProfitThb) || 0).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+          </div>
+          <div x-show="displayCurrency === 'LAK'" class="text-2xl font-black <%= summary.netProfitThb >= 0 ? 'text-emerald-400' : 'text-rose-400' %> tabular-nums">
+            ₭ <%= (Number(summary.netProfitLak) || 0).toLocaleString('th-TH', {maximumFractionDigits: 0}) %>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">ผลประกอบการสะสมหลังหักค่าใช้จ่าย</p>
+      </div>
+    </div>
+
+    <!-- 4. Profit Margin -->
+    <div class="glass-panel-dark p-6 rounded-2xl border border-blue-500/20 relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
+        <i class="fa-solid fa-percent text-8xl"></i>
+      </div>
+      <div class="relative z-10 space-y-2">
+        <h3 class="text-xs font-bold text-blue-400/80 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 bg-blue-400 rounded-full"></span>อัตรากำไรสุทธิ (Profit Margin)
+        </h3>
+        <div>
+          <div class="text-2xl font-black text-white tabular-nums">
+            <%= (Number(summary.marginPct) || 0).toFixed(2) %>%
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">เปอร์เซ็นต์กำไรสุทธิเทียบกับรายรับ</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Panel -->
+  <form method="GET" action="/expenses/pl" class="glass-panel-dark rounded-2xl border border-white/10 p-5 space-y-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <!-- 1. Start Date -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">จากวันที่</label>
+        <input type="date" name="start_date" value="<%= filters.start_date %>" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+      </div>
+
+      <!-- 2. End Date -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ถึงวันที่</label>
+        <input type="date" name="end_date" value="<%= filters.end_date %>" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+      </div>
+
+      <!-- 3. Group By -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">รูปแบบการรวมกลุ่ม (Group By)</label>
+        <select name="group_by" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+          <option value="day" <%= filters.group_by === 'day' ? 'selected' : '' %>>รายวัน (Daily)</option>
+          <option value="month" <%= filters.group_by === 'month' ? 'selected' : '' %>>รายเดือน (Monthly)</option>
+          <option value="year" <%= filters.group_by === 'year' ? 'selected' : '' %>>รายปี (Yearly)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Actions Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5">
+      <div class="flex items-center gap-2">
+        <button type="submit" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-magnifying-glass"></i> ประมวลผล P&L
+        </button>
+        <a href="/expenses/pl" class="bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white px-5 py-2 rounded-xl font-bold transition-all text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวกรอง
+        </a>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button type="button" @click="const form = document.querySelector('form[action=\'/expenses/pl\']'); const params = new URLSearchParams(new FormData(form)); params.set('print', '1'); window.open('/expenses/pl?' + params.toString(), '_blank');" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-print"></i> พิมพ์เอกสารสรุป (A4)
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- P&L Table Panel -->
+  <div class="glass-panel-dark rounded-2xl border border-white/5 overflow-hidden">
+    <div class="p-5 border-b border-white/5 flex items-center justify-between">
+      <h3 class="font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-table text-slate-400"></i> ตารางวิเคราะห์รายรับ-รายจ่าย รายละเอียด
+      </h3>
+      <span class="text-xs text-slate-400">
+        อัตราแลกเปลี่ยน: 1 THB = <%= rates.thb_lak.toLocaleString() %> LAK &nbsp;|&nbsp; 1 USD = <%= rates.usd_thb %> THB
+      </span>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse min-w-[1000px]">
+        <thead>
+          <tr class="bg-white/5 border-b border-white/10 text-slate-300 text-[10px] uppercase tracking-wider font-bold">
+            <th class="p-4">คาบเวลา</th>
+            <th class="p-4 text-center">ออเดอร์</th>
+            <th class="p-4 text-right">รายรับรวม (A)</th>
+            <th class="p-4 text-right">รายจ่ายรอบรถ (OPEX)</th>
+            <th class="p-4 text-right">เงินลงทุน (CAPEX)</th>
+            <th class="p-4 text-right">บริหารออฟฟิศ (Admin)</th>
+            <th class="p-4 text-right">รายจ่ายรวม (B)</th>
+            <th class="p-4 text-right">กำไรสุทธิ (A - B)</th>
+            <th class="p-4 text-right">อัตรากำไร (%)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm">
+          <% if (list.length === 0) { %>
+            <tr><td colspan="9" class="p-8 text-center text-slate-500">ไม่พบข้อมูลรายรับ-รายจ่ายตามตัวกรองที่ระบุ</td></tr>
+          <% } else { %>
+            <% list.forEach(item => { %>
+              <tr class="hover:bg-white/5 transition-colors group">
+                <!-- Group Key -->
+                <td class="p-4 whitespace-nowrap text-white font-medium">
+                  <% if (filters.group_by === 'day') { %>
+                    <i class="fa-regular fa-calendar-days text-slate-500 mr-1.5"></i>
+                    <%= new Date(item.key).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+                  <% } else if (filters.group_by === 'month') { %>
+                    <i class="fa-regular fa-calendar-check text-slate-500 mr-1.5"></i>
+                    <% 
+                      const [yr, mn] = item.key.split('-');
+                      const dummy = new Date(Number(yr), Number(mn) - 1, 1);
+                      const monthLabel = dummy.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+                    %>
+                    <%= monthLabel %>
+                  <% } else { %>
+                    <i class="fa-solid fa-calendar text-slate-500 mr-1.5"></i>
+                    ปี <%= Number(item.key) + 543 %> (<%= item.key %>)
+                  <% } %>
+                </td>
+                
+                <!-- Order Count -->
+                <td class="p-4 text-center font-bold text-slate-300">
+                  <%= item.orderCount.toLocaleString() %>
+                </td>
+
+                <!-- Revenue (A) -->
+                <td class="p-4 text-right font-mono font-bold text-white">
+                  <span x-show="displayCurrency === 'THB'">฿<%= Number(item.revenueThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                  <span x-show="displayCurrency === 'LAK'">₭<%= Number(item.revenueLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+                </td>
+
+                <!-- Trip Cost -->
+                <td class="p-4 text-right font-mono text-purple-300">
+                  <span x-show="displayCurrency === 'THB'">฿<%= Number(item.tripCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                  <span x-show="displayCurrency === 'LAK'">₭<%= Number(item.tripCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+                </td>
+
+                <!-- Capital Cost -->
+                <td class="p-4 text-right font-mono text-emerald-300">
+                  <span x-show="displayCurrency === 'THB'">฿<%= Number(item.capitalCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                  <span x-show="displayCurrency === 'LAK'">₭<%= Number(item.capitalCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+                </td>
+
+                <!-- Admin Cost -->
+                <td class="p-4 text-right font-mono text-blue-300">
+                  <span x-show="displayCurrency === 'THB'">฿<%= Number(item.adminCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                  <span x-show="displayCurrency === 'LAK'">₭<%= Number(item.adminCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+                </td>
+
+                <!-- Total Cost (B) -->
+                <td class="p-4 text-right font-mono font-bold text-red-300">
+                  <span x-show="displayCurrency === 'THB'">฿<%= Number(item.totalCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                  <span x-show="displayCurrency === 'LAK'">₭<%= Number(item.totalCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+                </td>
+
+                <!-- Net Profit (A - B) -->
+                <td class="p-4 text-right font-mono font-bold <%= item.netProfitThb >= 0 ? 'text-emerald-400' : 'text-rose-400' %>">
+                  <span x-show="displayCurrency === 'THB'"><%= item.netProfitThb >= 0 ? '+' : '' %>฿<%= Number(item.netProfitThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                  <span x-show="displayCurrency === 'LAK'"><%= item.netProfitLak >= 0 ? '+' : '' %>₭<%= Number(item.netProfitLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+                </td>
+
+                <!-- Margin % -->
+                <td class="p-4 text-right font-bold <%= item.netProfitThb >= 0 ? 'text-emerald-400' : 'text-rose-400' %>">
+                  <%= Number(item.marginPct).toFixed(1) %>%
+                </td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+        
+        <!-- Table Footer (Grand Totals) -->
+        <tfoot class="bg-white/5 border-t border-white/10 font-bold">
+          <tr class="text-white">
+            <td class="p-4 text-slate-300">รวมทั้งหมด</td>
+            <td class="p-4 text-center text-slate-300"><%= summary.orderCount.toLocaleString() %></td>
+            
+            <td class="p-4 text-right font-mono">
+              <span x-show="displayCurrency === 'THB'">฿<%= Number(summary.revenueThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+              <span x-show="displayCurrency === 'LAK'">₭<%= Number(summary.revenueLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+            </td>
+
+            <td class="p-4 text-right font-mono text-purple-300">
+              <span x-show="displayCurrency === 'THB'">฿<%= Number(summary.tripCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+              <span x-show="displayCurrency === 'LAK'">₭<%= Number(summary.tripCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+            </td>
+
+            <td class="p-4 text-right font-mono text-emerald-300">
+              <span x-show="displayCurrency === 'THB'">฿<%= Number(summary.capitalCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+              <span x-show="displayCurrency === 'LAK'">₭<%= Number(summary.capitalCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+            </td>
+
+            <td class="p-4 text-right font-mono text-blue-300">
+              <span x-show="displayCurrency === 'THB'">฿<%= Number(summary.adminCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+              <span x-show="displayCurrency === 'LAK'">₭<%= Number(summary.adminCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+            </td>
+
+            <td class="p-4 text-right font-mono text-red-300">
+              <span x-show="displayCurrency === 'THB'">฿<%= Number(summary.totalCostThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+              <span x-show="displayCurrency === 'LAK'">₭<%= Number(summary.totalCostLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+            </td>
+
+            <td class="p-4 text-right font-mono <%= summary.netProfitThb >= 0 ? 'text-emerald-400' : 'text-rose-400' %>">
+              <span x-show="displayCurrency === 'THB'">฿<%= Number(summary.netProfitThb).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+              <span x-show="displayCurrency === 'LAK'">₭<%= Number(summary.netProfitLak).toLocaleString('th-TH', {maximumFractionDigits: 0}) %></span>
+            </td>
+
+            <td class="p-4 text-right <%= summary.netProfitThb >= 0 ? 'text-emerald-400' : 'text-rose-400' %>">
+              <%= Number(summary.marginPct).toFixed(1) %>%
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
