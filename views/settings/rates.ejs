@@ -606,28 +606,76 @@
             <!-- Warning Background Pattern -->
             <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: repeating-linear-gradient(45deg, #ef4444 25%, transparent 25%, transparent 75%, #ef4444 75%, #ef4444), repeating-linear-gradient(45deg, #ef4444 25%, transparent 25%, transparent 75%, #ef4444 75%, #ef4444); background-position: 0 0, 20px 20px; background-size: 40px 40px;"></div>
             
-            <div class="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+            <div class="relative z-10 flex flex-col gap-6">
                 <div>
                     <h3 class="text-lg font-bold text-red-400 flex items-center gap-2 mb-2">
-                        <i class="fa-solid fa-triangle-exclamation"></i> ล้างข้อมูลการทดสอบทั้งหมด (Clear Test Data)
+                        <i class="fa-solid fa-triangle-exclamation"></i> ล้างข้อมูลการทดสอบระบบ (Clear Test Data)
                     </h3>
                     <p class="text-sm text-slate-400 max-w-2xl leading-relaxed">
-                        การกระทำนี้จะลบออเดอร์, สถานะพัสดุ, รายการเดินรถ และยอดชำระเงิน <strong class="text-white">ทั้งหมด</strong> ออกจากฐานข้อมูลอย่างถาวร 
-                        โปรดใช้ความระมัดระวัง หากกดแล้วจะไม่สามารถกู้คืนได้ (สำหรับใช้ล้างข้อมูลหลังทดสอบระบบเท่านั้น)
+                        เลือกหัวข้อข้อมูลทดสอบที่ต้องการเคลียร์ออกจากระบบ ข้อมูลจะถูกลบอย่างถาวรและไม่สามารถกู้คืนได้ (แนะนำให้ใช้ล้างข้อมูลหลังจากการทดสอบระบบเสร็จสิ้นแล้วเท่านั้น)
                     </p>
                 </div>
                 
-                <div class="w-full md:w-auto flex-shrink-0">
-                    <form action="/settings/clear-test-data" method="post" class="flex flex-col gap-3" onsubmit="return confirm('คำเตือนขั้นสูงสุด: คุณกำลังจะลบข้อมูลออเดอร์ทั้งหมดในระบบ ยืนยันใช่หรือไม่?');">
+                <div class="w-full">
+                    <form action="/settings/clear-test-data" method="post" class="space-y-5" onsubmit="return confirm('คำเตือนขั้นสูงสุด: ข้อมูลที่ท่านเลือกจะถูกลบออกจากฐานข้อมูลอย่างถาวร ยืนยันใช่หรือไม่?');">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                        <div>
-                            <input type="password" name="admin_password" required placeholder="ใส่รหัสผ่านแอดมินเพื่อยืนยัน"
-                                class="w-full md:w-64 bg-slate-900 border border-red-500/30 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-red-500 focus:border-red-500 placeholder-slate-600">
+                        
+                        <!-- Checkboxes list -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/25 p-5 rounded-2xl border border-white/5">
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" name="clear_orders" value="1" checked
+                                       class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">📦 ข้อมูลออเดอร์ (Orders)</span>
+                                    <p class="text-xs text-slate-500 mt-1">ลบออเดอร์, ประวัติสถานะพัสดุ และธงสกรีนพัสดุ</p>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" name="clear_trips" value="1" checked
+                                       class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">🚛 ข้อมูลรอบรถ (Trips)</span>
+                                    <p class="text-xs text-slate-500 mt-1">ลบรอบเดินรถ และการจัดสรรสินค้าในเที่ยววิ่ง</p>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" name="clear_payments" value="1"
+                                       class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">💰 ยอดเงินชำระของออเดอร์ &amp; COD</span>
+                                    <p class="text-xs text-slate-500 mt-1">ลบรายการรับเงินค่าส่ง และยอดเคลียร์บิลปลายทาง COD</p>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" name="clear_expenses" value="1"
+                                       class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">💸 ยอดเงินรายจ่าย (Expenses)</span>
+                                    <p class="text-xs text-slate-500 mt-1">ลบรายจ่ายรอบรถ (OPEX), รายจ่ายบริษัท และเงินลงทุน (CAPEX)</p>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-start gap-3 cursor-pointer group md:col-span-2 border-t border-white/5 pt-4 mt-2">
+                                <input type="checkbox" name="clear_crm" value="1"
+                                       class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
+                                <div>
+                                    <span class="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">💬 ประวัติแชทลูกค้า CRM (CRM Chats)</span>
+                                    <p class="text-xs text-slate-500 mt-1">ลบประวัติการแชท Omnichannel และเคสเปิดตั๋วติดต่อของลูกค้า</p>
+                                </div>
+                            </label>
                         </div>
-                        <button type="submit"
-                            class="w-full py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/50 hover:border-red-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all">
-                            <i class="fa-solid fa-trash-can"></i> ล้างข้อมูลระบบ
-                        </button>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                            <input type="password" name="admin_password" required placeholder="ใส่รหัสผ่านแอดมินเพื่อยืนยัน"
+                                class="w-full sm:w-64 bg-slate-900 border border-red-500/30 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-red-500 focus:border-red-500 placeholder-slate-600">
+                            <button type="submit"
+                                class="w-full sm:w-auto px-6 py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/50 hover:border-red-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                                <i class="fa-solid fa-trash-can"></i> ยืนยันล้างข้อมูลที่เลือก
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>

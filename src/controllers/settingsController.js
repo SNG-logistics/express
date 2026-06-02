@@ -145,11 +145,16 @@ export async function getLatestRate(req, res) {
 // ─── Danger Zone (Clear Test Data) ────────────────────────────────────────────
 
 export async function clearTestData(req, res) {
-    const { admin_password } = req.body;
+    const { admin_password, clear_orders, clear_trips, clear_payments, clear_expenses, clear_crm } = req.body;
     const userId = req.session.user?.id;
 
     if (!admin_password) {
         req.session.flash = { type: 'error', message: 'กรุณากรอกรหัสผ่านเพื่อยืนยัน' };
+        return res.redirect('/settings/rates');
+    }
+
+    if (!clear_orders && !clear_trips && !clear_payments && !clear_expenses && !clear_crm) {
+        req.session.flash = { type: 'error', message: 'กรุณาเลือกหัวข้อที่ต้องการล้างข้อมูลอย่างน้อย 1 รายการ' };
         return res.redirect('/settings/rates');
     }
 
@@ -170,30 +175,138 @@ export async function clearTestData(req, res) {
         // Disable foreign keys to safely truncate
         await pool.query('SET FOREIGN_KEY_CHECKS = 0');
 
-        // Truncate transaction tables
-        const tablesToClear = [
-            'orders',
-            'order_status_logs',
-            'order_flags',
-            'payments',
-            'trip_orders',
-            'trips',
-            'cod_settlements',
-            'dispatch_assignments'
-        ];
+        const clearedItems = [];
 
-        for (const table of tablesToClear) {
-            try {
-                await pool.query(`TRUNCATE TABLE ${table}`);
-            } catch (e) {
-                console.warn(`Warning: Could not truncate ${table}`, e.message);
+        // 1. Clear CRM Chats
+        if (clear_crm === '1') {
+            const crmTables = [
+                'crm_messages',
+                'crm_conversation_tags',
+                'crm_internal_notes',
+                'crm_assignments',
+                'crm_cases',
+                'crm_conversations'
+            ];
+            for (const table of crmTables) {
+                try {
+                    await pool.query(`TRUNCATE TABLE ${table}`);
+                } catch (e) {
+                    console.warn(`Warning: Could not truncate CRM table ${table}`, e.message);
+                }
             }
+            clearedItems.push('ประวัติแชทลูกค้า CRM');
+        }
+
+        // 2. Clear Payments & COD
+        // Note: If clear_orders is checked, payments must also be cleared since payments has order_id NOT NULL
+        const actualClearPayments = (clear_payments === '1' || clear_orders === '1');
+        if (actualClearPayments) {
+            const paymentTables = [
+                'payments',
+                'cod_settlements'
+            ];
+            for (const table of paymentTables) {
+                try {
+                    await pool.query(`TRUNCATE TABLE ${table}`);
+                } catch (e) {
+                    console.warn(`Warning: Could not truncate payment table ${table}`, e.message);
+                }
+            }
+            clearedItems.push('ยอดเงินชำระ & COD');
+        }
+
+        // 3. Clear Expenses
+        if (clear_expenses === '1') {
+            try {
+                await pool.query('TRUNCATE TABLE expenses');
+            } catch (e) {
+                console.warn('Warning: Could not truncate expenses', e.message);
+            }
+            clearedItems.push('ยอดเงินรายจ่าย');
+        }
+
+        // 4. Clear Trips
+        if (clear_trips === '1') {
+            const tripTables = [
+                'trips',
+                'trip_orders'
+            ];
+            for (const table of tripTables) {
+                try {
+                    await pool.query(`TRUNCATE TABLE ${table}`);
+                } catch (e) {
+                    console.warn(`Warning: Could not truncate trip table ${table}`, e.message);
+                }
+            }
+            // If orders are NOT cleared, update order's trip_id reference to NULL
+            if (clear_orders !== '1') {
+                try {
+                    await pool.query('UPDATE orders SET trip_id = NULL');
+                } catch (e) {
+                    console.warn('Warning: Could not clear trip_id in orders', e.message);
+                }
+            }
+            // If expenses are NOT cleared, update expense's trip_id reference to NULL
+            if (clear_expenses !== '1') {
+                try {
+                    await pool.query('UPDATE expenses SET trip_id = NULL');
+                } catch (e) {
+                    console.warn('Warning: Could not clear trip_id in expenses', e.message);
+                }
+            }
+            // Reset space bookings' trip_id references to NULL
+            try {
+                await pool.query('UPDATE space_bookings SET trip_id = NULL');
+            } catch (e) {
+                console.warn('Warning: Could not clear trip_id in space_bookings', e.message);
+            }
+
+            clearedItems.push('ข้อมูลรอบรถ');
+        }
+
+        // 5. Clear Orders
+        if (clear_orders === '1') {
+            const orderTables = [
+                'orders',
+                'order_status_logs',
+                'order_flags',
+                'dispatch_assignments',
+                'branch_deliveries',
+                'delivery_events',
+                'trip_orders',
+                'branch_revenue'
+            ];
+            for (const table of orderTables) {
+                try {
+                    await pool.query(`TRUNCATE TABLE ${table}`);
+                } catch (e) {
+                    console.warn(`Warning: Could not truncate order table ${table}`, e.message);
+                }
+            }
+            // Clean up order references in other tables
+            try {
+                await pool.query('UPDATE partner_quotations SET order_id = NULL');
+            } catch (e) {
+                console.warn('Warning: Could not clear order_id in partner_quotations', e.message);
+            }
+            try {
+                await pool.query('UPDATE crm_cases SET related_order_id = NULL');
+            } catch (e) {
+                console.warn('Warning: Could not clear related_order_id in crm_cases', e.message);
+            }
+
+            clearedItems.push('ข้อมูลออเดอร์');
         }
 
         // Re-enable foreign keys
         await pool.query('SET FOREIGN_KEY_CHECKS = 1');
 
-        req.session.flash = { type: 'success', message: 'ล้างข้อมูลการทดสอบ (ออเดอร์, ทริป) ทั้งหมดออกจากระบบเรียบร้อยแล้ว' };
+        let msg = 'ล้างข้อมูลการทดสอบที่เลือกสำเร็จ: ' + clearedItems.join(', ');
+        if (clear_orders === '1' && clear_payments !== '1') {
+            msg += ' (หมายเหตุ: ลบยอดเงินชำระ & COD อัตโนมัติเนื่องจากอิงตามออเดอร์ที่ถูกลบ)';
+        }
+
+        req.session.flash = { type: 'success', message: msg };
         res.redirect('/settings/rates');
 
     } catch (err) {
