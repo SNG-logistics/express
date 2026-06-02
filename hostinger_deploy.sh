@@ -154,22 +154,8 @@ echo -e "${GREEN}✓ Dependencies installed${NC}"
 echo ""
 echo -e "${YELLOW}🗄️  Running database migrations...${NC}"
 
-# Load DB vars from .env
-export $(grep -v '^#' .env | grep -E '^DB_' | xargs)
-
-run_migration() {
-  local file="$1"
-  local label="$2"
-  if [ -f "$file" ]; then
-    mysql -h"${DB_HOST:-localhost}" -P"${DB_PORT:-3306}" \
-          -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" \
-          < "$file" 2>/dev/null && echo -e "${GREEN}✓ $label applied${NC}" \
-          || echo -e "${YELLOW}⚠️  $label skipped (may already exist)${NC}"
-  fi
-}
-
-run_migration "database/migrate_crm_001.sql" "CRM tables (14 tables)"
-run_migration "database/migrate_security_001.sql" "Security tables"
+npm run migrate-db || echo -e "${RED}⚠️  migrate-db failed — please check database configuration${NC}"
+npm run migrate-crm || echo -e "${RED}⚠️  migrate-crm failed — please check database configuration${NC}"
 
 # ── PM2 start / reload ────────────────────────────────────────────────────────
 echo ""
