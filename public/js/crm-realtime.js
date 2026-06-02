@@ -200,7 +200,7 @@ const CrmRealtime = (() => {
 
   function connect() {
     try {
-      _socket = io({ transports: ['websocket', 'polling'] });
+      _socket = io({ transports: ['polling'] }); // WebSocket 400 on Hostinger — polling only
 
       _socket.on('connect', () => {
         console.log('[CRM RT] Connected:', _socket.id);

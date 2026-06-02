@@ -443,7 +443,7 @@ export default app;
 const httpServer = createServer(app);
 const io = new SocketIO(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
-  transports: ['websocket', 'polling'],
+  transports: ['polling'],  // WebSocket blocked by Apache proxy on Hostinger — use polling
 });
 
 io.on('connection', (socket) => {
