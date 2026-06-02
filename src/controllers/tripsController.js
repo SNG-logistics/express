@@ -334,6 +334,18 @@ export async function detail(req, res) {
     return acc;
   }, { THB: 0, LAK: 0, USD: 0 });
 
+  // Get latest exchange rates
+  const [[rateTHB_LAK]] = await pool.query(
+    `SELECT rate FROM exchange_rates WHERE pair = 'THB_LAK' ORDER BY created_at DESC LIMIT 1`
+  );
+  const [[rateUSD_THB]] = await pool.query(
+    `SELECT rate FROM exchange_rates WHERE pair = 'USD_THB' ORDER BY created_at DESC LIMIT 1`
+  );
+  const rates = {
+    thb_lak: Number(rateTHB_LAK?.rate) || 580,
+    usd_thb: Number(rateUSD_THB?.rate) || 36,
+  };
+
   // Next allowed statuses for this trip
   const nextStatuses = TRIP_TRANSITIONS[trip.status] || [];
 
@@ -346,6 +358,7 @@ export async function detail(req, res) {
     tripLogs,
     tripExpenses,
     expensesSummary,
+    rates,
     nextStatuses,
     STATUS_LABELS: TRIP_STATUS_LABELS,
     error: null,
@@ -629,12 +642,25 @@ export async function printExpenses(req, res) {
     const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
     const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
 
+    // Get latest exchange rates
+    const [[rateTHB_LAK]] = await pool.query(
+      `SELECT rate FROM exchange_rates WHERE pair = 'THB_LAK' ORDER BY created_at DESC LIMIT 1`
+    );
+    const [[rateUSD_THB]] = await pool.query(
+      `SELECT rate FROM exchange_rates WHERE pair = 'USD_THB' ORDER BY created_at DESC LIMIT 1`
+    );
+    const rates = {
+      thb_lak: Number(rateTHB_LAK?.rate) || 580,
+      usd_thb: Number(rateUSD_THB?.rate) || 36,
+    };
+
     res.render('trips/expense-print', {
       layout: false,
       trip,
       tripOrders,
       tripExpenses,
       expensesSummary,
+      rates,
       company,
       user: req.session.user
     });

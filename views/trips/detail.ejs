@@ -553,19 +553,20 @@
         </tbody>
         <tfoot class="border-t border-white/10 bg-white/3">
           <tr>
-            <td colspan="4" class="px-5 py-3 text-xs text-slate-500 font-semibold uppercase">สรุปรายจ่ายรอบรถแยกสกุลเงิน</td>
+            <td colspan="4" class="px-5 py-3 text-xs text-slate-500 font-semibold uppercase">สรุปรายจ่ายรอบรถสุทธิ (บาท / กีบ)</td>
             <td colspan="3" class="px-5 py-3 text-right text-xs space-y-1">
-              <% if (expensesSummary.THB > 0) { %>
-                <div>ยอดรวม THB: <span class="font-mono font-bold text-white text-sm">฿<%= expensesSummary.THB.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span></div>
-              <% } %>
-              <% if (expensesSummary.LAK > 0) { %>
-                <div>ยอดรวม LAK: <span class="font-mono font-bold text-amber-200 text-sm">₭<%= expensesSummary.LAK.toLocaleString('th-TH') %></span></div>
-              <% } %>
-              <% if (expensesSummary.USD > 0) { %>
-                <div>ยอดรวม USD: <span class="font-mono font-bold text-blue-300 text-sm">$<%= expensesSummary.USD.toLocaleString('en-US', {minimumFractionDigits:2}) %></span></div>
-              <% } %>
-              <% if (expensesSummary.THB === 0 && expensesSummary.LAK === 0 && expensesSummary.USD === 0) { %>
-                <span class="text-slate-500 font-semibold">—</span>
+              <% 
+                const rateThbLak = Number(rates.thb_lak) || 580;
+                const rateUsdThb = Number(rates.usd_thb) || 36;
+                const totalInThb = expensesSummary.THB + (expensesSummary.LAK / rateThbLak) + (expensesSummary.USD * rateUsdThb);
+                const totalInLak = expensesSummary.LAK + (expensesSummary.THB * rateThbLak) + (expensesSummary.USD * rateUsdThb * rateThbLak);
+              %>
+              <% if (totalInThb > 0 || totalInLak > 0) { %>
+                <div>ยอดรวมสุทธิ THB: <span class="font-mono font-bold text-emerald-400 text-sm">฿<%= totalInThb.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span></div>
+                <div>ยอดรวมสุทธิ LAK: <span class="font-mono font-bold text-amber-200 text-sm">₭<%= totalInLak.toLocaleString('th-TH') %></span></div>
+                <div class="text-[10px] text-slate-500 mt-1">อัตราแลกเปลี่ยน: 1 THB = <%= rateThbLak.toLocaleString() %> LAK</div>
+              <% } else { %>
+                <span class="text-slate-500 font-semibold">— ไม่มีรายจ่าย —</span>
               <% } %>
             </td>
           </tr>

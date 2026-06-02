@@ -418,22 +418,23 @@
       <!-- ⑤ TOTALS BOX -->
       <div class="totals-box">
         <div class="totals-meta">
-          <strong>หมายเหตุยอดรวม:</strong><br>
-          * ยอดเงินจะสรุปแยกตามสกุลเงินที่จ่ายออกไปจริง<br>
+          <strong>หมายเหตุยอดรวมสุทธิ:</strong><br>
+          * ระบบจะรวมยอดค่าใช้จ่ายทั้งหมดและคำนวณสุทธิในสกุลเงิน บาท และ กีบ ตามอัตราแลกเปลี่ยนปัจจุบัน<br>
+          * อัตราแลกเปลี่ยนอ้างอิง: 1 THB = <%= rates.thb_lak.toLocaleString() %> LAK | 1 USD = <%= rates.usd_thb.toLocaleString() %> THB<br>
           * กรุณาแนบใบเสร็จรับเงินหรือสลิปการโอนคู่กับหนังสือฉบับนี้เพื่อเสนออนุมัติ
         </div>
         <div class="totals-list">
-          <div style="font-size: 7.5pt; font-weight: bold; color: #475569; text-transform: uppercase;">สรุปยอดขออนุมัติเบิกจ่ายแยกตามสกุลเงิน</div>
-          <% if (expensesSummary.THB > 0) { %>
-            <div class="total-item thb">ยอดรวม THB: <span>฿<%= expensesSummary.THB.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span></div>
-          <% } %>
-          <% if (expensesSummary.LAK > 0) { %>
-            <div class="total-item lak">ยอดรวม LAK: <span>₭<%= expensesSummary.LAK.toLocaleString('th-TH') %></span></div>
-          <% } %>
-          <% if (expensesSummary.USD > 0) { %>
-            <div class="total-item usd">ยอดรวม USD: <span>$<%= expensesSummary.USD.toLocaleString('en-US', {minimumFractionDigits:2}) %></span></div>
-          <% } %>
-          <% if (expensesSummary.THB === 0 && expensesSummary.LAK === 0 && expensesSummary.USD === 0) { %>
+          <div style="font-size: 7.5pt; font-weight: bold; color: #475569; text-transform: uppercase;">สรุปยอดสุทธิขออนุมัติเบิกจ่าย</div>
+          <% 
+            const rateThbLak = Number(rates.thb_lak) || 580;
+            const rateUsdThb = Number(rates.usd_thb) || 36;
+            const totalInThb = expensesSummary.THB + (expensesSummary.LAK / rateThbLak) + (expensesSummary.USD * rateUsdThb);
+            const totalInLak = expensesSummary.LAK + (expensesSummary.THB * rateThbLak) + (expensesSummary.USD * rateUsdThb * rateThbLak);
+          %>
+          <% if (totalInThb > 0 || totalInLak > 0) { %>
+            <div class="total-item thb">ยอดรวมสุทธิ THB: <span>฿<%= totalInThb.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span></div>
+            <div class="total-item lak">ยอดรวมสุทธิ LAK: <span>₭<%= totalInLak.toLocaleString('th-TH') %></span></div>
+          <% } else { %>
             <div class="total-item" style="color:#94a3b8;">— ไม่มีรายจ่าย —</div>
           <% } %>
         </div>
