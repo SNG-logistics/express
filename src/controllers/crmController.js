@@ -514,6 +514,7 @@ export async function quickReplyDelete(req, res) {
 export async function smartReplySuggestions(req, res) {
   try {
     const convId = req.params.id;
+    const { lang = 'TH' } = req.query;
 
     // Get last few messages for context
     const [messages] = await pool.query(
@@ -551,6 +552,7 @@ export async function smartReplySuggestions(req, res) {
       conversationHistory: history,
       intent,
       customerName: conv?.customer_name || '',
+      lang,
     });
 
     if (aiReplies && aiReplies.length > 0) {

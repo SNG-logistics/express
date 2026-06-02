@@ -153,12 +153,14 @@ function classifyIntentKeyword(text) {
 }
 
 // ── 2. Smart Reply Generation ─────────────────────────────────────────────────
-// Returns: [{ title, content }] — 3 contextual replies in Thai
+// Returns: [{ title, content }] — 3 contextual replies in Thai/Lao
 
-export async function generateSmartReplies({ customerMessage, conversationHistory = [], intent = 'GENERAL', customerName = '' }) {
+export async function generateSmartReplies({ customerMessage, conversationHistory = [], intent = 'GENERAL', customerName = '', lang = 'TH' }) {
   const historyText = conversationHistory.slice(-6).map(m =>
     `${m.sender_type === 'CUSTOMER' ? 'ลูกค้า' : 'เจ้าหน้าที่'}: ${m.content_text}`
   ).join('\n');
+
+  const replyLangName = lang === 'LA' ? 'ภาษาลาว (Lao language)' : 'ภาษาไทย (Thai language)';
 
   const prompt = `คุณเป็นเจ้าหน้าที่ CRM ของ SNG Logistics บริษัทขนส่ง
 ลูกค้าชื่อ: ${customerName || 'ลูกค้า'}
@@ -171,7 +173,7 @@ ${historyText}
 
 จงสร้างคำตอบที่เหมาะสม 3 แบบ ในรูปแบบ JSON:
 [
-  { "title": "ชื่อแบบสั้น (ไม่เกิน 15 ตัว)", "content": "ข้อความตอบกลับ (20-80 คำ ภาษาไทย สุภาพ มืออาชีพ)" },
+  { "title": "ชื่อแบบสั้น (ไม่เกิน 15 ตัว)", "content": "ข้อความตอบกลับ (20-80 คำ ใน${replyLangName} สุภาพ มืออาชีพ)" },
   { "title": "...", "content": "..." },
   { "title": "...", "content": "..." }
 ]
@@ -185,29 +187,46 @@ ${historyText}
     return Array.isArray(replies) ? replies.slice(0, 3) : [];
   } catch (err) {
     console.error('[AI] generateSmartReplies error:', err.message);
-    return getDefaultReplies(intent);
+    return getDefaultReplies(intent, lang);
   }
 }
 
-function getDefaultReplies(intent) {
+function getDefaultReplies(intent, lang = 'TH') {
+  const isLao = lang === 'LA';
+  
   const defaults = {
-    TRACKING: [
+    TRACKING: isLao ? [
+      { title: 'ຂໍເລກພັດສະດຸ', content: 'ສະບາຍດີເດີ, ຂໍຊາບເລກພັດສະດຸ ຫຼື ໝາຍເລກອໍເດີ້ເພື່ອທຳການກວດສອບສະຖານະໃຫ້ແດ່ເດີ' },
+      { title: 'ກຳລັງກວດສອບ', content: 'ກຳລັງກວດສອບສະຖານະພັດສະດຸໃຫ້ເດີ, ກະລຸນາລໍຖ້າຈັກໜ້ອຍໜຶ່ງເດີ' },
+      { title: 'ແຈ້ງລິ້ງຕິດຕາມ', content: 'ສາມາດຕິດຕາມພັດສະດຸໄດ້ທີ່ເວັບໄຊທ໌ຂອງພວກເຮົາເດີ, ຫາກມີບັນຫາສາມາດແຈ້ງທີມງານໄດ້ເລີຍ' },
+    ] : [
       { title: 'ขอเลขพัสดุ', content: 'สวัสดีครับ/ค่ะ ขอทราบเลขพัสดุหรือหมายเลขออเดอร์เพื่อตรวจสอบสถานะให้ครับ/ค่ะ' },
       { title: 'กำลังตรวจสอบ', content: 'กำลังตรวจสอบสถานะพัสดุให้ครับ/ค่ะ กรุณารอสักครู่นะครับ/ค่ะ' },
       { title: 'แจ้งลิงก์ติดตาม', content: 'สามารถติดตามพัสดุได้ที่เว็บไซต์ของเราครับ/ค่ะ หากมีปัญหาแจ้งทีมงานได้เลยนะครับ/ค่ะ' },
     ],
-    DELAYED_DELIVERY: [
+    DELAYED_DELIVERY: isLao ? [
+      { title: 'ຂໍອະໄພຫຼ້າຊ້າ', content: 'ຂໍອະໄພໃນความຫຼ້າຊ້າຫຼາຍໆເດີ, ທາງເຮົາກຳລັງກວດສອບສາເຫດ ແລະ ຈະແຈ້ງໃຫ້ຊາບໂດຍໄວທີ່ສຸດ' },
+      { title: 'ແຈ້ງສະຖານະ', content: 'ຂໍໂທດໃນຄວາມບໍ່ສະດວກເດີ, ພັດສະດຸແມ່ນຢູ່ລະຫວ່າງການຈັດສົ່ງ ແລະ ຈະຮອດໃນໄວໆນີ້' },
+      { title: 'ຕິດຕາມເພີ່ມເຕີມ', content: 'ທາງທີມງານກຳລັງຕິດຕາມພັດສະດຸຂອງທ່ານຢູ່ເດີ, ຈະໂທແຈ້ງພາຍໃນ 2 ຊົ່ວໂມງນີ້' },
+    ] : [
       { title: 'ขอโทษล่าช้า', content: 'ขออภัยในความล่าช้าอย่างสุดซึ้งครับ/ค่ะ กำลังตรวจสอบสาเหตุและจะแจ้งให้ทราบโดยเร็วที่สุดครับ/ค่ะ' },
       { title: 'แจ้งสถานะ', content: 'ขอโทษในความไม่สะดวกครับ/ค่ะ พัสดุอยู่ระหว่างการจัดส่งและจะถึงในเร็ว ๆ นี้ครับ/ค่ะ' },
       { title: 'ติดตามเพิ่มเติม', content: 'ทางทีมกำลังติดตามพัสดุของคุณครับ/ค่ะ จะโทรแจ้งภายใน 2 ชั่วโมงนะครับ/ค่ะ' },
     ],
   };
-  return defaults[intent] || [
+
+  return defaults[intent] || (isLao ? [
+    { title: 'ຮັບຊາບ', content: 'ໄດ້ຮັບຂໍ້ມູນແລ້ວເດີ, ກຳລັງດຳເນີນການ ແລະ ຈະແຈ້ງກັບໂດຍໄວທີ່ສຸດ' },
+    { title: 'ຂໍຂໍ້ມູນເພີ່ມ', content: 'ຂໍລົບກວນຂໍ້ມູນເພີ່ມເຕີມເພື່ອໃຫ້ການຊ່ວຍເຫຼືອໄດ້ດີຂຶ້ນແດ່ເດີ' },
+    { title: 'ສົ່ງຕໍ່ທີມງານ', content: 'ຂໍໂອນສາຍໃຫ້ທີມງານຜູ້ຊ່ຽວຊານຊ່ວຍເບິ່ງແຍງຕໍ່ໃຫ້ເດີ' },
+  ] : [
     { title: 'รับทราบ', content: 'ได้รับข้อมูลแล้วครับ/ค่ะ กำลังดำเนินการและจะแจ้งกลับโดยเร็วครับ/ค่ะ' },
     { title: 'ขอข้อมูลเพิ่ม', content: 'ขอรบกวนข้อมูลเพิ่มเติมเพื่อช่วยเหลือได้ดีขึ้นครับ/ค่ะ' },
     { title: 'ส่งต่อทีม', content: 'ขอโอนสายให้ทีมผู้เชี่ยวชาญดูแลต่อนะครับ/ค่ะ' },
-  ];
+  ]);
 }
+
+
 
 // ── 3. Conversation Summary ───────────────────────────────────────────────────
 export async function summarizeConversation(messages) {

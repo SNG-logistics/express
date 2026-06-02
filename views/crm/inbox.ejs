@@ -167,6 +167,13 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
           <button type="button" id="tabReply" onclick="switchTab('reply')" class="btn-crm btn-crm-primary btn-crm-sm" style="opacity:1;"><i class="fa-solid fa-reply"></i> ตอบลูกค้า</button>
           <button type="button" id="tabNote"  onclick="switchTab('note')"  class="btn-crm btn-crm-secondary btn-crm-sm"><i class="fa-solid fa-lock"></i> โน้ตภายใน</button>
           <button type="button" onclick="toggleQrPanel()" class="btn-crm btn-crm-secondary btn-crm-sm"><i class="fa-solid fa-bolt"></i> ตอบด่วน</button>
+          
+          <!-- Language Toggle (TH/LA) -->
+          <div style="display:inline-flex;align-items:center;padding:2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;margin-left:12px;">
+            <button type="button" id="btnReplyLangTh" onclick="setReplyLanguage('TH')" class="btn-crm" style="padding:3px 9px;font-size:0.7rem;font-weight:900;border:none;border-radius:6px;background:#FFE000;color:#000;cursor:pointer;transition:all 0.2s;">TH</button>
+            <button type="button" id="btnReplyLangLa" onclick="setReplyLanguage('LA')" class="btn-crm" style="padding:3px 9px;font-size:0.7rem;font-weight:900;border:none;border-radius:6px;background:transparent;color:#94a3b8;cursor:pointer;transition:all 0.2s;">LA</button>
+          </div>
+
           <button type="button" onclick="loadSuggestions()" class="btn-crm btn-crm-sm" style="background:rgba(167,139,250,0.12);color:#a78bfa;border:1px solid rgba(167,139,250,0.25);margin-left:auto;"><i class="fa-solid fa-wand-magic-sparkles"></i> คำแนะนำ</button>
         </div>
 
@@ -295,13 +302,35 @@ function toggleQrPanel(){
 
 const CONV_ID=(document.querySelector('[data-crm-conv-id]')||{}).dataset?.crmConvId||'';
 
+let replyLanguage = 'TH';
+function setReplyLanguage(lang) {
+  replyLanguage = lang;
+  const btnTh = document.getElementById('btnReplyLangTh');
+  const btnLa = document.getElementById('btnReplyLangLa');
+  if (lang === 'TH') {
+    btnTh.style.background = '#FFE000';
+    btnTh.style.color = '#000';
+    btnLa.style.background = 'transparent';
+    btnLa.style.color = '#94a3b8';
+  } else {
+    btnTh.style.background = 'transparent';
+    btnTh.style.color = '#94a3b8';
+    btnLa.style.background = '#FFE000';
+    btnLa.style.color = '#000';
+  }
+  const panel = document.getElementById('suggestPanel');
+  if (panel && panel.style.display !== 'none') {
+    loadSuggestions();
+  }
+}
+
 async function loadSuggestions(){
   if(!CONV_ID)return;
   const panel=document.getElementById('suggestPanel'),list=document.getElementById('suggestList');
   panel.style.display='block';
   list.innerHTML='<div style="color:#64748b;font-size:0.78rem;">กำลังโหลดคำแนะนำ...</div>';
   try{
-    const res=await fetch('/api/crm/inbox/'+CONV_ID+'/suggestions',{credentials:'same-origin'});
+    const res=await fetch('/api/crm/inbox/'+CONV_ID+'/suggestions?lang='+replyLanguage,{credentials:'same-origin'});
     const data=await res.json();
     if(!data.ok||!data.suggestions.length){
       list.innerHTML='<div style="color:#64748b;font-size:0.78rem;">ไม่พบคำแนะนำ</div>';return;
