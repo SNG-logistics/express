@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบสรุปรายจ่ายรอบรถ — <%= trip.trip_no %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans', 'Noto Sans Thai', Arial, sans-serif;
+      font-size: 10pt;
+      background: #e8e8e8;
+      color: #111;
+      line-height: 1.4;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── Screen Controls ── */
+    .ctrl-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1e293b; color: #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+    .ctrl-bar h2 { font-size: 14px; font-weight: 700; color: #cbd5e1; }
+    .ctrl-bar h2 b { color: #f8fafc; font-family: monospace; }
+    .ctrl-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: all .15s;
+    }
+    .btn-print { background: #f59e0b; color: #111; }
+    .btn-back  { background: rgba(255,255,255,.1); color: #f1f5f9; }
+    .ctrl-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .page-wrap {
+      padding: 70px 20px 30px;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+
+    @media print {
+      .ctrl-bar { display: none !important; }
+      body { background: #fff; }
+      .page-wrap { padding: 0; }
+    }
+
+    /* ── A4 Page Layout ── */
+    .a4 {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      padding: 18mm 18mm 20mm;
+      box-shadow: 0 4px 30px rgba(0,0,0,.25);
+      position: relative;
+    }
+
+    @page { size: A4; margin: 12mm 12mm 16mm; }
+    @media print {
+      .a4 { width: 100%; min-height: auto; padding: 0; box-shadow: none; }
+    }
+
+    /* ── Inner border (formal corporate style) ── */
+    .a4-inner {
+      border: 2px solid #111;
+      padding: 0;
+      min-height: 255mm;
+      display: flex;
+      flex-direction: column;
+    }
+    @media print { .a4-inner { min-height: auto; } }
+
+    /* ── Header Band ── */
+    .doc-header {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      align-items: center;
+      border-bottom: 2px solid #111;
+      background: #fff;
+    }
+    .hdr-logo {
+      border-right: 1px solid #111;
+      padding: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hdr-logo img { width: 60px; height: 60px; object-fit: contain; }
+    .hdr-center { text-align: center; padding: 12px 20px; }
+    .hdr-center .company-title {
+      font-size: 14pt; font-weight: 800; text-transform: uppercase; color: #111;
+      letter-spacing: 1px;
+    }
+    .hdr-center .doc-title {
+      font-size: 12pt; font-weight: 700; color: #374151; margin-top: 4px;
+      letter-spacing: 2px;
+    }
+
+    /* ── Document Metadata Band ── */
+    .doc-ref-band {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid #111;
+      background: #f8fafc;
+    }
+    .ref-cell {
+      padding: 6px 12px; border-right: 1px solid #111;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .ref-cell:last-child { border-right: none; }
+    .ref-lbl { font-size: 7pt; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: .5px; }
+    .ref-val { font-size: 10pt; font-weight: 800; color: #0f172a; font-family: 'Courier New', monospace; }
+    .ref-val.big { font-size: 12pt; font-weight: 900; color: #4338ca; }
+
+    /* ── Two-Column Trip Info ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      border-bottom: 2px solid #111;
+    }
+    .info-panel { padding: 10px 12px; }
+    .info-panel + .info-panel { border-left: 1px solid #111; }
+    .info-panel-title {
+      font-size: 7.5pt; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .6px; color: #fff; background: #1e293b;
+      padding: 3px 8px; margin: -10px -12px 8px; display: block;
+    }
+    .info-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: baseline; }
+    .info-key { font-size: 7.5pt; font-weight: 700; color: #475569; min-width: 90px; flex-shrink: 0; }
+    .info-val { font-size: 9pt; font-weight: 700; color: #0f172a; }
+
+    /* ── Sections ── */
+    .section-title {
+      font-size: 8.5pt; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .6px; color: #1e293b; background: #f1f5f9;
+      padding: 4px 12px; border-bottom: 1px solid #111;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* ── Table Styling ── */
+    .expenses-section { flex: 1; display: flex; flex-direction: column; }
+    .table-container { flex: 1; }
+    .expenses-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+    .expenses-table thead tr { background: #0f172a; color: #fff; }
+    .expenses-table thead th {
+      padding: 6px 8px;
+      font-size: 7.5pt; font-weight: 700;
+      text-align: left; text-transform: uppercase;
+      letter-spacing: .4px;
+      border-right: 1px solid #334155;
+    }
+    .expenses-table thead th.text-right { text-align: right; }
+    .expenses-table thead th.text-center { text-align: center; }
+    .expenses-table thead th:last-child { border-right: none; }
+    
+    .expenses-table tbody tr { border-bottom: .5px solid #cbd5e1; }
+    .expenses-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .expenses-table td {
+      padding: 6px 8px;
+      border-right: .5px solid #cbd5e1;
+      vertical-align: top;
+    }
+    .expenses-table td:last-child { border-right: none; }
+    
+    .td-no { width: 30px; text-align: center; font-weight: bold; }
+    .td-date { width: 85px; text-align: center; }
+    .td-type { width: 140px; font-weight: bold; color: #0f172a; }
+    .td-desc { min-width: 150px; font-size: 8pt; color: #334155; }
+    .td-payer { width: 110px; }
+    .td-amount { width: 110px; text-align: right; font-family: monospace; font-weight: 700; font-size: 9pt; }
+
+    /* ── Totals Box ── */
+    .totals-box {
+      border-top: 2px solid #111;
+      background: #f8fafc;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .totals-meta {
+      font-size: 8pt; color: #64748b;
+    }
+    .totals-list {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .total-item {
+      font-size: 10pt; font-weight: 800; color: #0f172a;
+    }
+    .total-item span {
+      font-family: monospace; font-size: 12pt; font-weight: 900; margin-left: 5px;
+    }
+    .total-item.thb span { color: #0f172a; }
+    .total-item.lak span { color: #b45309; }
+    .total-item.usd span { color: #1d4ed8; }
+
+    /* ── Memo Declaration ── */
+    .memo-declaration {
+      border-top: 1px solid #111;
+      padding: 6px 12px;
+      background: #fafafa;
+      font-size: 7.5pt; color: #475569; line-height: 1.4;
+      text-align: justify;
+    }
+
+    /* ── Signature Section ── */
+    .sig-section {
+      border-top: 2px solid #111;
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr 1px 1fr;
+      background: #fff;
+    }
+    .sig-divider { background: #111; }
+    .sig-col { padding: 10px 12px 10px; display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; }
+    .sig-heading {
+      font-size: 7.5pt; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .6px; color: #1e293b;
+      margin-bottom: 8px; display: block;
+      text-align: center;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+    }
+    .sig-box {
+      border: 1px dashed #cbd5e1; background: #fafafa;
+      height: 48px; border-radius: 4px; margin-bottom: 8px;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 4px;
+    }
+    .sig-box span { font-size: 6.5pt; color: #94a3b8; text-transform: uppercase; }
+    .sig-name {
+      font-size: 8pt; font-weight: 700; text-align: center;
+      border-bottom: 1px dashed #94a3b8;
+      width: 80%; margin: 0 auto 4px; padding-bottom: 2px;
+    }
+    .sig-date {
+      font-size: 7.5pt; color: #64748b; text-align: center;
+    }
+
+    /* ── Footer ── */
+    .doc-footer {
+      border-top: 1px solid #111;
+      padding: 4px 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #f8fafc;
+      font-size: 7pt; color: #64748b;
+    }
+    .footer-bold { color: #0f172a; font-weight: bold; }
+  </style>
+</head>
+
+<%
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return dt.toLocaleDateString('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  };
+
+  const printedAt = new Date().toLocaleString('th-TH', {
+    dateStyle: 'long', timeStyle: 'short'
+  });
+
+  // Calculate cargo summaries
+  const cargoTotalWeight = tripOrders.reduce((s, o) => s + Number(o.declared_weight || 0), 0);
+  const cargoCount = tripOrders.length;
+%>
+<body>
+
+<!-- ── Screen controls ── -->
+<div class="ctrl-bar">
+  <h2>📋 หนังสือสรุปรายจ่ายรอบรถ — <b><%= trip.trip_no %></b></h2>
+  <div style="display:flex;gap:8px;">
+    <a href="/trips/<%= trip.id %>" class="ctrl-btn btn-back">← กลับหน้าดีเทล</a>
+    <button onclick="window.print()" class="ctrl-btn btn-print">🖨 พิมพ์เอกสาร (A4)</button>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- A4 Page Container -->
+  <div class="a4">
+    <div class="a4-inner">
+
+      <!-- ① HEADER -->
+      <div class="doc-header">
+        <div class="hdr-logo">
+          <img src="/images/snglogo.png" alt="SNG Logo" onerror="this.src='/images/snglogo.png'">
+        </div>
+        <div class="hdr-center">
+          <div class="company-title">SNG Express Logistics Co., Ltd.</div>
+          <div class="doc-title">หนังสือขออนุมัติเบิกจ่ายและสรุปค่าใช้จ่ายรอบรถ</div>
+        </div>
+      </div>
+
+      <!-- ② DOC REFERENCES -->
+      <div class="doc-ref-band">
+        <div class="ref-cell">
+          <span class="ref-lbl">เลขรอบรถ (Trip No.)</span>
+          <span class="ref-val big"><%= trip.trip_no %></span>
+        </div>
+        <div class="ref-cell">
+          <span class="ref-lbl">วันที่วิ่งงาน (Trip Date)</span>
+          <span class="ref-val"><%= fmtDate(trip.trip_date) %></span>
+        </div>
+        <div class="ref-cell">
+          <span class="ref-lbl">วันที่ออกเอกสาร (Print Date)</span>
+          <span class="ref-val" style="font-size: 8.5pt;"><%= printedAt %></span>
+        </div>
+      </div>
+
+      <!-- ③ TRIP INFO -->
+      <div class="info-grid">
+        <div class="info-panel">
+          <span class="info-panel-title">🚛 รายละเอียดเที่ยวรถ &amp; พนักงานขับขี่</span>
+          <div class="info-row">
+            <span class="info-key">พนักงานขับรถ:</span>
+            <span class="info-val"><%= trip.driver_name || '—' %></span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">ทะเบียนรถ:</span>
+            <span class="info-val font-mono"><%= trip.vehicle || '—' %></span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">เส้นทางการวิ่ง:</span>
+            <span class="info-val">
+              <%= trip.direction === 'TH_TO_LA' ? '🇹🇭 ประเทศไทย → ประเทศลาว 🇱🇦' : '🇱🇦 ประเทศลาว → ประเทศไทย 🇹🇭' %>
+            </span>
+          </div>
+        </div>
+        <div class="info-panel">
+          <span class="info-panel-title">📦 ข้อมูลสรุปสินค้าเที่ยวรถ</span>
+          <div class="info-row">
+            <span class="info-key">จำนวนออเดอร์:</span>
+            <span class="info-val"><%= cargoCount %> รายการ</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">น้ำหนักสินค้ารวม:</span>
+            <span class="info-val"><%= cargoTotalWeight.toLocaleString() %> กก.</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">ด่านข้ามแดน:</span>
+            <span class="info-val">
+              <% if (trip.border_checkpoint === 'NONGKHAI') { %>ด่านหนองคาย - ท่านาแล้ง
+              <% } else if (trip.border_checkpoint === 'MUKDAHAN') { %>ด่านมุกดาหาร - สะหวันนะเขต
+              <% } else if (trip.border_checkpoint === 'CHONGMEK') { %>ด่านช่องเม็ก - วังเต่า
+              <% } else { %><%= trip.border_checkpoint || '—' %>
+              <% } %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ EXPENSES TABLE -->
+      <div class="expenses-section">
+        <div class="section-title">
+          <span>📋 รายงานแจกแจงค่าใช้จ่ายจริงในรอบรถ (Actual Expenses)</span>
+          <span style="font-size: 7.5pt; font-weight: normal; color: #475569;">รายการทั้งหมด: <%= tripExpenses.length %> รายการ</span>
+        </div>
+        
+        <div class="table-container">
+          <table class="expenses-table">
+            <thead>
+              <tr>
+                <th class="td-no text-center">#</th>
+                <th class="td-date text-center">วันที่จ่าย</th>
+                <th class="td-type">ประเภทรายจ่าย</th>
+                <th class="td-desc">รายละเอียดค่าใช้จ่าย</th>
+                <th class="td-payer">ผู้จ่าย/สำรองจ่าย</th>
+                <th class="td-amount text-right">ยอดเงิน</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (tripExpenses.length === 0) { %>
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
+                    — ไม่พบรายการค่าใช้จ่ายของรอบรถนี้ —
+                  </td>
+                </tr>
+              <% } else { %>
+                <% tripExpenses.forEach((exp, index) => { %>
+                  <tr>
+                    <td class="td-no"><%= index + 1 %></td>
+                    <td class="td-date"><%= fmtDate(exp.expense_date) %></td>
+                    <td class="td-type"><%= exp.type %></td>
+                    <td class="td-desc"><%= exp.description || '—' %></td>
+                    <td class="td-payer"><%= exp.paid_by || '—' %></td>
+                    <td class="td-amount">
+                      <% if (exp.currency === 'USD') { %>
+                        $<%= Number(exp.amount).toLocaleString('en-US', {minimumFractionDigits:2}) %>
+                      <% } else if (exp.currency === 'LAK') { %>
+                        ₭<%= Number(exp.amount).toLocaleString('th-TH') %>
+                      <% } else { %>
+                        ฿<%= Number(exp.amount).toLocaleString('th-TH', {minimumFractionDigits:2}) %>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ⑤ TOTALS BOX -->
+      <div class="totals-box">
+        <div class="totals-meta">
+          <strong>หมายเหตุยอดรวม:</strong><br>
+          * ยอดเงินจะสรุปแยกตามสกุลเงินที่จ่ายออกไปจริง<br>
+          * กรุณาแนบใบเสร็จรับเงินหรือสลิปการโอนคู่กับหนังสือฉบับนี้เพื่อเสนออนุมัติ
+        </div>
+        <div class="totals-list">
+          <div style="font-size: 7.5pt; font-weight: bold; color: #475569; text-transform: uppercase;">สรุปยอดขออนุมัติเบิกจ่ายแยกตามสกุลเงิน</div>
+          <% if (expensesSummary.THB > 0) { %>
+            <div class="total-item thb">ยอดรวม THB: <span>฿<%= expensesSummary.THB.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span></div>
+          <% } %>
+          <% if (expensesSummary.LAK > 0) { %>
+            <div class="total-item lak">ยอดรวม LAK: <span>₭<%= expensesSummary.LAK.toLocaleString('th-TH') %></span></div>
+          <% } %>
+          <% if (expensesSummary.USD > 0) { %>
+            <div class="total-item usd">ยอดรวม USD: <span>$<%= expensesSummary.USD.toLocaleString('en-US', {minimumFractionDigits:2}) %></span></div>
+          <% } %>
+          <% if (expensesSummary.THB === 0 && expensesSummary.LAK === 0 && expensesSummary.USD === 0) { %>
+            <div class="total-item" style="color:#94a3b8;">— ไม่มีรายจ่าย —</div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- ⑥ FORMAL MEMO DECLARATION -->
+      <div class="memo-declaration">
+        <b>คำรับรองความถูกต้อง:</b> ข้าพเจ้าขอรับรองว่ารายการค่าใช้จ่ายจริงที่บันทึกไว้ข้างต้น เป็นรายจ่ายเพื่อการประกอบการของบริษัทฯ ในรอบรถเที่ยววิ่งนี้จริง และมีหลักฐานใบเสร็จ/สลิปครบถ้วนถูกต้อง จึงเรียนเสนอเพื่อโปรดพิจารณาตรวจสอบและอนุมัติสั่งจ่ายตามขั้นตอนต่อไป
+      </div>
+
+      <!-- ⑦ SIGNATURE SECTION -->
+      <div class="sig-section">
+        <!-- Preparer / Driver -->
+        <div class="sig-col">
+          <div>
+            <span class="sig-heading">🧑‍💼 ผู้เสนอเบิก/ผู้เตรียมรายงาน</span>
+            <div class="sig-box">
+              <span>(ลงลายมือชื่อ)</span>
+            </div>
+            <div class="sig-name">
+              <%= trip.driver_name || '' %>
+            </div>
+          </div>
+          <div class="sig-date">
+            วันที่: _____/_____/_________
+          </div>
+        </div>
+
+        <div class="sig-divider"></div>
+
+        <!-- Auditor / Finance -->
+        <div class="sig-col">
+          <div>
+            <span class="sig-heading">🕵️ ผู้ตรวจสอบบัญชีและการเงิน</span>
+            <div class="sig-box">
+              <span>(ลงลายมือชื่อ)</span>
+            </div>
+            <div class="sig-name">
+              &nbsp;
+            </div>
+          </div>
+          <div class="sig-date">
+            วันที่: _____/_____/_________
+          </div>
+        </div>
+
+        <div class="sig-divider"></div>
+
+        <!-- Approver / Executive -->
+        <div class="sig-col">
+          <div>
+            <span class="sig-heading">👑 ผู้อนุมัติจ่าย (กรรมการ/ผู้บริหาร)</span>
+            <div class="sig-box">
+              <span>(ลงลายมือชื่ออนุมัติ)</span>
+            </div>
+            <div class="sig-name">
+              &nbsp;
+            </div>
+          </div>
+          <div class="sig-date">
+            วันที่: _____/_____/_________
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑧ FOOTER -->
+      <div class="doc-footer">
+        <div>
+          บริษัท เอสเอ็นจี เอ็กซ์เพรส โลจิสติกส์ จำกัด · SNG Express Logistics
+        </div>
+        <div>
+          เลขที่เอกสาร: <span class="footer-bold"><%= trip.trip_no %></span> · หน้า 1 / 1
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

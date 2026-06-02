@@ -154,6 +154,7 @@ export async function create(req, res) {
     vehicle, driver_name,
     max_weight, notes,
     order_ids = [],
+    initial_status = 'PLANNED',
   } = req.body;
 
   if (!trip_no || !trip_date || !direction || !border_checkpoint) {
@@ -173,12 +174,14 @@ export async function create(req, res) {
       throw new Error(`Trip No "${trip_no}" ถูกใช้แล้ว`);
     }
 
+    const tripStatus = initial_status === 'COMPLETED' ? 'COMPLETED' : 'PLANNED';
+
     const [result] = await pool.query(
-      `INSERT INTO trips (trip_no, trip_date, direction, origin_border, dest_border, border_checkpoint, vehicle, driver_name, notes, max_weight)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trips (trip_no, trip_date, direction, origin_border, dest_border, border_checkpoint, vehicle, driver_name, notes, max_weight, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [trip_no, trip_date, direction, origin_border || null, dest_border || null, border_checkpoint,
        vehicle || null, driver_name || null, notes || null,
-       max_weight ? Number(max_weight) : null]
+       max_weight ? Number(max_weight) : null, tripStatus]
     );
     const tripId = result.insertId;
 
@@ -200,16 +203,24 @@ export async function create(req, res) {
           numericIds.flatMap(oid => [tripId, oid])
         );
 
-        // Update order status to ON_TRUCK
-        await pool.query(
-          `UPDATE orders SET status = 'ON_TRUCK', trip_id = ? WHERE id IN (${numericIds.map(() => '?').join(',')})`,
-          [tripId, ...numericIds]
-        );
+        // Update order status to DELIVERED if trip completed, else ON_TRUCK
+        if (tripStatus === 'COMPLETED') {
+          await pool.query(
+            `UPDATE orders SET status = 'DELIVERED', delivered_at = NOW(), trip_id = ? WHERE id IN (${numericIds.map(() => '?').join(',')})`,
+            [tripId, ...numericIds]
+          );
+        } else {
+          await pool.query(
+            `UPDATE orders SET status = 'ON_TRUCK', trip_id = ? WHERE id IN (${numericIds.map(() => '?').join(',')})`,
+            [tripId, ...numericIds]
+          );
+        }
 
         // Status logs
+        const targetOrderStatus = tripStatus === 'COMPLETED' ? 'DELIVERED' : 'ON_TRUCK';
         for (const oid of numericIds) {
-          await logStatus(oid, statusById[oid] || null, 'ON_TRUCK',
-            `ผูกรอบรถ ${trip_no}`, req.session.user?.id);
+          await logStatus(oid, statusById[oid] || null, targetOrderStatus,
+            tripStatus === 'COMPLETED' ? `ผูกรอบรถย้อนหลัง ${trip_no} (สถานะสำเร็จ)` : `ผูกรอบรถ ${trip_no}`, req.session.user?.id);
         }
       }
     }
@@ -307,6 +318,22 @@ export async function detail(req, res) {
     LIMIT 15
   `, [id]);
 
+  // Query actual expenses for this trip
+  const [tripExpenses] = await pool.query(`
+    SELECT e.*, u.name as created_by_name 
+    FROM expenses e
+    LEFT JOIN users u ON e.created_by = u.id
+    WHERE e.trip_id = ?
+    ORDER BY e.expense_date ASC, e.id ASC
+  `, [id]);
+
+  const expensesSummary = tripExpenses.reduce((acc, exp) => {
+    const cur = exp.currency || 'THB';
+    const amt = Number(exp.amount) || 0;
+    acc[cur] = (acc[cur] || 0) + amt;
+    return acc;
+  }, { THB: 0, LAK: 0, USD: 0 });
+
   // Next allowed statuses for this trip
   const nextStatuses = TRIP_TRANSITIONS[trip.status] || [];
 
@@ -317,6 +344,8 @@ export async function detail(req, res) {
     totals,
     availableOrders,
     tripLogs,
+    tripExpenses,
+    expensesSummary,
     nextStatuses,
     STATUS_LABELS: TRIP_STATUS_LABELS,
     error: null,
@@ -556,5 +585,53 @@ export async function apiArrivingTrips(req, res) {
   } catch (err) {
     console.error('[Trip apiArrivingTrips]', err);
     res.status(500).json({ trips: [], error: err.message });
+  }
+}
+
+// ─── PRINT EXPENSES SUMMARY ──────────────────────────────────────────────────
+export async function printExpenses(req, res) {
+  try {
+    const { id } = req.params;
+    const [[trip]] = await pool.query('SELECT * FROM trips WHERE id = ?', [id]);
+    if (!trip) return res.status(404).send('Trip not found');
+
+    const [tripOrders] = await pool.query(`
+      SELECT o.id, o.job_no, o.direction, o.status,
+             o.price_amount, o.cod_amount, o.declared_weight,
+             s.name AS sender_name, r.name AS receiver_name
+      FROM trip_orders to2
+      JOIN orders o ON o.id = to2.order_id
+      LEFT JOIN customers s ON s.id = o.sender_id
+      LEFT JOIN customers r ON r.id = o.receiver_id
+      WHERE to2.trip_id = ?
+      ORDER BY o.created_at ASC
+    `, [id]);
+
+    const [tripExpenses] = await pool.query(`
+      SELECT e.*, u.name as created_by_name 
+      FROM expenses e
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE e.trip_id = ?
+      ORDER BY e.expense_date ASC, e.id ASC
+    `, [id]);
+
+    const expensesSummary = tripExpenses.reduce((acc, exp) => {
+      const cur = exp.currency || 'THB';
+      const amt = Number(exp.amount) || 0;
+      acc[cur] = (acc[cur] || 0) + amt;
+      return acc;
+    }, { THB: 0, LAK: 0, USD: 0 });
+
+    res.render('trips/expense-print', {
+      layout: false,
+      trip,
+      tripOrders,
+      tripExpenses,
+      expensesSummary,
+      user: req.session.user
+    });
+  } catch (error) {
+    console.error('Print expenses error:', error);
+    res.status(500).send('Error generating print view: ' + error.message);
   }
 }

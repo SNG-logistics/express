@@ -182,6 +182,69 @@
     </div>
   </div>
 
+  <!-- Filters Form Panel -->
+  <form method="GET" action="/expenses" class="glass-panel-dark rounded-2xl border border-white/10 p-5 space-y-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- 1. Payer dropdown -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ผู้จ่ายเงิน / ผู้ลงทุน</label>
+        <select name="paid_by" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+          <option value="">-- ทั้งหมด --</option>
+          <% payers.forEach(p => { %>
+            <option value="<%= p.paid_by %>" <%= filters.paid_by === p.paid_by ? 'selected' : '' %>><%= p.paid_by %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <!-- 2. Trip dropdown -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">รอบรถ</label>
+        <select name="trip_id" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+          <option value="">-- ทั้งหมด --</option>
+          <% trips.forEach(t => { %>
+            <option value="<%= t.id %>" <%= String(filters.trip_id) === String(t.id) ? 'selected' : '' %>><%= t.trip_no %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <!-- 3. Start Date -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">จากวันที่</label>
+        <input type="date" name="start_date" value="<%= filters.start_date %>" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+      </div>
+
+      <!-- 4. End Date -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ถึงวันที่</label>
+        <input type="date" name="end_date" value="<%= filters.end_date %>" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+      </div>
+    </div>
+
+    <!-- Actions Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5">
+      <div class="flex items-center gap-2">
+        <button type="submit" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-magnifying-glass"></i> ค้นหา
+        </button>
+        <a href="/expenses" class="bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white px-5 py-2 rounded-xl font-bold transition-all text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate-left"></i> ล้างตัวกรอง
+        </a>
+      </div>
+      
+      <button type="button" onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-1.5">
+        <i class="fa-solid fa-file-excel"></i> ส่งออก Excel
+      </button>
+    </div>
+  </form>
+
+  <script>
+  function exportToExcel() {
+    const form = document.querySelector('form[action="/expenses"]');
+    const params = new URLSearchParams(new FormData(form)).toString();
+    window.location.href = '/expenses/export?' + params;
+  }
+  </script>
+
   <!-- Filters -->
   <div class="flex gap-2 p-1 bg-white/5 rounded-xl w-fit">
     <button @click="filter = 'ALL'" :class="filter === 'ALL' ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">ทั้งหมด</button>

@@ -90,6 +90,18 @@
               class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-indigo-500/50 transition-all">
           </div>
 
+          <!-- Initial Status (Planned or Completed backdate) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              สถานะเริ่มต้นรอบรถ <span class="text-red-400">*</span>
+            </label>
+            <select name="initial_status" required
+              class="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-indigo-500/50 transition-all text-sm appearance-none">
+              <option value="PLANNED" class="bg-slate-800 text-white" selected>วางแผนรอบรถปกติ (PLANNED)</option>
+              <option value="COMPLETED" class="bg-slate-800 text-emerald-400">เสร็จสิ้นรอบรถย้อนหลัง (COMPLETED - ออเดอร์ส่งสำเร็จทันที)</option>
+            </select>
+          </div>
+
           <!-- Border Points -->
           <div class="space-y-3">
             <div>

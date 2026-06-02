@@ -44,6 +44,9 @@ const upload = multer({
 // View Dashboard / List
 router.get('/', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.index);
 
+// Export Excel (CSV)
+router.get('/export', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.exportExcel);
+
 // Create Expense Form
 router.get('/new', requireAnyRole(ROLES_EXPENSES_ADD), expensesController.newExpense);
 

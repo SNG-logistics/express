@@ -28,6 +28,7 @@ router.post('/trips',                   requireLogin, requireRole(ROLES_DISPATCH
 router.post('/trips/:id/update-status', requireLogin, requireRole(ROLES_DISPATCHER),   trips.updateStatus);
 router.post('/trips/:id/orders',        requireLogin, requireRole(ROLES_DISPATCHER),   trips.attachOrders);
 router.get('/trips/:id/manifest',       requireLogin,                                   trips.printManifest);
+router.get('/trips/:id/expenses/print', requireLogin,                                   trips.printExpenses);
 
 router.post('/trips/:id/orders/:orderId/detach', requireLogin, requireRole(ROLES_DISPATCHER), trips.detachOrder);
 
