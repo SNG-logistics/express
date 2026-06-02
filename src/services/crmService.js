@@ -377,6 +377,34 @@ export async function getDashboardKpis() {
     JOIN users u ON u.id = c.assigned_agent_id
     WHERE c.status = 'OPEN'
     GROUP BY c.assigned_agent_id
+    ORDER BY conversation_count DESC
+    LIMIT 10
+  `);
+  const [topTags] = await pool.query(`
+    SELECT t.tag_name, t.tag_color, COUNT(ct.id) AS usage_count
+    FROM crm_conversation_tags ct
+    JOIN crm_tags t ON t.id = ct.tag_id
+    GROUP BY t.id ORDER BY usage_count DESC LIMIT 8
+  `);
+
+  return { open_conversations, pending_conversations, open_cases, overdue_sla, channelVolume, agentWorkload, topTags };
+}
+
+// ������ Helpers ������������������������������������������������������������������������������������������������������������������������������������
+
+export async function listQueues() {
+  const [rows] = await pool.query(`SELECT * FROM crm_queues WHERE is_active = 1 ORDER BY queue_name`);
+  return rows;
+}
+
+export async function listTags() {
+  const [rows] = await pool.query(`SELECT * FROM crm_tags WHERE is_active = 1 ORDER BY tag_group, tag_name`);
+  return rows;
+}
+
+
+export async function listAgents() {
+  const [rows] = await pool.query(`
     SELECT id, name, username, role FROM users
     WHERE role IN ('crm_admin','crm_supervisor','crm_agent','sales_agent','logistics_support','finance_support','admin','manager')
       AND (status = 'active' OR status IS NULL)
@@ -396,10 +424,10 @@ export async function saveChannel({ channelType, channelName, pageId, accessToke
   `, [channelType]);
 
   if (existing) {
-    const updates = [channel_name = ?, 'is_active = 1'];
+    const updates = ['channel_name = ?', 'external_account_id = ?', 'is_active = 1'];
     const params  = [channelName, pageId];
     if (accessToken) { updates.push('access_token_encrypted = ?'); params.push(accessToken); }
-    if (webhookSecret) { updates.push(webhook_secret = ?); params.push(webhookSecret); }
+    if (webhookSecret) { updates.push('webhook_secret = ?'); params.push(webhookSecret); }
     params.push(existing.id);
     await pool.query(`UPDATE crm_channels SET ${updates.join(', ')} WHERE id = ?`, params);
     return existing.id;
@@ -413,26 +441,6 @@ export async function saveChannel({ channelType, channelName, pageId, accessToke
 }
 
 // ������ Quick Reply CRUD ������������������������������������������������������������������������������������������������������������������
-
-export async function listQueues() {
-  const [rows] = await pool.query('SELECT * FROM crm_queues WHERE is_active = 1 ORDER BY queue_name');
-  return rows;
-}
-
-export async function listTags() {
-  const [rows] = await pool.query('SELECT * FROM crm_tags WHERE is_active = 1 ORDER BY tag_group, tag_name');
-  return rows;
-}
-
-export async function listAgents() {
-  const [rows] = await pool.query(`
-    SELECT id, name, username, role FROM users
-    WHERE role IN ('crm_admin','crm_supervisor','crm_agent','sales_agent','logistics_support','finance_support','admin','manager')
-      AND (status = 'active' OR status IS NULL)
-    ORDER BY name
-  `);
-  return rows;
-}
 
 export async function listQuickReplies(opts = {}) {
   // Backward-compat: accepts string lang or object { search, category }
