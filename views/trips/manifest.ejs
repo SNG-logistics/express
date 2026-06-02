@@ -590,7 +590,7 @@
     <!-- ⑨  FOOTER ── -->
     <div class="doc-footer">
       <div class="footer-left">
-        SNG Express Logistics Co., Ltd. · บริษัท เอสเอ็นจี เอ็กซ์เพรส โลจิสติกส์ จำกัด<br>
+        <%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %> · <%= company.company_name_th || 'บริษัท เอสเอ็นจี บริการครบวงจร จำกัด' %><br>
         เลขที่: <%= trip.trip_no %> · วันที่พิมพ์: <%= printedAt %>
       </div>
       <div class="footer-right">

@@ -4,7 +4,7 @@
 %>
 <link rel="stylesheet" href="/css/crm.css">
 
-<% const customer = data.customer; const conversations = data.conversations||[]; const cases = data.cases||[]; %>
+<% // customer, conversations, and cases are passed directly from locals %>
 
 <div style="max-width:900px;margin:0 auto;padding:24px 16px;">
 
@@ -40,7 +40,7 @@
         <div class="crm-context-field"><span class="field-label">เบอร์โทรศัพท์</span><span class="field-value"><%= customer.phone||'-' %></span></div>
         <div class="crm-context-field"><span class="field-label">อีเมล</span><span class="field-value"><%= customer.email||'-' %></span></div>
         <div class="crm-context-field"><span class="field-label">ที่อยู่</span><span class="field-value" style="grid-column:span 2;"><%= customer.address||'-' %></span></div>
-        <div class="crm-context-field"><span class="field-label">หมายเหตุ</span><span class="field-value"><%= customer.notes||'-' %></span></div>
+        <div class="crm-context-field"><span class="field-label">หมายเหตุ</span><span class="field-value"><%= customer.note||'-' %></span></div>
         <div class="crm-context-field"><span class="field-label">สมัครเมื่อ</span><span class="field-value"><%= customer.created_at?new Date(customer.created_at).toLocaleDateString('th-TH'):'-' %></span></div>
       </div>
     </div>
@@ -73,7 +73,7 @@
         <div style="font-size:0.78rem;color:#e2e8f0;font-weight:600;"><%=cs.subject||'ไม่ระบุหัวข้อ'%></div>
         <div style="display:flex;gap:5px;margin-top:3px;">
           <span class="crm-badge crm-badge-normal" style="font-size:0.6rem;"><%=cs.case_type%></span>
-          <span class="crm-badge <%={OPEN:'crm-badge-open',RESOLVED:'crm-badge-resolved'}[cs.status]||'crm-badge-normal'%>" style="font-size:0.6rem;"><%=cs.status%></span>
+          <span class="crm-badge <%={OPEN:'crm-badge-open',RESOLVED:'crm-badge-resolved'}[cs.case_status]||'crm-badge-normal'%>" style="font-size:0.6rem;"><%=cs.case_status%></span>
         </div>
       </div>
       <%})%>
