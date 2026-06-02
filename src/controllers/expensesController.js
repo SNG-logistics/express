@@ -397,7 +397,7 @@ export async function printReport(req, res) {
 // ─── P&L PROFIT AND LOSS REPORT ───────────────────────────────────────────────
 export async function plReport(req, res) {
   try {
-    const { start_date, end_date, group_by, print } = req.query;
+    const { start_date, end_date, group_by, print, submitted } = req.query;
     const now = new Date();
     
     // Default dates
@@ -408,6 +408,12 @@ export async function plReport(req, res) {
     const start = start_date || firstDayOfMonth;
     const end = end_date || todayStr;
     const groupBy = group_by || 'day'; // 'day', 'month', 'year'
+
+    // Checkboxes (default to true/checked on first load)
+    const includeRevenue = submitted ? (req.query.include_revenue === '1') : true;
+    const includeOpex = submitted ? (req.query.include_opex === '1') : true;
+    const includeCapex = submitted ? (req.query.include_capex === '1') : true;
+    const includeAdmin = submitted ? (req.query.include_admin === '1') : true;
 
     // 1. Fetch latest exchange rates
     const [[rateTHB_LAK]] = await pool.query(
@@ -509,17 +515,23 @@ export async function plReport(req, res) {
     };
 
     // Process Revenues (orders)
-    for (const order of orders) {
-      const key = formatDateKey(order.created_at);
-      const g = getGroupObj(key);
-      const { thb, lak } = convertAmount(order.price_amount, order.price_currency);
-      g.orderCount += 1;
-      g.revenueThb += thb;
-      g.revenueLak += lak;
+    if (includeRevenue) {
+      for (const order of orders) {
+        const key = formatDateKey(order.created_at);
+        const g = getGroupObj(key);
+        const { thb, lak } = convertAmount(order.price_amount, order.price_currency);
+        g.orderCount += 1;
+        g.revenueThb += thb;
+        g.revenueLak += lak;
+      }
     }
 
     // Process Expenses
     for (const exp of expenses) {
+      if (exp.category === 'TRIP' && !includeOpex) continue;
+      if (exp.category === 'CAPITAL' && !includeCapex) continue;
+      if (exp.category === 'ADMIN' && !includeAdmin) continue;
+
       const key = formatDateKey(exp.expense_date);
       const g = getGroupObj(key);
       const { thb, lak } = convertAmount(exp.amount, exp.currency);
@@ -615,7 +627,11 @@ export async function plReport(req, res) {
       filters: {
         start_date: start,
         end_date: end,
-        group_by: groupBy
+        group_by: groupBy,
+        include_revenue: includeRevenue,
+        include_opex: includeOpex,
+        include_capex: includeCapex,
+        include_admin: includeAdmin
       }
     };
 

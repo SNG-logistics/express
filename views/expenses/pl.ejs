@@ -112,6 +112,8 @@
 
   <!-- Filters Panel -->
   <form method="GET" action="/expenses/pl" class="glass-panel-dark rounded-2xl border border-white/10 p-5 space-y-4">
+    <input type="hidden" name="submitted" value="1">
+    
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <!-- 1. Start Date -->
       <div>
@@ -133,6 +135,42 @@
           <option value="month" <%= filters.group_by === 'month' ? 'selected' : '' %>>รายเดือน (Monthly)</option>
           <option value="year" <%= filters.group_by === 'year' ? 'selected' : '' %>>รายปี (Yearly)</option>
         </select>
+      </div>
+    </div>
+
+    <!-- Category Checkboxes -->
+    <div class="bg-white/5 border border-white/5 rounded-xl p-4 space-y-2">
+      <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+        <i class="fa-solid fa-list-check text-slate-500"></i> เลือกประเภทข้อมูลที่จะประมวลผล (P&L Data Inclusions)
+      </span>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white">
+        <!-- Revenue -->
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="include_revenue" value="1" <%= filters.include_revenue ? 'checked' : '' %>
+                 class="w-4.5 h-4.5 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-0 focus:ring-offset-0 accent-amber-500">
+          <span>รายรับรวม (A)</span>
+        </label>
+        
+        <!-- OPEX -->
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="include_opex" value="1" <%= filters.include_opex ? 'checked' : '' %>
+                 class="w-4.5 h-4.5 rounded border-slate-700 bg-slate-900 text-purple-500 focus:ring-0 focus:ring-offset-0 accent-purple-500">
+          <span>รายจ่ายรอบรถ (OPEX)</span>
+        </label>
+        
+        <!-- CAPEX -->
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="include_capex" value="1" <%= filters.include_capex ? 'checked' : '' %>
+                 class="w-4.5 h-4.5 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-0 focus:ring-offset-0 accent-emerald-500">
+          <span>เงินลงทุน (CAPEX)</span>
+        </label>
+        
+        <!-- ADMIN -->
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" name="include_admin" value="1" <%= filters.include_admin ? 'checked' : '' %>
+                 class="w-4.5 h-4.5 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0 focus:ring-offset-0 accent-blue-500">
+          <span>บริหารออฟฟิศ (Admin)</span>
+        </label>
       </div>
     </div>
 

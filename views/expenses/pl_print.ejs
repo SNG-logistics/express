@@ -331,6 +331,13 @@
             </span>
           </div>
         </div>
+        <div style="border-top: 1px dashed #cbd5e1; margin-top: 6px; padding-top: 4px; font-size: 7.5pt; color: #475569; display: flex; gap: 15px;">
+          <span><b>ขอบเขตข้อมูล (Inclusions):</b></span>
+          <span>รายรับ: <%= filters.include_revenue ? '✔️ รวม' : '❌ ไม่รวม' %></span>
+          <span>รอบรถ (OPEX): <%= filters.include_opex ? '✔️ รวม' : '❌ ไม่รวม' %></span>
+          <span>เงินลงทุน (CAPEX): <%= filters.include_capex ? '✔️ รวม' : '❌ ไม่รวม' %></span>
+          <span>สำนักงาน (Admin): <%= filters.include_admin ? '✔️ รวม' : '❌ ไม่รวม' %></span>
+        </div>
       </div>
 
       <!-- ④ REPORT TABLE -->
