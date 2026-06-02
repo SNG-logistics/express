@@ -184,9 +184,9 @@ export async function lineInbound(req, res) {
   res.sendStatus(200); // Always ack immediately
 
   const signature = req.headers['x-line-signature'];
-  const rawBody   = req.rawBody || JSON.stringify(req.body);
+  const rawBody   = req.rawBody || JSON.stringify(req.body || {});
 
-  const body = req.body;
+  const body = req.body || {};
   if (!body.events?.length) return;
 
   // Look up channel by LINE destination (bot UID)

@@ -15,14 +15,28 @@ import { facebookVerify, facebookInbound, lineInbound } from '../controllers/web
 const router = Router();
 
 /**
- * Capture raw body string BEFORE express.json() parses it.
- * Required for HMAC signature verification on both FB and LINE.
+ * Capture raw body string AND parse JSON.
+ * This must be done in ONE middleware because we consume the stream here —
+ * a subsequent express.json() would see an empty stream and return 500.
  */
 function captureRawBody(req, res, next) {
   const chunks = [];
   req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
+  req.once('end', () => {
     req.rawBody = Buffer.concat(chunks).toString('utf8');
+    // Parse JSON so req.body is available for the handler
+    if (req.rawBody) {
+      try { req.body = JSON.parse(req.rawBody); } catch { req.body = {}; }
+    } else {
+      req.body = {};
+    }
+    next();
+  });
+  // Safety: if stream errors, don't hang
+  req.once('error', (err) => {
+    console.error('[captureRawBody] stream error:', err.message);
+    req.rawBody = '';
+    req.body = {};
     next();
   });
 }
@@ -31,21 +45,20 @@ function captureRawBody(req, res, next) {
 // Verification challenge: GET with hub.verify_token
 router.get('/webhooks/facebook', facebookVerify);
 
-// Inbound messages: POST — capture raw body first for X-Hub-Signature-256
+// Inbound messages: POST — captureRawBody handles raw capture + JSON parse
 router.post(
   '/webhooks/facebook',
   captureRawBody,
-  express.json({ type: 'application/json' }),
   facebookInbound
 );
 
 // ── LINE OA ────────────────────────────────────────────────────────────────────
-// Capture raw body for X-Line-Signature + parse JSON
+// captureRawBody handles raw capture + JSON parse in one pass
 router.post(
   '/webhooks/line',
   captureRawBody,
-  express.json({ type: 'application/json' }),
   lineInbound
 );
 
 export default router;
+
