@@ -414,6 +414,26 @@ export async function saveChannel({ channelType, channelName, pageId, accessToke
 
 // ������ Quick Reply CRUD ������������������������������������������������������������������������������������������������������������������
 
+export async function listQueues() {
+  const [rows] = await pool.query('SELECT * FROM crm_queues WHERE is_active = 1 ORDER BY queue_name');
+  return rows;
+}
+
+export async function listTags() {
+  const [rows] = await pool.query('SELECT * FROM crm_tags WHERE is_active = 1 ORDER BY tag_group, tag_name');
+  return rows;
+}
+
+export async function listAgents() {
+  const [rows] = await pool.query(`
+    SELECT id, name, username, role FROM users
+    WHERE role IN ('crm_admin','crm_supervisor','crm_agent','sales_agent','logistics_support','finance_support','admin','manager')
+      AND (status = 'active' OR status IS NULL)
+    ORDER BY name
+  `);
+  return rows;
+}
+
 export async function listQuickReplies(opts = {}) {
   // Backward-compat: accepts string lang or object { search, category }
   if (typeof opts === 'string') opts = {};
