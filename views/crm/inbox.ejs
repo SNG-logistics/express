@@ -169,8 +169,8 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
           <button type="button" onclick="toggleQrPanel()" class="btn-crm btn-crm-secondary btn-crm-sm"><i class="fa-solid fa-bolt"></i> ตอบด่วน</button>
           
           <!-- Language Toggle (TH/LA) -->
-          <div style="display:inline-flex;align-items:center;padding:2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;margin-left:12px;">
-            <button type="button" id="btnReplyLangTh" onclick="setReplyLanguage('TH')" class="btn-crm" style="padding:3px 9px;font-size:0.7rem;font-weight:900;border:none;border-radius:6px;background:#FFE000;color:#000;cursor:pointer;transition:all 0.2s;">TH</button>
+          <div style="display:inline-flex;align-items:center;padding:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;margin-left:12px;">
+            <button type="button" id="btnReplyLangTh" onclick="setReplyLanguage('TH')" class="btn-crm" style="padding:3px 9px;font-size:0.7rem;font-weight:900;border:none;border-radius:6px;background:rgba(129,140,248,0.2);color:#818cf8;cursor:pointer;transition:all 0.2s;">TH</button>
             <button type="button" id="btnReplyLangLa" onclick="setReplyLanguage('LA')" class="btn-crm" style="padding:3px 9px;font-size:0.7rem;font-weight:900;border:none;border-radius:6px;background:transparent;color:#94a3b8;cursor:pointer;transition:all 0.2s;">LA</button>
           </div>
 
@@ -308,15 +308,15 @@ function setReplyLanguage(lang) {
   const btnTh = document.getElementById('btnReplyLangTh');
   const btnLa = document.getElementById('btnReplyLangLa');
   if (lang === 'TH') {
-    btnTh.style.background = '#FFE000';
-    btnTh.style.color = '#000';
+    btnTh.style.background = 'rgba(129, 140, 248, 0.2)';
+    btnTh.style.color = '#818cf8';
     btnLa.style.background = 'transparent';
     btnLa.style.color = '#94a3b8';
   } else {
     btnTh.style.background = 'transparent';
     btnTh.style.color = '#94a3b8';
-    btnLa.style.background = '#FFE000';
-    btnLa.style.color = '#000';
+    btnLa.style.background = 'rgba(129, 140, 248, 0.2)';
+    btnLa.style.color = '#818cf8';
   }
   const panel = document.getElementById('suggestPanel');
   if (panel && panel.style.display !== 'none') {
