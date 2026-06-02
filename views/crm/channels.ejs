@@ -75,7 +75,7 @@
               <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Page ID *</label>
               <input type="text" name="page_id" class="crm-search-input" style="width:100%;"
                      placeholder="123456789012345"
-                     value="<%= (channels.find(c=>c.channel_type==='FACEBOOK')?.page_id) || '' %>">
+                     value="<%= (channels.find(c=>c.channel_type==='FACEBOOK')?.external_account_id) || '' %>">
             </div>
             <div>
               <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Page Access Token *</label>
@@ -136,7 +136,7 @@
               <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Bot User ID (LINE UID)</label>
               <input type="text" name="page_id" class="crm-search-input" style="width:100%;"
                      placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                     value="<%= (channels.find(c=>c.channel_type==='LINE_OA')?.page_id) || '' %>">
+                     value="<%= (channels.find(c=>c.channel_type==='LINE_OA')?.external_account_id) || '' %>">
             </div>
             <div>
               <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;margin-bottom:4px;">Channel Access Token *</label>
