@@ -102,7 +102,7 @@ export async function facebookInbound(req, res) {
 
     // Look up channel record in DB
     const [[channel]] = await pool.query(`
-      SELECT * FROM crm_channels WHERE channel_type = 'FACEBOOK' AND page_id = ? AND is_active = 1 LIMIT 1
+      SELECT * FROM crm_channels WHERE channel_type = 'FACEBOOK' AND external_account_id = ? AND is_active = 1 LIMIT 1
     `, [pageId]).catch(() => [[null]]);
     if (!channel) {
       console.warn(`[Webhook/FB] No active channel for page_id=${pageId}`);
@@ -194,7 +194,7 @@ export async function lineInbound(req, res) {
   const [[channel]] = await pool.query(`
     SELECT * FROM crm_channels
     WHERE channel_type = 'LINE_OA'
-      AND page_id = ?
+      AND external_account_id = ?
       AND is_active = 1
     LIMIT 1
   `, [lineDestination]).catch(() => [[null]]);
@@ -205,8 +205,8 @@ export async function lineInbound(req, res) {
   }
 
   // Verify signature
-  if (signature && channel.webhook_secret_encrypted) {
-    if (!verifyLineSignature(rawBody, signature, channel.webhook_secret_encrypted)) {
+  if (signature && channel.webhook_secret) {
+    if (!verifyLineSignature(rawBody, signature, channel.webhook_secret)) {
       console.warn('[Webhook/LINE] Signature mismatch — ignoring');
       return;
     }
