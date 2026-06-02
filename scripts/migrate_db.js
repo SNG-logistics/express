@@ -30,6 +30,7 @@ const SQL_FILES = [
   'migrate_009_expenses_currency.sql',
   'migrate_010_space_booking.sql',
   'migrate_011_rider_mode.sql',
+  'migrate_012_trip_settlement.sql',
 ];
 
 async function runMigrations() {

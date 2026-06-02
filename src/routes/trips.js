@@ -14,6 +14,7 @@ import {
   requireLogin,
   requireRole,
   ROLES_MANAGE,
+  ROLES_FINANCE,
 } from '../middleware/auth.js';
 
 const ROLES_DISPATCHER = ['admin', 'manager', 'dispatcher'];
@@ -23,6 +24,7 @@ const router = Router();
 router.get('/trips',                    requireLogin,                                    trips.list);
 router.get('/trips/new',                requireLogin, requireRole(ROLES_DISPATCHER),    trips.showCreate);
 router.post('/trips',                   requireLogin, requireRole(ROLES_DISPATCHER),    trips.create);
+router.post('/trips/:id/settle',        requireLogin, requireRole(ROLES_FINANCE),       trips.settleTrip);
 
 // Specific routes BEFORE generic :id route
 router.post('/trips/:id/update-status', requireLogin, requireRole(ROLES_DISPATCHER),   trips.updateStatus);

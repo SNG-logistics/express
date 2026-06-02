@@ -462,6 +462,22 @@
         </div>
       </div>
 
+      <% if (trip.settled_by) { %>
+        <!-- Settlement Stamp -->
+        <div style="margin: 8px 12px; border: 2.5px double #10b981; color: #047857; background: #ecfdf5; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 8.5pt; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14pt;">✅</span>
+          <div>
+            <strong>ทริปนี้เคลียร์จ่ายคืนเรียบร้อยแล้วโดย: <%= trip.settled_by %></strong><br>
+            <span style="font-size: 7.5pt; font-weight: normal; color: #065f46;">
+              ระบบปรับเปลี่ยนข้อมูลผู้ชำระของแต่ละรายการชำระแล้ว ·
+              <% if (trip.settled_at) { %>
+                วันเวลาที่ทำรายการ: <%= new Date(trip.settled_at).toLocaleDateString('th-TH') %> <%= new Date(trip.settled_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) %>
+              <% } %>
+            </span>
+          </div>
+        </div>
+      <% } %>
+
       <!-- ⑥ FORMAL MEMO DECLARATION -->
       <div class="memo-declaration">
         <b>คำรับรองความถูกต้อง:</b> ข้าพเจ้าขอรับรองว่ารายการค่าใช้จ่ายจริงที่บันทึกไว้ข้างต้น เป็นรายจ่ายเพื่อการประกอบการของบริษัทฯ ในรอบรถเที่ยววิ่งนี้จริง และมีหลักฐานใบเสร็จ/สลิปครบถ้วนถูกต้อง จึงเรียนเสนอเพื่อโปรดพิจารณาตรวจสอบและอนุมัติสั่งจ่ายตามขั้นตอนต่อไป

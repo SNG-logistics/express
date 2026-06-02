@@ -477,7 +477,23 @@
         <i class="fa-solid fa-file-invoice-dollar text-purple-400"></i>
         รายการค่าใช้จ่ายในรอบรถ (Trip Expenses)
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager' || currentUser.role === 'finance')) { %>
+          <form action="/trips/<%= trip.id %>/settle" method="POST" class="flex items-center gap-1.5 bg-black/40 border border-white/5 p-1 rounded-xl">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider pl-2"><i class="fa-solid fa-circle-check text-amber-500 mr-0.5"></i> เคลียร์ยอดโดย:</span>
+            <select name="settled_by" onchange="this.form.submit()" class="bg-slate-900 border-0 rounded-lg px-2 py-1 text-xs text-amber-400 font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer">
+              <option value="">-- ยังไม่เคลียร์ --</option>
+              <option value="พี่เก่ง" <%= trip.settled_by === 'พี่เก่ง' ? 'selected' : '' %>>พี่เก่ง</option>
+              <option value="พี่ตุ้ย" <%= trip.settled_by === 'พี่ตุ้ย' ? 'selected' : '' %>>พี่ตุ้ย</option>
+              <option value="บัญชีกลาง (ออฟฟิศ)" <%= trip.settled_by === 'บัญชีกลาง (ออฟฟิศ)' ? 'selected' : '' %>>บัญชีกลาง (ออฟฟิศ)</option>
+            </select>
+          </form>
+        <% } else if (trip.settled_by) { %>
+          <div class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1">
+            <i class="fa-solid fa-circle-check"></i> เคลียร์ยอดแล้วโดย <%= trip.settled_by %>
+          </div>
+        <% } %>
         <a href="/expenses/new?trip_id=<%= trip.id %>" class="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold hover:bg-purple-500/20 transition-all flex items-center gap-1">
           <i class="fa-solid fa-plus"></i> เพิ่มรายจ่ายรอบรถ
         </a>

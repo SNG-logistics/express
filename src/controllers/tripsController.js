@@ -669,3 +669,52 @@ export async function printExpenses(req, res) {
     res.status(500).send('Error generating print view: ' + error.message);
   }
 }
+
+// ─── SETTLE TRIP EXPENSES ────────────────────────────────────────────────────
+export async function settleTrip(req, res) {
+  const { id } = req.params;
+  const { settled_by } = req.body;
+
+  try {
+    const [[trip]] = await pool.query('SELECT * FROM trips WHERE id = ?', [id]);
+    if (!trip) {
+      req.session.flash = { type: 'error', message: 'ไม่พบรอบรถ' };
+      return res.redirect('/trips');
+    }
+
+    if (!settled_by || settled_by.trim() === '') {
+      // Undo settlement: set settled_by = NULL, settled_at = NULL
+      await pool.query(
+        'UPDATE trips SET settled_by = NULL, settled_at = NULL WHERE id = ?',
+        [id]
+      );
+      // Revert paid_by of expenses from the old settled person back to 'คนขับรถ (สำรองจ่าย)'
+      if (trip.settled_by) {
+        await pool.query(
+          "UPDATE expenses SET paid_by = 'คนขับรถ (สำรองจ่าย)' WHERE trip_id = ? AND paid_by = ?",
+          [id, trip.settled_by]
+        );
+      }
+      req.session.flash = { type: 'success', message: 'ยกเลิกการตัดยอดเคลียร์จ่ายคืนเรียบร้อย' };
+    } else {
+      // Settle: set settled_by = settled_by, settled_at = NOW()
+      const settledPerson = settled_by.trim();
+      await pool.query(
+        'UPDATE trips SET settled_by = ?, settled_at = NOW() WHERE id = ?',
+        [settledPerson, id]
+      );
+      // Update only driver-advanced or blank expenses of this trip to be paid by the settledPerson
+      await pool.query(
+        "UPDATE expenses SET paid_by = ? WHERE trip_id = ? AND (paid_by = 'คนขับรถ (สำรองจ่าย)' OR paid_by IS NULL OR paid_by = '')",
+        [settledPerson, id]
+      );
+      req.session.flash = { type: 'success', message: `ตัดยอดเคลียร์จ่ายคืนสำเร็จโดย ${settledPerson}` };
+    }
+
+    res.redirect(`/trips/${id}`);
+  } catch (error) {
+    console.error('[Trip settleTrip] error:', error);
+    req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาดในการตัดยอด: ' + error.message };
+    res.redirect(`/trips/${id}`);
+  }
+}
