@@ -422,6 +422,28 @@
           * ระบบจะรวมยอดค่าใช้จ่ายทั้งหมดและคำนวณสุทธิในสกุลเงิน บาท และ กีบ ตามอัตราแลกเปลี่ยนปัจจุบัน<br>
           * อัตราแลกเปลี่ยนอ้างอิง: 1 THB = <%= rates.thb_lak.toLocaleString() %> LAK | 1 USD = <%= rates.usd_thb.toLocaleString() %> THB<br>
           * กรุณาแนบใบเสร็จรับเงินหรือสลิปการโอนคู่กับหนังสือฉบับนี้เพื่อเสนออนุมัติ
+          <% 
+            const payerGroups = {};
+            tripExpenses.forEach(exp => {
+              const p = exp.paid_by || 'ไม่ระบุผู้จ่าย';
+              const cur = exp.currency || 'THB';
+              const amt = Number(exp.amount) || 0;
+              if (!payerGroups[p]) payerGroups[p] = { THB: 0, LAK: 0, USD: 0 };
+              payerGroups[p][cur] += amt;
+            });
+          %>
+          <% if (Object.keys(payerGroups).length > 0) { %>
+            <div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
+              <strong>ยอดจ่ายสะสมแยกตามผู้ชำระเงิน:</strong><br>
+              <% Object.entries(payerGroups).forEach(([payer, sums]) => { %>
+                <% const parts = []; %>
+                <% if (sums.THB > 0) parts.push(`฿${sums.THB.toLocaleString('th-TH', {minimumFractionDigits:2})}`); %>
+                <% if (sums.LAK > 0) parts.push(`₭${sums.LAK.toLocaleString('th-TH')}`); %>
+                <% if (sums.USD > 0) parts.push(`$${sums.USD.toLocaleString('en-US', {minimumFractionDigits:2})}`); %>
+                · <%= payer %>: <span style="font-family: monospace; font-weight: bold;"><%= parts.join(' + ') || '0.00' %></span><br>
+              <% }) %>
+            </div>
+          <% } %>
         </div>
         <div class="totals-list">
           <div style="font-size: 7.5pt; font-weight: bold; color: #475569; text-transform: uppercase;">สรุปยอดสุทธิขออนุมัติเบิกจ่าย</div>

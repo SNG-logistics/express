@@ -553,7 +553,34 @@
         </tbody>
         <tfoot class="border-t border-white/10 bg-white/3">
           <tr>
-            <td colspan="4" class="px-5 py-3 text-xs text-slate-500 font-semibold uppercase">สรุปรายจ่ายรอบรถสุทธิ (บาท / กีบ)</td>
+            <td colspan="4" class="px-5 py-3 text-xs text-slate-500 font-semibold uppercase">
+              <div class="font-bold">สรุปรายจ่ายรอบรถสุทธิ (บาท / กีบ)</div>
+              <% 
+                const payerGroups = {};
+                tripExpenses.forEach(exp => {
+                  const p = exp.paid_by || 'ไม่ระบุผู้จ่าย';
+                  const cur = exp.currency || 'THB';
+                  const amt = Number(exp.amount) || 0;
+                  if (!payerGroups[p]) payerGroups[p] = { THB: 0, LAK: 0, USD: 0 };
+                  payerGroups[p][cur] += amt;
+                });
+              %>
+              <% if (Object.keys(payerGroups).length > 0) { %>
+                <div class="mt-3 space-y-1.5 text-slate-400 font-normal normal-case">
+                  <div class="font-bold text-slate-500 text-[10px] tracking-wider uppercase">ยอดจ่ายสะสมแยกตามบุคคล/ผู้ลงทุน:</div>
+                  <% Object.entries(payerGroups).forEach(([payer, sums]) => { %>
+                    <div class="flex items-center gap-1">
+                      <span class="text-slate-300 font-semibold"><%= payer %>:</span>
+                      <% const parts = []; %>
+                      <% if (sums.THB > 0) parts.push(`฿${sums.THB.toLocaleString('th-TH', {minimumFractionDigits:2})}`); %>
+                      <% if (sums.LAK > 0) parts.push(`₭${sums.LAK.toLocaleString('th-TH')}`); %>
+                      <% if (sums.USD > 0) parts.push(`$${sums.USD.toLocaleString('en-US', {minimumFractionDigits:2})}`); %>
+                      <span class="text-white font-mono font-bold text-[11px]"><%= parts.join(' + ') || '฿0.00' %></span>
+                    </div>
+                  <% }) %>
+                </div>
+              <% } %>
+            </td>
             <td colspan="3" class="px-5 py-3 text-right text-xs space-y-1">
               <% 
                 const rateThbLak = Number(rates.thb_lak) || 580;
