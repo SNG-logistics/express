@@ -45,9 +45,9 @@
                     <img src="/images/snglogo.png" alt="SNG Logo" class="w-full h-full object-cover">
                 </div>
                 <div>
-                    <h1 class="font-black text-3xl tracking-tight text-red-600 uppercase">SNG EXPRESS</h1>
+                    <h1 class="font-black text-2xl tracking-tight text-red-600 uppercase"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></h1>
                     <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-0.5">Waybill / ໃບບິນຂົນສົ່ງສິນຄ້າ</p>
-                    <p class="text-[10px] text-gray-400 mt-0.5">Line: @snglogistics | Tel: 020 5555 5555</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Tel: <%= company.company_phone_la || '020 8889 8888' %> | TIN: <%= company.company_tax_id_la || '804052456000' %></p>
                 </div>
             </div>
             <div class="text-right flex flex-col items-end">
@@ -244,7 +244,7 @@
             <div class="text-center bg-gray-50 rounded-lg p-2 border border-gray-200">
                 <p class="font-bold text-red-600 text-[11px] mb-0.5">ໝາຍເຫດ: ຮັບສິນຄ້າພາຍໃນ 1 ເດືອນ ຫາກບໍ່ມາຮັບພາຍໃນກຳນົດທາງເຮົາຈະບໍ່ຮັບຜິດຊອບ</p>
                 <p class="text-[9px] text-gray-500">Note: Please collect package within 1 month. We are not responsible for uncollected items beyond this period.</p>
-                <p class="text-[8px] text-gray-400 mt-1">Printed: <%= new Date().toLocaleString('th-TH') %> | SNG Logistics Company Limited</p>
+                <p class="text-[8px] text-gray-400 mt-1">Printed: <%= new Date().toLocaleString('th-TH') %> | <%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></p>
             </div>
         </div>
 

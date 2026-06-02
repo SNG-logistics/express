@@ -222,9 +222,12 @@
             <img src="/images/snglogo.png" alt="SNG Logo" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
         <div>
-            <div class="company-name" style="color: #dc2626;">SNG EXPRESS</div>
-            <div class="company-info">ขนส่งไทย-ลาว</div>
-            <div class="company-info">โทร: 020 5555 5555</div>
+            <div class="company-name" style="color: #dc2626; font-size: 14px;"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>
+            <div class="company-info">ขนส่งไทย-ลาว (TH-LA Logistics)</div>
+            <div class="company-info">โทร/Tel: <%= company.company_phone_la || '020 8889 8888' %></div>
+            <% if (company.company_tax_id_la) { %>
+                <div class="company-info" style="font-size: 9px;">เลขเสียภาษี/TIN: <%= company.company_tax_id_la %></div>
+            <% } %>
         </div>
     </div>
 

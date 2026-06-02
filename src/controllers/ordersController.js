@@ -824,10 +824,14 @@ export async function printWaybill(req, res) {
   const [[rateRow]] = await pool.query('SELECT rate FROM exchange_rates WHERE pair = "THB_LAK" ORDER BY created_at DESC LIMIT 1');
   const exchangeRate = rateRow ? Number(rateRow.rate) : 700;
 
+  const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+  const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
   res.render('orders/waybill', {
     layout: false,
     order,
     exchangeRate,
+    company,
     user: req.session.user
   });
 }
@@ -861,6 +865,9 @@ export async function showPrint(req, res) {
     const [[rateRow]] = await pool.query('SELECT rate FROM exchange_rates WHERE pair = "THB_LAK" ORDER BY created_at DESC LIMIT 1');
     const exchangeRate = rateRow ? Number(rateRow.rate) : 700;
 
+    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
     res.render('orders/print', {
       layout: false,
       order,
@@ -879,7 +886,8 @@ export async function showPrint(req, res) {
         province: order.receiver_province
       },
       exchangeRate,
-      customs: customs || { amount: 0 }
+      customs: customs || { amount: 0 },
+      company
     });
   } catch (error) {
     console.error('Print view error:', error);

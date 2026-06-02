@@ -468,10 +468,14 @@ export async function printQuote(req, res) {
       booking.quote_issued_at = new Date();
     }
 
+    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
     res.render('freight/quote-print', {
       layout: false,
       title: `ใบเสนอราคา ${booking.quote_no}`,
       booking,
+      company
     });
   } catch (err) {
     console.error('[SpaceBooking] printQuote:', err);
@@ -506,10 +510,14 @@ export async function printInvoice(req, res) {
       booking.invoice_issued_at = new Date();
     }
 
+    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
     res.render('freight/invoice-print', {
       layout: false,
       title: `ใบเรียกเก็บเงิน ${booking.invoice_no}`,
       booking,
+      company
     });
   } catch (err) {
     console.error('[SpaceBooking] printInvoice:', err);

@@ -541,10 +541,14 @@ export async function printManifest(req, res) {
     ORDER BY o.created_at ASC
   `, [id]);
 
+  const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+  const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
   res.render('trips/manifest', {
     layout: false,
     trip,
     tripOrders,
+    company
   });
 }
 
@@ -622,12 +626,16 @@ export async function printExpenses(req, res) {
       return acc;
     }, { THB: 0, LAK: 0, USD: 0 });
 
+    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
     res.render('trips/expense-print', {
       layout: false,
       trip,
       tripOrders,
       tripExpenses,
       expensesSummary,
+      company,
       user: req.session.user
     });
   } catch (error) {

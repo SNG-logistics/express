@@ -301,7 +301,7 @@
           <img src="/images/snglogo.png" alt="SNG Logo" onerror="this.src='/images/snglogo.png'">
         </div>
         <div class="hdr-center">
-          <div class="company-title">SNG Express Logistics Co., Ltd.</div>
+          <div class="company-title" style="font-size: 11pt;"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>
           <div class="doc-title">หนังสือขออนุมัติเบิกจ่ายและสรุปค่าใช้จ่ายรอบรถ</div>
         </div>
       </div>
@@ -502,7 +502,7 @@
       <!-- ⑧ FOOTER -->
       <div class="doc-footer">
         <div>
-          บริษัท เอสเอ็นจี เอ็กซ์เพรส โลจิสติกส์ จำกัด · SNG Express Logistics
+          <%= company.company_name_th || 'บริษัท เอสเอ็นจี บริการครบวงจร จำกัด' %> · <%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %>
         </div>
         <div>
           เลขที่เอกสาร: <span class="footer-bold"><%= trip.trip_no %></span> · หน้า 1 / 1

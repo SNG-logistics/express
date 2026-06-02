@@ -85,12 +85,14 @@
   <%# Header %>
   <div class="doc-header">
     <div class="company-logo">
-      <div class="logo-box">S</div>
-      <div>
-        <div class="company-name">SNG EXPRESS</div>
-        <div class="company-sub">บริษัทขนส่ง ไทย-ลาว | Tel: 020 5555 5555</div>
-        <div class="company-sub">Line: @snglogistics</div>
-      </div>
+        <img src="/images/snglogo.png" alt="SNG Logo" class="h-10 w-10 object-contain">
+        <div>
+            <div class="company-name" style="font-size: 1.25rem;"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>
+            <div class="company-sub">บริษัทขนส่ง ไทย-ลาว | Tel: <%= company.company_phone_la || '020 8889 8888' %></div>
+            <% if (company.company_tax_id_la) { %>
+                <div class="company-sub">เลขเสียภาษี/TIN: <%= company.company_tax_id_la %></div>
+            <% } %>
+        </div>
     </div>
     <div class="doc-meta">
       <div class="doc-type">ใบเสนอราคา</div>
@@ -105,11 +107,11 @@
   <div class="parties">
     <div class="party-box">
       <div class="party-label">ผู้เสนอราคา (Seller)</div>
-      <div class="party-name">SNG Express Co., Ltd.</div>
+      <div class="party-name"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>
       <div class="party-info">
         บริษัทขนส่งสินค้าไทย-ลาว<br>
-        Tel: 020 5555 5555<br>
-        Line: @snglogistics
+        Tel: <%= company.company_phone_la || '020 8889 8888' %><br>
+        TIN/เลขภาษี: <%= company.company_tax_id_la || '804052456000' %>
       </div>
     </div>
     <div class="party-box to">
