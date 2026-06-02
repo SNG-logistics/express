@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายงานสรุปค่าใช้จ่าย — SNG Logistics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans', 'Noto Sans Thai', Arial, sans-serif;
+      font-size: 10pt;
+      background: #e8e8e8;
+      color: #111;
+      line-height: 1.4;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── Screen Controls ── */
+    .ctrl-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #1e293b; color: #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+    .ctrl-bar h2 { font-size: 14px; font-weight: 700; color: #cbd5e1; }
+    .ctrl-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: all .15s;
+    }
+    .btn-print { background: #f59e0b; color: #111; }
+    .btn-back  { background: rgba(255,255,255,.1); color: #f1f5f9; }
+    .ctrl-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .page-wrap {
+      padding: 70px 20px 30px;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+
+    @media print {
+      .ctrl-bar { display: none !important; }
+      body { background: #fff; }
+      .page-wrap { padding: 0; }
+    }
+
+    /* ── A4 Page Layout ── */
+    .a4 {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      padding: 18mm 18mm 20mm;
+      box-shadow: 0 4px 30px rgba(0,0,0,.25);
+      position: relative;
+    }
+
+    @page { size: A4; margin: 12mm 12mm 16mm; }
+    @media print {
+      .a4 { width: 100%; min-height: auto; padding: 0; box-shadow: none; }
+    }
+
+    /* ── Inner border (formal corporate style) ── */
+    .a4-inner {
+      border: 2px solid #111;
+      padding: 0;
+      min-height: 255mm;
+      display: flex;
+      flex-direction: column;
+    }
+    @media print { .a4-inner { min-height: auto; } }
+
+    /* ── Header Band ── */
+    .doc-header {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      align-items: center;
+      border-bottom: 2px solid #111;
+      background: #fff;
+    }
+    .hdr-logo {
+      border-right: 1px solid #111;
+      padding: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hdr-logo img { width: 60px; height: 60px; object-fit: contain; }
+    .hdr-center { text-align: center; padding: 12px 20px; }
+    .hdr-center .company-title {
+      font-size: 14pt; font-weight: 800; text-transform: uppercase; color: #111;
+      letter-spacing: 1px;
+    }
+    .hdr-center .doc-title {
+      font-size: 12pt; font-weight: 700; color: #374151; margin-top: 4px;
+      letter-spacing: 2px;
+    }
+
+    /* ── Document Metadata Band ── */
+    .doc-ref-band {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      border-bottom: 1px solid #111;
+      background: #f8fafc;
+    }
+    .ref-cell {
+      padding: 6px 12px; border-right: 1px solid #111;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .ref-cell:last-child { border-right: none; }
+    .ref-lbl { font-size: 7pt; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: .5px; }
+    .ref-val { font-size: 9.5pt; font-weight: 800; color: #0f172a; font-family: monospace; }
+
+    /* ── Filters Info ── */
+    .filter-panel {
+      padding: 8px 12px;
+      background: #fafafa;
+      border-bottom: 2px solid #111;
+      font-size: 8.5pt;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .filter-item { display: flex; gap: 6px; }
+    .filter-key { font-weight: bold; color: #475569; }
+    .filter-val { font-weight: 700; color: #0f172a; }
+
+    /* ── Table Styling ── */
+    .expenses-section { flex: 1; display: flex; flex-direction: column; }
+    .table-container { flex: 1; }
+    .expenses-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+    .expenses-table thead tr { background: #0f172a; color: #fff; }
+    .expenses-table thead th {
+      padding: 6px 8px;
+      font-size: 7.5pt; font-weight: 700;
+      text-align: left; text-transform: uppercase;
+      letter-spacing: .4px;
+      border-right: 1px solid #334155;
+    }
+    .expenses-table thead th.text-right { text-align: right; }
+    .expenses-table thead th.text-center { text-align: center; }
+    .expenses-table thead th:last-child { border-right: none; }
+    
+    .expenses-table tbody tr { border-bottom: .5px solid #cbd5e1; }
+    .expenses-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .expenses-table td {
+      padding: 6px 8px;
+      border-right: .5px solid #cbd5e1;
+      vertical-align: top;
+    }
+    .expenses-table td:last-child { border-right: none; }
+    
+    .td-no { width: 30px; text-align: center; font-weight: bold; }
+    .td-date { width: 80px; text-align: center; }
+    .td-category { width: 110px; font-weight: 600; }
+    .td-desc { min-width: 150px; font-size: 8pt; color: #334155; }
+    .td-payer { width: 110px; }
+    .td-trip { width: 90px; text-align: center; font-family: monospace; font-weight: bold; }
+    .td-amount { width: 100px; text-align: right; font-family: monospace; font-weight: 700; font-size: 9pt; }
+
+    /* ── Totals Box ── */
+    .totals-box {
+      border-top: 2px solid #111;
+      background: #f8fafc;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .totals-meta {
+      font-size: 8pt; color: #64748b;
+    }
+    .totals-list {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .total-item {
+      font-size: 9.5pt; font-weight: 800; color: #0f172a;
+    }
+    .total-item span {
+      font-family: monospace; font-size: 11pt; font-weight: 900; margin-left: 5px;
+    }
+    .total-item.thb span { color: #0f172a; }
+    .total-item.lak span { color: #b45309; }
+    .total-item.usd span { color: #1d4ed8; }
+    .total-item.net-thb span { color: #10b981; font-size: 12pt; }
+    .total-item.net-lak span { color: #b45309; font-size: 12pt; }
+
+    /* ── Memo Declaration ── */
+    .memo-declaration {
+      border-top: 1px solid #111;
+      padding: 6px 12px;
+      background: #fafafa;
+      font-size: 7.5pt; color: #475569; line-height: 1.4;
+      text-align: justify;
+    }
+
+    /* ── Signature Section ── */
+    .sig-section {
+      border-top: 2px solid #111;
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr 1px 1fr;
+      background: #fff;
+    }
+    .sig-divider { background: #111; }
+    .sig-col { padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 110px; }
+    .sig-heading {
+      font-size: 7.5pt; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .6px; color: #1e293b;
+      margin-bottom: 6px; display: block;
+      text-align: center;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 2px;
+    }
+    .sig-box {
+      border: 1px dashed #cbd5e1; background: #fafafa;
+      height: 40px; border-radius: 4px; margin-bottom: 6px;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 4px;
+    }
+    .sig-box span { font-size: 6.5pt; color: #94a3b8; }
+    .sig-name {
+      font-size: 8pt; font-weight: 700; text-align: center;
+      border-bottom: 1px dashed #94a3b8;
+      width: 80%; margin: 0 auto 4px; padding-bottom: 1px;
+    }
+    .sig-date {
+      font-size: 7.5pt; color: #64748b; text-align: center;
+    }
+
+    /* ── Footer ── */
+    .doc-footer {
+      border-top: 1px solid #111;
+      padding: 4px 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #f8fafc;
+      font-size: 7pt; color: #64748b;
+    }
+    .footer-bold { color: #0f172a; font-weight: bold; }
+  </style>
+</head>
+
+<%
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return dt.toLocaleDateString('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  };
+
+  const printedAt = new Date().toLocaleString('th-TH', {
+    dateStyle: 'long', timeStyle: 'short'
+  });
+%>
+<body>
+
+<!-- ── Screen controls ── -->
+<div class="ctrl-bar">
+  <h2>📋 รายงานสรุปบัญชีและค่าใช้จ่าย — SNG Logistics</h2>
+  <div style="display:flex;gap:8px;">
+    <a href="/expenses" class="ctrl-btn btn-back">← กลับหน้าบัญชีรายจ่าย</a>
+    <button onclick="window.print()" class="ctrl-btn btn-print">🖨 พิมพ์เอกสารสรุป (A4)</button>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- A4 Page Container -->
+  <div class="a4">
+    <div class="a4-inner">
+
+      <!-- ① HEADER -->
+      <div class="doc-header">
+        <div class="hdr-logo">
+          <img src="/images/snglogo.png" alt="SNG Logo">
+        </div>
+        <div class="hdr-center">
+          <div class="company-title"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>
+          <div class="doc-title">รายงานสรุปบัญชีและรายการค่าใช้จ่าย</div>
+        </div>
+      </div>
+
+      <!-- ② DOC REFERENCES -->
+      <div class="doc-ref-band">
+        <div class="ref-cell">
+          <span class="ref-lbl">ประเภทเอกสาร (Document)</span>
+          <span class="ref-val">EXPENSE SUMMARY REPORT</span>
+        </div>
+        <div class="ref-cell">
+          <span class="ref-lbl">พิมพ์โดย (Printed By)</span>
+          <span class="ref-val"><%= user ? (user.name || user.username) : 'ระบบ' %></span>
+        </div>
+        <div class="ref-cell">
+          <span class="ref-lbl">วันที่ออกเอกสาร (Print Date)</span>
+          <span class="ref-val" style="font-size: 8.5pt;"><%= printedAt %></span>
+        </div>
+      </div>
+
+      <!-- ③ FILTERS INFO -->
+      <div class="filter-panel">
+        <div class="filter-grid">
+          <div class="filter-item">
+            <span class="filter-key">ผู้จ่าย/นักลงทุน:</span>
+            <span class="filter-val"><%= filters.paid_by || 'ทั้งหมด' %></span>
+          </div>
+          <div class="filter-item">
+            <span class="filter-key">เชื่อมโยงรอบรถ:</span>
+            <span class="filter-val"><%= filters.trip_id ? `รอบรถ ID #${filters.trip_id}` : 'ทั้งหมด' %></span>
+          </div>
+          <div class="filter-item">
+            <span class="filter-key">ช่วงเวลา:</span>
+            <span class="filter-val">
+              <% if (filters.start_date || filters.end_date) { %>
+                <%= filters.start_date ? fmtDate(filters.start_date) : 'เริ่มต้น' %> ถึง <%= filters.end_date ? fmtDate(filters.end_date) : 'ปัจจุบัน' %>
+              <% } else { %>
+                ทั้งหมดในระบบ
+              <% } %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ EXPENSES TABLE -->
+      <div class="expenses-section">
+        <div class="table-container">
+          <table class="expenses-table">
+            <thead>
+              <tr>
+                <th class="td-no text-center">#</th>
+                <th class="td-date text-center">วันที่จ่าย</th>
+                <th class="td-category">หมวดหมู่</th>
+                <th class="td-desc">รายละเอียดรายจ่าย</th>
+                <th class="td-payer">ผู้จ่าย/นักลงทุน</th>
+                <th class="td-trip text-center">รอบรถ</th>
+                <th class="td-amount text-right">ยอดเงิน</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (expenses.length === 0) { %>
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 30px; color: #94a3b8;">
+                    — ไม่พบรายการค่าใช้จ่ายตามตัวเลือกการกรอง —
+                  </td>
+                </tr>
+              <% } else { %>
+                <% expenses.forEach((exp, index) => { %>
+                  <tr>
+                    <td class="td-no"><%= index + 1 %></td>
+                    <td class="td-date"><%= fmtDate(exp.expense_date) %></td>
+                    <td class="td-category"><%= CATEGORY_MAP[exp.category] || exp.category %></td>
+                    <td class="td-desc">
+                      <strong><%= exp.type %></strong>
+                      <% if (exp.description) { %> · <span style="font-size: 7.5pt; color: #64748b;"><%= exp.description %></span><% } %>
+                    </td>
+                    <td class="td-payer"><%= exp.paid_by || '—' %></td>
+                    <td class="td-trip"><%= exp.trip_no || '—' %></td>
+                    <td class="td-amount">
+                      <% if (exp.currency === 'USD') { %>
+                        $<%= Number(exp.amount).toLocaleString('en-US', {minimumFractionDigits:2}) %>
+                      <% } else if (exp.currency === 'LAK') { %>
+                        ₭<%= Number(exp.amount).toLocaleString('th-TH') %>
+                      <% } else { %>
+                        ฿<%= Number(exp.amount).toLocaleString('th-TH', {minimumFractionDigits:2}) %>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ⑤ TOTALS BOX -->
+      <div class="totals-box">
+        <div class="totals-meta">
+          <strong>สรุปแยกตามแต่ละสกุลเงินหลัก:</strong><br>
+          · ยอดรวม THB: ฿<%= (summary.grand_total_thb || 0).toLocaleString('th-TH', {minimumFractionDigits:2}) %><br>
+          · ยอดรวม LAK: ₭<%= (summary.grand_total_lak || 0).toLocaleString('th-TH') %><br>
+          · ยอดรวม USD: $<%= (summary.grand_total_usd || 0).toLocaleString('en-US', {minimumFractionDigits:2}) %><br>
+          <span style="font-size: 7.5pt; color: #64748b; display: block; margin-top: 5px;">
+            * อัตราแลกเปลี่ยนอ้างอิง: 1 THB = <%= rates.thb_lak.toLocaleString() %> LAK | 1 USD = <%= rates.usd_thb %> THB
+          </span>
+        </div>
+        <div class="totals-list">
+          <div style="font-size: 8pt; font-weight: bold; color: #475569; text-transform: uppercase; margin-bottom: 2px;">คำนวณสุทธิรวมสำหรับเสนอผู้บริหาร</div>
+          <% 
+            const rateThbLak = Number(rates.thb_lak) || 580;
+            const rateUsdThb = Number(rates.usd_thb) || 36;
+            const totalInThb = Number(summary.grand_total_thb || 0) + (Number(summary.grand_total_lak || 0) / rateThbLak) + (Number(summary.grand_total_usd || 0) * rateUsdThb);
+            const totalInLak = Number(summary.grand_total_lak || 0) + (Number(summary.grand_total_thb || 0) * rateThbLak) + (Number(summary.grand_total_usd || 0) * rateUsdThb * rateThbLak);
+          %>
+          <div class="total-item net-thb">ยอดรวมสุทธิ THB: <span>฿<%= totalInThb.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span></div>
+          <div class="total-item net-lak">ยอดรวมสุทธิ LAK: <span>₭<%= totalInLak.toLocaleString('th-TH') %></span></div>
+        </div>
+      </div>
+
+      <!-- ⑥ MEMO DECLARATION -->
+      <div class="memo-declaration">
+        <b>คำชี้แจงรายงาน:</b> รายงานฉบับนี้รวบรวมรายการค่าใช้จ่ายที่เกิดขึ้นจริงตามช่วงเวลาและเงื่อนไขการกรองข้างต้น เพื่อนำส่งเป็นหลักฐานและเอกสารประกอบการอนุมัติบัญชีประจำรอบ โปรดตรวจสอบความถูกต้องของรายการและเอกสารแนบเพื่อลงนามรับรองต่อไป
+      </div>
+
+      <!-- ⑦ SIGNATURE SECTION -->
+      <div class="sig-section">
+        <div class="sig-col">
+          <div>
+            <span class="sig-heading">🧑‍💼 ผู้เสนอเบิก / ผู้รับเงินสำรอง</span>
+            <div class="sig-box"><span>(ลงลายมือชื่อ)</span></div>
+            <div class="sig-name">&nbsp;</div>
+          </div>
+          <div class="sig-date">วันที่: _____/_____/_________</div>
+        </div>
+        <div class="sig-divider"></div>
+        <div class="sig-col">
+          <div>
+            <span class="sig-heading">🕵️ ผู้ตรวจสอบบัญชี / การเงิน</span>
+            <div class="sig-box"><span>(ลงลายมือชื่อ)</span></div>
+            <div class="sig-name">&nbsp;</div>
+          </div>
+          <div class="sig-date">วันที่: _____/_____/_________</div>
+        </div>
+        <div class="sig-divider"></div>
+        <div class="sig-col">
+          <div>
+            <span class="sig-heading">👑 ผู้อนุมัติจ่าย (กรรมการ/ผู้บริหาร)</span>
+            <div class="sig-box"><span>(ลงลายมือชื่ออนุมัติ)</span></div>
+            <div class="sig-name">&nbsp;</div>
+          </div>
+          <div class="sig-date">วันที่: _____/_____/_________</div>
+        </div>
+      </div>
+
+      <!-- ⑧ FOOTER -->
+      <div class="doc-footer">
+        <div>
+          <%= company.company_name_th || 'บริษัท เอสเอ็นจี บริการครบวงจร จำกัด' %> · <%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %>
+        </div>
+        <div>
+          หน้า 1 / 1
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

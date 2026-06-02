@@ -308,3 +308,88 @@ export async function destroy(req, res) {
     res.redirect('/expenses');
   }
 }
+
+// ─── PRINT REPORT (A4 SUMMARY) ────────────────────────────────────────────────
+export async function printReport(req, res) {
+  try {
+    const { paid_by, trip_id, start_date, end_date } = req.query;
+
+    let whereClauses = [];
+    let params = [];
+
+    if (paid_by && paid_by.trim() !== '') {
+      whereClauses.push("e.paid_by = ?");
+      params.push(paid_by.trim());
+    }
+    if (trip_id && trip_id.trim() !== '') {
+      whereClauses.push("e.trip_id = ?");
+      params.push(Number(trip_id));
+    }
+    if (start_date && start_date.trim() !== '') {
+      whereClauses.push("e.expense_date >= ?");
+      params.push(start_date.trim());
+    }
+    if (end_date && end_date.trim() !== '') {
+      whereClauses.push("e.expense_date <= ?");
+      params.push(end_date.trim());
+    }
+
+    const whereStr = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
+
+    // 1. Fetch expenses
+    const [expenses] = await pool.query(`
+      SELECT e.*, u.name as created_by_name, t.trip_no 
+      FROM expenses e
+      LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN trips t ON e.trip_id = t.id
+      ${whereStr}
+      ORDER BY e.expense_date ASC, e.created_at ASC
+      LIMIT 1000
+    `, params);
+
+    // 2. Calculate summaries
+    const [[summary]] = await pool.query(`
+      SELECT 
+        SUM(CASE WHEN e.currency = 'THB' OR e.currency IS NULL THEN e.amount ELSE 0 END) as grand_total_thb,
+        SUM(CASE WHEN e.currency = 'LAK' THEN e.amount ELSE 0 END) as grand_total_lak,
+        SUM(CASE WHEN e.currency = 'USD' THEN e.amount ELSE 0 END) as grand_total_usd
+      FROM expenses e
+      ${whereStr}
+    `, params);
+
+    // 3. Get latest exchange rates
+    const [[rateTHB_LAK]] = await pool.query(
+      `SELECT rate FROM exchange_rates WHERE pair = 'THB_LAK' ORDER BY created_at DESC LIMIT 1`
+    );
+    const [[rateUSD_THB]] = await pool.query(
+      `SELECT rate FROM exchange_rates WHERE pair = 'USD_THB' ORDER BY created_at DESC LIMIT 1`
+    );
+    const rates = {
+      thb_lak: Number(rateTHB_LAK?.rate) || 580,
+      usd_thb: Number(rateUSD_THB?.rate) || 36,
+    };
+
+    // 4. Fetch company settings
+    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
+    res.render('expenses/print', {
+      layout: false,
+      expenses,
+      summary: summary || { grand_total_thb: 0, grand_total_lak: 0, grand_total_usd: 0 },
+      rates,
+      company,
+      filters: {
+        paid_by: paid_by || '',
+        trip_id: trip_id || '',
+        start_date: start_date || '',
+        end_date: end_date || ''
+      },
+      CATEGORY_MAP,
+      user: req.session.user
+    });
+  } catch (err) {
+    console.error('[Expenses.printReport]', err);
+    res.status(500).send('Error generating report: ' + err.message);
+  }
+}

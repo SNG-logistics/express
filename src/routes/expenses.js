@@ -47,6 +47,9 @@ router.get('/', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.index);
 // Export Excel (CSV)
 router.get('/export', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.exportExcel);
 
+// Print Report (A4 PDF/Paper layout)
+router.get('/print', requireAnyRole(ROLES_EXPENSES_VIEW), expensesController.printReport);
+
 // Create Expense Form
 router.get('/new', requireAnyRole(ROLES_EXPENSES_ADD), expensesController.newExpense);
 
