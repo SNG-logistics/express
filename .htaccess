@@ -1,27 +1,2 @@
-# Hostinger/Apache WebSocket proxy for Socket.io
-# Required for CRM real-time inbox notifications
-
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-
-  # WebSocket upgrade for Socket.io
-  RewriteCond %{HTTP:Upgrade} =websocket [NC]
-  RewriteRule /socket.io/(.*) ws://localhost:3000/socket.io/$1 [P,L]
-
-  # HTTP long-polling fallback for Socket.io
-  RewriteCond %{HTTP:Upgrade} !=websocket [NC]
-  RewriteRule /socket.io/(.*) http://localhost:3000/socket.io/$1 [P,L]
-
-  # Proxy all other requests to Node.js app
-  RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_FILENAME} !-f
-  RewriteRule ^(.*)$ http://localhost:3000/$1 [P,QSA,L]
-</IfModule>
-
-<IfModule mod_proxy.c>
-  ProxyRequests Off
-  ProxyPreserveHost On
-  
-  # Enable WebSocket support
-  ProxyPass /socket.io/ ws://localhost:3000/socket.io/
-  ProxyPassReverse /socket.io/ ws://localhost:3000/socket.io/
-</IfModule>
+# SNG Logistics - Apache configuration
+# Note: Phusion Passenger handles routing, keep this minimal
