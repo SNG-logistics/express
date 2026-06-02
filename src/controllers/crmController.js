@@ -7,6 +7,7 @@ import * as svc from '../services/crmService.js';
 import { generateSmartReplies, classifyIntent, checkAiHealth } from '../services/aiService.js';
 import pool from '../config/db.js';
 import { sendOutbound } from '../services/channelService.js';
+import { bulkSyncAllLegacy, getSyncStats } from '../services/customerSyncService.js';
 
 // ─── Shared render helper ────────────────────────────────────────────────────
 function crmRender(res, view, data = {}) {
@@ -236,11 +237,15 @@ export async function customerList(req, res) {
     const { search, type, page = 1 } = req.query;
     const limit = 40;
     const offset = (parseInt(page) - 1) * limit;
-    const customers = await svc.listCrmCustomers({ search, customerType: type, limit, offset });
+    const [customers, syncStats] = await Promise.all([
+      svc.listCrmCustomers({ search, customerType: type, limit, offset }),
+      getSyncStats().catch(() => null),
+    ]);
     return crmRender(res, 'customers', {
       title: 'Customer 360 | CRM',
       customers,
       filters: { search, type, page: parseInt(page) },
+      syncStats,
     });
   } catch (err) {
     console.error('[CRM] customerList error:', err);
@@ -626,6 +631,34 @@ export async function customerMergeSearch(req, res) {
     const results = await svc.searchCrmCustomers(q, id);
     return res.json({ ok: true, results });
   } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+// ─── Customer Sync API (Admin) ────────────────────────────────────────────────
+
+/** GET /api/crm/sync/stats — return sync statistics */
+export async function syncStats(req, res) {
+  try {
+    const stats = await getSyncStats();
+    return res.json({ ok: true, ...stats });
+  } catch (err) {
+    console.error('[CRM] syncStats error:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+/** POST /api/crm/sync/run — trigger full bulk sync (Admin only) */
+export async function syncRun(req, res) {
+  try {
+    const result = await bulkSyncAllLegacy();
+    return res.json({
+      ok: true,
+      message: `ซิงค์สำเร็จ: นำเข้าใหม่ ${result.inserted} รายการ (${result.duration_ms}ms)`,
+      ...result,
+    });
+  } catch (err) {
+    console.error('[CRM] syncRun error:', err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 }

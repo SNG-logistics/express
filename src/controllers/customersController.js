@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { syncOneLegacyCustomer } from '../services/customerSyncService.js';
 
 export async function list(req, res) {
     const { q } = req.query;
@@ -46,12 +47,16 @@ export async function showCreate(req, res) {
 export async function create(req, res) {
     const { type, name, phone, email, country, province, city, address, tax_id } = req.body;
     try {
-        await pool.query(
+        const [insertResult] = await pool.query(
             `INSERT INTO customers (type, name, phone, email, country, province, city, address, tax_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [type, name, phone, email, country, province, city, address, tax_id]
         );
         req.session.flash = { type: 'success', message: 'เพิ่มลูกค้าสำเร็จ' };
+        // Non-blocking: sync new customer to CRM
+        syncOneLegacyCustomer(insertResult.insertId).catch(err =>
+            console.error('[CustomerSync] create hook error:', err.message)
+        );
         res.redirect('/customers');
     } catch (err) {
         console.error(err);
@@ -96,6 +101,10 @@ export async function update(req, res) {
             [type, name, phone, email, country, province, city, address, tax_id, id]
         );
         req.session.flash = { type: 'success', message: 'แก้ไขข้อมูลสำเร็จ' };
+        // Non-blocking: sync updated customer to CRM
+        syncOneLegacyCustomer(id).catch(err =>
+            console.error('[CustomerSync] update hook error:', err.message)
+        );
         res.redirect('/customers');
     } catch (err) {
         console.error(err);

@@ -242,6 +242,20 @@ router.get('/api/crm/ai/health', async (req, res) => {
   return res.json(result);
 });
 
+// ── Customer Sync API (Admin) ─────────────────────────────────────────────────
+router.get('/api/crm/sync/stats', (req, res, next) => {
+  const denied = requireCrmAccess(res, req.session.user, ROLES_CRM_ADMIN);
+  if (denied) return;
+  return ctrl.syncStats(req, res, next);
+});
+
+router.post('/api/crm/sync/run', (req, res, next) => {
+  const denied = requireCrmAccess(res, req.session.user, ROLES_CRM_ADMIN);
+  if (denied) return;
+  return ctrl.syncRun(req, res, next);
+});
+
+
 export default router;
 
 

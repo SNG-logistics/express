@@ -81,6 +81,82 @@
 
   </div>
 
+  <%# ── Legacy Orders (ระบบขนส่ง) — shown if linked ──────────────────────── %>
+  <% if (customer.legacy_customer_id && orders && orders.length > 0) { %>
+  <div class="crm-context-section" style="margin-top:16px;border:1px solid rgba(52,211,153,0.2);background:rgba(52,211,153,0.03);">
+    <div class="crm-context-section-title">
+      <i class="fa-solid fa-truck" style="color:#34d399;"></i>
+      ออเดอร์ระบบขนส่ง (Legacy #<%= customer.legacy_customer_id %>)
+      <span class="crm-badge" style="font-size:0.6rem;margin-left:6px;background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.3);"><%= orders.length %> รายการ</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.76rem;">
+      <thead>
+        <tr style="color:#64748b;text-align:left;">
+          <th style="padding:5px 8px;">Job No.</th>
+          <th style="padding:5px 8px;">สถานะ</th>
+          <th style="padding:5px 8px;text-align:right;">ราคา</th>
+          <th style="padding:5px 8px;text-align:right;">COD</th>
+          <th style="padding:5px 8px;">รอบรถ</th>
+          <th style="padding:5px 8px;">วันที่</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% orders.forEach(o => { %>
+        <% const statusColors = {
+          NEW:'#818cf8', PROCESSING:'#60a5fa', CUSTOMS:'#fbbf24',
+          DELIVERED:'#34d399', RETURNED:'#f87171', CANCELLED:'#64748b'
+        }; %>
+        <tr style="border-top:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:6px 8px;">
+            <a href="/orders/<%= o.id %>" target="_blank"
+               style="color:#818cf8;font-weight:700;text-decoration:none;font-family:monospace;">
+              <%= o.job_no %>
+            </a>
+          </td>
+          <td style="padding:6px 8px;">
+            <span style="font-size:0.68rem;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(129,140,248,0.1);color:<%= statusColors[o.status] || '#94a3b8' %>;">
+              <%= o.status %>
+            </span>
+          </td>
+          <td style="padding:6px 8px;text-align:right;font-weight:700;color:#e2e8f0;">
+            <%= o.price_currency %> <%= Number(o.price_amount||0).toLocaleString('th-TH',{minimumFractionDigits:2}) %>
+          </td>
+          <td style="padding:6px 8px;text-align:right;color:<%= (o.cod_amount > 0) ? '#fbbf24' : '#475569' %>;">
+            <%= (o.cod_amount > 0) ? Number(o.cod_amount).toLocaleString('th-TH',{minimumFractionDigits:2}) : '—' %>
+          </td>
+          <td style="padding:6px 8px;font-size:0.7rem;color:#64748b;">
+            <% if (o.trip_no) { %>
+              <a href="/trips/<%= o.trip_no %>" target="_blank" style="color:#818cf8;text-decoration:none;"><%= o.trip_no %></a>
+            <% } else { %>—<% } %>
+          </td>
+          <td style="padding:6px 8px;color:#64748b;">
+            <%= o.created_at ? new Date(o.created_at).toLocaleDateString('th-TH') : '—' %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div style="margin-top:8px;text-align:right;">
+      <a href="/orders?customer=<%= customer.legacy_customer_id %>" target="_blank"
+         class="btn-crm btn-crm-secondary btn-crm-sm" style="font-size:0.7rem;">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> ดูทั้งหมดในระบบขนส่ง
+      </a>
+    </div>
+  </div>
+  <% } else if (customer.legacy_customer_id) { %>
+  <div class="crm-context-section" style="margin-top:16px;border:1px solid rgba(52,211,153,0.15);">
+    <div class="crm-context-section-title">
+      <i class="fa-solid fa-truck" style="color:#34d399;"></i>
+      ระบบขนส่ง (Linked)
+    </div>
+    <div style="color:#475569;font-size:0.78rem;text-align:center;padding:12px;">
+      ลูกค้านี้ลิงก์กับระบบขนส่ง (ID: <%= customer.legacy_customer_id %>) แต่ยังไม่มีออเดอร์
+    </div>
+  </div>
+  <% } %>
+
+
+
   <% if(can && can.superviseCrm){ %>
   <!-- Merge Panel (supervisor+) -->
   <div class="crm-context-section" style="margin-top:16px;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.04);">

@@ -5,12 +5,37 @@
   <div class="crm-header">
     <div class="crm-header-icon"><i class="fa-solid fa-address-card"></i></div>
     <h1>Customer 360</h1>
-    <div style="margin-left:auto;">
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
       <a href="/crm" class="btn-crm btn-crm-secondary btn-crm-sm">
         <i class="fa-solid fa-arrow-left"></i> Dashboard
       </a>
     </div>
   </div>
+
+  <%# ── Sync Banner (Admin only) ────────────────────────────────────────────── %>
+  <% if (can && can.crmAdmin && syncStats) { %>
+  <div id="syncBanner" style="display:flex;align-items:center;gap:12px;padding:10px 20px;background:rgba(129,140,248,0.06);border:1px solid rgba(129,140,248,0.2);border-radius:10px;margin:0 0 14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <i class="fa-solid fa-link-simple" style="color:#818cf8;font-size:0.85rem;"></i>
+      <span style="font-size:0.78rem;color:#94a3b8;">ซิงค์ลูกค้าจากระบบขนส่ง:</span>
+      <span style="font-weight:700;color:#34d399;font-size:0.8rem;">✔ <%= syncStats.synced.toLocaleString() %> คน</span>
+      <span style="color:#475569;">|</span>
+      <% if (syncStats.unsynced > 0) { %>
+        <span style="color:#fbbf24;font-weight:700;font-size:0.8rem;">⚠ ยังไม่ซิงค์ <%= syncStats.unsynced.toLocaleString() %> คน</span>
+      <% } else { %>
+        <span style="color:#64748b;font-size:0.75rem;">ครบทุกคนแล้ว ✓</span>
+      <% } %>
+      <span style="color:#475569;">|</span>
+      <span style="color:#64748b;font-size:0.72rem;">ทั้งหมด <%= syncStats.total_legacy.toLocaleString() %> คนในระบบขนส่ง</span>
+    </div>
+    <% if (syncStats.unsynced > 0) { %>
+    <button id="btnSyncAll" onclick="runSync()"
+      style="padding:5px 14px;font-size:0.72rem;font-weight:700;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:7px;cursor:pointer;transition:all 0.2s;margin-left:auto;">
+      <i class="fa-solid fa-rotate"></i> ซิงค์ทั้งหมด
+    </button>
+    <% } %>
+  </div>
+  <% } %>
 
   <%# Filter Bar %>
   <form method="GET" action="/crm/customers">
@@ -46,6 +71,7 @@
           <th>จังหวัด</th>
           <th>การสนทนา</th>
           <th>เคสเปิด</th>
+          <th style="text-align:center;">แหล่งข้อมูล</th>
           <th>อัปเดต</th>
           <th></th>
         </tr>
@@ -76,6 +102,16 @@
               <span class="crm-badge crm-badge-urgent"><%= c.open_cases %></span>
             <% } else { %>
               <span style="color:#64748b;">—</span>
+            <% } %>
+          </td>
+          <td style="text-align:center;">
+            <% if (c.legacy_customer_id) { %>
+              <span title="ซิงค์มาจากระบบขนส่ง (legacy ID: <%= c.legacy_customer_id %>)"
+                    style="display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(52,211,153,0.1);color:#34d399;border:1px solid rgba(52,211,153,0.2);">
+                <i class="fa-solid fa-link-simple"></i> ขนส่ง
+              </span>
+            <% } else { %>
+              <span style="font-size:0.68rem;color:#475569;">CRM</span>
             <% } %>
           </td>
           <td style="font-size:0.72rem;color:#64748b;">
@@ -112,3 +148,37 @@
   </div>
   <% } %>
 </div>
+
+<% if (can && can.crmAdmin) { %>
+<script>
+async function runSync() {
+  const btn = document.getElementById('btnSyncAll');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังซิงค์...';
+  try {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const csrf = meta ? meta.content : '';
+    const res = await fetch('/api/crm/sync/run', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> ' + (data.message || 'ซิงค์สำเร็จ');
+      btn.style.background = 'rgba(52,211,153,0.15)';
+      btn.style.color = '#34d399';
+      btn.style.border = '1px solid rgba(52,211,153,0.3)';
+      setTimeout(() => window.location.reload(), 1800);
+    } else {
+      btn.innerHTML = '❌ Error: ' + (data.error || 'ล้มเหลว');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    btn.innerHTML = '❌ เชื่อมต่อล้มเหลว';
+    btn.disabled = false;
+  }
+}
+</script>
+<% } %>
