@@ -1,13 +1,3 @@
-/**
- * src/routes/trips.js — Trip planning routes with role guards
- *
- * Access control:
- *   - View trips         : all authenticated roles
- *   - Create trip        : dispatcher, manager, admin
- *   - Attach orders      : dispatcher, manager, admin
- *   - Update trip status : dispatcher, manager, admin (CLOSED → admin/manager only in controller)
- *   - Print manifest     : all authenticated roles
- */
 import { Router } from 'express';
 import * as trips from '../controllers/tripsController.js';
 import {
@@ -15,6 +5,7 @@ import {
   requireRole,
   ROLES_MANAGE,
   ROLES_FINANCE,
+  ROLES_ADMIN_ONLY,
 } from '../middleware/auth.js';
 
 const ROLES_DISPATCHER = ['admin', 'manager', 'dispatcher'];
@@ -36,6 +27,9 @@ router.post('/trips/:id/orders/:orderId/detach', requireLogin, requireRole(ROLES
 
 router.post('/trips/:id/edit',          requireLogin, requireRole(ROLES_DISPATCHER),   trips.quickEdit);
 
+// ─── Cancel trip: admin only ──────────────────────────────────────────────────
+router.post('/trips/:id/cancel',        requireLogin, requireRole(ROLES_ADMIN_ONLY),   trips.cancelTrip);
+
 // ─── API: active trips for scanner handoff picker ────────────────────────────
 router.get('/api/trips/active',         requireLogin, requireRole(ROLES_DISPATCHER), trips.apiActiveTrips);
 router.get('/api/trips/arriving',       requireLogin, requireRole(ROLES_DISPATCHER), trips.apiArrivingTrips);
@@ -44,3 +38,4 @@ router.get('/api/trips/arriving',       requireLogin, requireRole(ROLES_DISPATCH
 router.get('/trips/:id',                requireLogin,                                   trips.detail);
 
 export default router;
+

@@ -60,7 +60,7 @@
 %>
 
 
-<div class="max-w-7xl mx-auto space-y-5" x-data="{ addingOrders: false, editingTrip: false }">
+<div class="max-w-7xl mx-auto space-y-5" x-data="{ addingOrders: false, editingTrip: false, cancelingTrip: false }">
 
   <!-- ─── Exception Banner ──────────────────────────────────────────────────── -->
   <% if (totals.customs > 0 && !['COMPLETED','CANCELLED'].includes(trip.status)) { %>
@@ -124,6 +124,14 @@
       <button type="button" @click="addingOrders = !addingOrders"
         class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm flex items-center gap-2 transition-all">
         <i class="fa-solid fa-plus"></i> เพิ่มออเดอร์
+      </button>
+      <% } %>
+
+      <!-- Cancel trip button — admin only, even if COMPLETED -->
+      <% if (can.cancelTrip && trip.status !== 'CANCELLED') { %>
+      <button type="button" @click="cancelingTrip = true"
+        class="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 hover:text-red-300 text-sm flex items-center gap-2 transition-all font-semibold">
+        <i class="fa-solid fa-ban"></i> ยกเลิกรอบรถ
       </button>
       <% } %>
 
@@ -667,5 +675,72 @@
 
   <!-- Spacer to prevent content getting covered by fixed footer on mobile -->
   <div class="h-24 md:hidden"></div>
+
+  <!-- ─── Cancel Trip Modal (Admin Only) ─────────────────────────────────── -->
+  <% if (can.cancelTrip && trip.status !== 'CANCELLED') { %>
+  <div x-show="cancelingTrip" x-cloak
+       class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+       style="background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);">
+    <div class="w-full max-w-md bg-slate-900 border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+         @click.outside="cancelingTrip = false">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-red-500/20 flex items-center gap-3 bg-red-500/5">
+        <div class="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-ban text-red-400"></i>
+        </div>
+        <div>
+          <div class="font-bold text-white text-sm">ยืนยันยกเลิกรอบรถ</div>
+          <div class="text-xs text-red-400 mt-0.5">รอบรถ <span class="font-mono font-bold"><%= trip.trip_no %></span> — สถานะ: <%= STATUS_LABELS[trip.status] %></div>
+        </div>
+        <button @click="cancelingTrip = false" class="ml-auto text-slate-500 hover:text-white transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <!-- Body -->
+      <form method="POST" action="/trips/<%= trip.id %>/cancel">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="px-6 py-5 space-y-4">
+          <!-- Warning box -->
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-amber-500/8 border border-amber-500/20">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5 flex-shrink-0"></i>
+            <div class="text-xs text-amber-300 leading-relaxed">
+              การยกเลิกจะ <strong>คืนออเดอร์ทั้งหมด <%= tripOrders.length %> รายการ</strong>
+              กลับสู่สถานะ<br>
+              <% if (trip.direction === 'LA_TO_TH') { %>
+                <span class="font-mono font-bold text-white">รับคลังลาว (RECEIVED_WH_LA)</span>
+              <% } else { %>
+                <span class="font-mono font-bold text-white">รับคลังไทย (RECEIVED_WH_TH)</span>
+              <% } %>
+              <br>และจะ<strong>บันทึก log</strong>การยกเลิกทุกรายการ
+            </div>
+          </div>
+          <!-- Cancel reason -->
+          <div>
+            <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1.5">
+              เหตุผลการยกเลิก <span class="text-slate-600 normal-case font-normal">(ไม่บังคับ)</span>
+            </label>
+            <input type="text" name="cancel_reason" placeholder="เช่น รถเสีย, รอเอกสาร, ทดสอบระบบ..."
+              class="w-full bg-slate-800 text-white text-sm rounded-xl border border-slate-700 px-3 py-2.5
+                     focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none placeholder-slate-600">
+          </div>
+        </div>
+        <!-- Footer -->
+        <div class="px-6 pb-5 flex items-center gap-3">
+          <button type="submit"
+            class="flex-1 py-3 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-xl text-sm
+                   flex items-center justify-center gap-2 hover:from-red-500 hover:to-rose-600
+                   shadow-lg shadow-red-900/40 transition-all">
+            <i class="fa-solid fa-ban"></i> ยืนยันยกเลิกรอบรถ
+          </button>
+          <button type="button" @click="cancelingTrip = false"
+            class="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300
+                   hover:bg-white/10 text-sm font-semibold transition-all">
+            ปิด
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <% } %>
 
 </div>

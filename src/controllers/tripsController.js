@@ -718,3 +718,81 @@ export async function settleTrip(req, res) {
     res.redirect(`/trips/${id}`);
   }
 }
+
+// ─── CANCEL TRIP (Admin Only) ─────────────────────────────────────────────────
+/**
+ * ยกเลิกรอบรถ — เฉพาะ admin สูงสุดเท่านั้น
+ * - ตั้ง trip.status = 'CANCELLED'
+ * - Revert orders กลับ status ก่อนขึ้นรถ (RECEIVED_WH_TH หรือ RECEIVED_WH_LA ตาม direction)
+ * - บันทึก status log ทุก order
+ */
+export async function cancelTrip(req, res) {
+  const { id } = req.params;
+  const { cancel_reason = '' } = req.body;
+
+  try {
+    const [[trip]] = await pool.query('SELECT * FROM trips WHERE id = ?', [id]);
+    if (!trip) {
+      req.session.flash = { type: 'error', message: 'ไม่พบรอบรถ' };
+      return res.redirect('/trips');
+    }
+
+    if (trip.status === 'CANCELLED') {
+      req.session.flash = {
+        type: 'error',
+        message: 'รอบรถนี้ถูกยกเลิกไปแล้ว',
+      };
+      return res.redirect(`/trips/${id}`);
+    }
+
+    // Determine revert status based on trip direction
+    const revertStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
+    const note = `ยกเลิกรอบรถ ${trip.trip_no}${cancel_reason ? ': ' + cancel_reason : ''}`;
+
+    // Get all orders in this trip
+    const [tripOrders] = await pool.query(
+      'SELECT o.id, o.status FROM trip_orders to2 JOIN orders o ON o.id = to2.order_id WHERE to2.trip_id = ?',
+      [id]
+    );
+
+    // Cancel the trip
+    await pool.query("UPDATE trips SET status = 'CANCELLED' WHERE id = ?", [id]);
+
+    // Revert orders back to warehouse received status & detach from trip
+    if (tripOrders.length > 0) {
+      const orderIds = tripOrders.map(o => o.id);
+      const ph = orderIds.map(() => '?').join(',');
+
+      await pool.query(
+        `UPDATE orders SET status = ?, trip_id = NULL WHERE id IN (${ph})`,
+        [revertStatus, ...orderIds]
+      );
+
+      // Log each order status change
+      for (const order of tripOrders) {
+        await logStatus(
+          order.id,
+          order.status,
+          revertStatus,
+          note,
+          req.session.user?.id
+        );
+      }
+    }
+
+    console.log(
+      `[Trip cancelTrip] Trip ${trip.trip_no} (id=${id}) CANCELLED by admin=${req.session.user?.username}` +
+      ` | ${tripOrders.length} orders reverted to ${revertStatus}`
+    );
+
+    req.session.flash = {
+      type: 'success',
+      message: `ยกเลิกรอบรถ ${trip.trip_no} สำเร็จ — ออเดอร์ ${tripOrders.length} รายการ คืนสู่คลังแล้ว`,
+    };
+    res.redirect(`/trips/${id}`);
+  } catch (err) {
+    console.error('[Trip cancelTrip]', err);
+    req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาด: ' + err.message };
+    res.redirect(`/trips/${id}`);
+  }
+}

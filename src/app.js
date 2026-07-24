@@ -281,6 +281,7 @@ app.use((req, res, next) => {
     // Trips
     createTrip:        has('admin','manager','dispatcher'),
     closeTrip:         has('admin','manager'),
+    cancelTrip:        has('admin'),  // ยกเลิกรอบรถ — admin สูงสุดเท่านั้น
     // COD
     viewCod:           has('admin','manager','finance','dispatcher'),
     collectCod:        has('admin','manager','finance','dispatcher','driver_support'),
