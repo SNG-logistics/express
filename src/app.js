@@ -502,9 +502,13 @@ io.on('connection', (socket) => {
 // Pass io to channel service so inbound messages can emit events
 setIo(io);
 
-await initDb();
-startSlaChecker(io); // Phase 5 — periodic SLA breach check
-startNotificationWorker();
+try {
+  await initDb();
+  startSlaChecker(io); // Phase 5 — periodic SLA breach check
+  startNotificationWorker();
+} catch (err) {
+  console.error('⚠️ [DB] Warning: DB initialization or worker startup failed:', err.message);
+}
 
 httpServer.listen(PORT, () => {
   console.log(`✅ SNG Logistics + CRM running at http://localhost:${PORT}`);
