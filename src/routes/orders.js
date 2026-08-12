@@ -28,19 +28,19 @@ import {
   requireRole,
   ROLES_ORDER_WRITE,
   ROLES_WAREHOUSE,
-  ROLES_MANAGE,
   ROLES_FINANCE,
   ROLES_RETURN_ORDER,
   ROLES_CLOSE_ORDER,
   ROLES_DELIVERY_WRITE,
+  ROLES_READ,
 } from '../middleware/auth.js';
 import upload from '../config/upload.js';
 
 const router = Router();
 
 // ─── Customer APIs (order form autocomplete + phone lookup) ──────────────────
-router.get('/api/customers/search',      requireLogin, customers.search);
-router.get('/api/customers/lookup',      requireLogin, customers.phoneLookup);  // ?phone=0812345678
+router.get('/api/customers/search',      requireLogin, requireRole(ROLES_READ), customers.search);
+router.get('/api/customers/lookup',      requireLogin, requireRole(ROLES_READ), customers.phoneLookup);  // ?phone=0812345678
 
 // ─── Order creation (must be BEFORE /orders/:id) ────────────────────────────
 router.get('/orders/new',     requireLogin, requireRole(ROLES_ORDER_WRITE), orders.showCreate);
@@ -52,10 +52,10 @@ router.get('/orders/scan',    requireLogin, requireRole(ROLES_WAREHOUSE), orders
 router.post('/orders/scan',   requireLogin, requireRole(ROLES_WAREHOUSE), orders.processScan);
 
 // ─── Order list & detail (all authenticated) ─────────────────────────────
-router.get('/orders',             requireLogin, orders.list);
-router.get('/orders/:id',         requireLogin, orders.detail);
-router.get('/orders/:id/waybill', requireLogin, orders.printWaybill);
-router.get('/orders/:id/print',   requireLogin, orders.showPrint);
+router.get('/orders',             requireLogin, requireRole(ROLES_READ), orders.list);
+router.get('/orders/:id',         requireLogin, requireRole(ROLES_READ), orders.detail);
+router.get('/orders/:id/waybill', requireLogin, requireRole(ROLES_READ), orders.printWaybill);
+router.get('/orders/:id/print',   requireLogin, requireRole(ROLES_READ), orders.showPrint);
 
 // ─── Order edit (dispatcher + manager can edit) ───────────────────────────────
 router.get('/orders/:id/edit',  requireLogin, requireRole(['admin','manager','dispatcher']), orders.showEdit);
@@ -122,7 +122,7 @@ router.post('/orders/:id/print-sticker',
 
 // Get sticker HTML (for thermal printer)
 router.get('/orders/:id/sticker',
-  requireLogin,
+  requireLogin, requireRole(ROLES_READ),
   orders.showSticker);
 
 // Resolve a single order flag

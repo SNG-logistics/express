@@ -1,11 +1,6 @@
 import pool from '../config/db.js';
 import bcrypt from 'bcryptjs';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+import { computeRatePrice } from '../services/pricingService.js';
 
 // ─── Helper: load all company_settings into a plain object ───────────────────
 async function getCompanySettings() {
@@ -39,11 +34,26 @@ export async function showRates(req, res) {
 }
 
 export async function createRate(req, res) {
-    const { name, max_weight, max_dimension, price } = req.body;
+    const { name, max_weight, max_dimension, price, price_per_kg } = req.body;
     try {
+        const values = {
+            name: String(name || '').trim(),
+            maxWeight: Number(max_weight),
+            maxDimension: Number(max_dimension || 0),
+            price: Number(price),
+            pricePerKg: Number(price_per_kg || 0),
+        };
+        if (!values.name || !Number.isFinite(values.maxWeight) || values.maxWeight <= 0 ||
+            !Number.isFinite(values.maxDimension) || values.maxDimension < 0 ||
+            !Number.isFinite(values.price) || values.price < 0 ||
+            !Number.isFinite(values.pricePerKg) || values.pricePerKg < 0) {
+            throw new Error('Invalid shipping rate values');
+        }
         await pool.query(
-            'INSERT INTO shipping_rates (name, max_weight, max_dimension, price) VALUES (?, ?, ?, ?)',
-            [name, max_weight, max_dimension || 0, price]
+            `INSERT INTO shipping_rates
+               (name, max_weight, max_dimension, price, price_per_kg)
+             VALUES (?, ?, ?, ?, ?)`,
+            [values.name, values.maxWeight, values.maxDimension, values.price, values.pricePerKg]
         );
         req.session.flash = { type: 'success', message: 'เพิ่มเรทราคาเรียบร้อยแล้ว' };
         res.redirect('/settings/rates');
@@ -56,7 +66,7 @@ export async function createRate(req, res) {
 export async function deleteRate(req, res) {
     const { id } = req.params;
     try {
-        await pool.query('DELETE FROM shipping_rates WHERE id = ?', [id]);
+        await pool.query('UPDATE shipping_rates SET active=0 WHERE id = ?', [id]);
         req.session.flash = { type: 'success', message: 'ลบเรทราคาเรียบร้อยแล้ว' };
         res.redirect('/settings/rates');
     } catch (err) {
@@ -68,35 +78,35 @@ export async function deleteRate(req, res) {
 export async function calculatePrice(req, res) {
     const { weight, width, length, height } = req.query;
     const w = parseFloat(weight) || 0;
-    const dimSum = (parseFloat(width) || 0) + (parseFloat(length) || 0) + (parseFloat(height) || 0);
+    const widthValue = parseFloat(width) || 0;
+    const lengthValue = parseFloat(length) || 0;
+    const heightValue = parseFloat(height) || 0;
+    const dimSum = widthValue + lengthValue + heightValue;
+    const volumetricWeight = widthValue && lengthValue && heightValue
+        ? (widthValue * lengthValue * heightValue) / 5000
+        : 0;
+    const chargeableKg = Math.max(w, volumetricWeight);
 
     try {
-        // 1. Find price by Weight
-        const [weightRates] = await pool.query(
-            'SELECT price FROM shipping_rates WHERE max_weight >= ? AND active = 1 ORDER BY price ASC LIMIT 1',
-            [w]
+        const [rates] = await pool.query(
+            `SELECT * FROM shipping_rates
+             WHERE active=1 AND max_weight >= ?
+               AND (max_dimension=0 OR max_dimension >= ?)`,
+            [chargeableKg, dimSum]
         );
-
-        // 2. Find price by Dimension
-        let dimPrice = 0;
-        if (dimSum > 0) {
-            const [dimRates] = await pool.query(
-                'SELECT price FROM shipping_rates WHERE max_dimension >= ? AND active = 1 ORDER BY price ASC LIMIT 1',
-                [dimSum]
-            );
-            if (dimRates.length > 0) dimPrice = Number(dimRates[0].price);
-        }
-
-        let weightPrice = 0;
-        if (weightRates.length > 0) weightPrice = Number(weightRates[0].price);
-
-        // Take MAX
-        const finalPrice = Math.max(weightPrice, dimPrice);
+        const candidates = rates.map(rate => ({
+            rate,
+            price: computeRatePrice(rate, chargeableKg),
+        })).sort((a, b) => a.price - b.price);
+        const selected = candidates[0] || null;
+        const finalPrice = selected?.price || 0;
 
         res.json({
             price: finalPrice,
             found: finalPrice > 0,
-            details: { weightPrice, dimPrice, dimSum }
+            rate_id: selected?.rate.id || null,
+            rate_name: selected?.rate.name || null,
+            details: { chargeableKg, volumetricWeight, dimSum }
         });
 
     } catch (err) {

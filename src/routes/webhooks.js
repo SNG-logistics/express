@@ -9,7 +9,6 @@
  */
 
 import { Router } from 'express';
-import express from 'express';
 import { facebookVerify, facebookInbound, lineInbound } from '../controllers/webhookController.js';
 
 const router = Router();
@@ -61,4 +60,3 @@ router.post(
 );
 
 export default router;
-

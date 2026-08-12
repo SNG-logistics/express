@@ -10,7 +10,7 @@
  */
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
-import { recordLoginAttempt, regenerateSession } from '../middleware/auth.js';
+import { normalizeRole, recordLoginAttempt, regenerateSession } from '../middleware/auth.js';
 
 export async function showLogin(req, res) {
   if (req.session?.user) {
@@ -58,7 +58,7 @@ export async function login(req, res) {
     const payload = {
       id:       user.id,
       username: user.username,
-      role:     user.role,
+      role:     normalizeRole(user.role),
       name:     user.name,
       // Include branch_id for branch_operator role
       branch_id: user.branch_id || null,

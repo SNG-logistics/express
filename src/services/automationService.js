@@ -29,7 +29,7 @@
 
 import pool from '../config/db.js';
 import { addTagToConversation, updateConversationStatus, assignConversation } from './crmService.js';
-import { classifyIntent, analyzeSentiment } from './aiService.js';
+import { classifyIntent } from './aiService.js';
 
 // ── Cache rules in memory, refresh every 5 minutes ───────────────────────────
 let _rulesCache = null;
@@ -195,7 +195,6 @@ export async function runOnNewMessage(conversation, messageText, io = null) {
 
       if (aiIntent && aiIntent.intent !== 'GENERAL') {
         // Auto-route queue based on AI intent
-        const queueNameMap = { LOGISTICS: null, FINANCE: null, SALES: null, GENERAL: null };
         const [[queueRow]] = await pool.query(
           `SELECT id FROM crm_queues WHERE queue_type = ? AND is_active = 1 LIMIT 1`,
           [aiIntent.queue]

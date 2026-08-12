@@ -128,6 +128,12 @@
             </div>
 
             <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">เบอร์โทร (จำเป็นสำหรับ Rider)</label>
+                <input type="text" name="phone"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Role</label>
                 <select name="role"
                     class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
@@ -145,6 +151,23 @@
                     <option value="staff" selected>Staff (พนักงานทั่วไป/รับออเดอร์หน้าเคาน์เตอร์)</option>
                     <option value="customer_service">Customer Service (บริการลูกค้า - ดูสถานะพัสดุ)</option>
                     <option value="rider">Rider (พนักงานส่งพัสดุย่อย/Last-mile)</option>
+                    <option value="crm_admin">CRM Admin</option>
+                    <option value="crm_supervisor">CRM Supervisor</option>
+                    <option value="crm_agent">CRM Agent</option>
+                    <option value="sales_agent">Sales Agent</option>
+                    <option value="logistics_support">Logistics Support</option>
+                    <option value="finance_support">Finance Support</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">สาขา (จำเป็นสำหรับ Branch Operator/Rider)</label>
+                <select name="branch_id"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    <option value="">-- ไม่ผูกสาขา --</option>
+                    <% (branches || []).forEach(branch => { %>
+                      <option value="<%= branch.id %>"><%= branch.branch_code %> — <%= branch.name %></option>
+                    <% }) %>
                 </select>
             </div>
 

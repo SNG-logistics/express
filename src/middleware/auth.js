@@ -84,14 +84,23 @@ export function requireLogin(req, res, next) {
  *
  * @param {string|string[]} roles
  */
-export function requireRole(roles) {
-  // Normalise: accept both requireRole('admin') and requireRole(['admin','manager'])
-  const allowed = Array.isArray(roles) ? roles : [roles];
+export const ROLE_ALIASES = Object.freeze({
+  thai_warehouse: 'warehouse_th',
+  lao_warehouse: 'warehouse_la',
+});
+
+export function normalizeRole(role) {
+  return ROLE_ALIASES[role] || role;
+}
+
+export function requireRole(...roleArgs) {
+  // Accept requireRole('admin', 'manager') and requireRole(['admin','manager']).
+  const allowed = roleArgs.flat(Infinity).map(normalizeRole);
 
   return (req, res, next) => {
     const user = req.session?.user;
     if (!user) return res.redirect('/login');
-    if (allowed.includes(user.role)) return next();
+    if (allowed.includes(normalizeRole(user.role))) return next();
 
     // Log denied access attempts for security audit
     console.warn(
@@ -123,7 +132,7 @@ export const ROLES_WAREHOUSE     = ['admin', 'manager', 'dispatcher', 'warehouse
 /** Order creation + basic edits */
 export const ROLES_ORDER_WRITE   = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la', 'staff'];
 /** Scanner / quick status update — drivers can also scan */
-export const ROLES_SCANNER       = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la', 'branch_operator', 'driver_support', 'rider'];
+export const ROLES_SCANNER       = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la', 'branch_operator', 'driver_support'];
 
 /** Delivery field actions — dispatcher + driver can start/complete delivery */
 export const ROLES_DELIVERY_WRITE = ['admin', 'manager', 'dispatcher', 'driver_support', 'branch_operator'];
@@ -147,6 +156,17 @@ export const ROLES_READ          = [
 export const ROLES_RIDER         = ['rider'];
 /** Assign rider — admin, manager, warehouse_la can assign */
 export const ROLES_RIDER_ASSIGN  = ['admin', 'manager', 'warehouse_la', 'warehouse_th'];
+
+export const OPERATIONAL_ROLES = Object.freeze([
+  'admin', 'manager', 'staff', 'dispatcher', 'finance', 'customs',
+  'warehouse_th', 'warehouse_la', 'branch_operator', 'customer_service',
+  'driver_support', 'rider',
+]);
+
+export const CRM_ROLES = Object.freeze([
+  'crm_admin', 'crm_supervisor', 'crm_agent', 'sales_agent',
+  'logistics_support', 'finance_support',
+]);
 
 // ─── CRM Role Groups ──────────────────────────────────────────────────────────
 /** CRM Admin — full CRM access, all teams, all conversations, settings */

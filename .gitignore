@@ -10,6 +10,7 @@ node_modules/
 .wwebjs_auth/
 .wwebjs_cache/
 auth_info_baileys/
+DISABLE_WHATSAPP
 
 # SSH keys (if accidentally placed in project)
 ssh
@@ -32,6 +33,13 @@ Thumbs.db
 coverage/
 dist/
 build/
+.gradle/
+local.properties
+.idea/
+
+# Downloaded Android tooling is local build infrastructure, not application source
+tmp/commandlinetools-*.zip
+tmp/android-cmdline-*/
 
 # Uploaded files (user content — serve from CDN or separate storage in production)
 # Keep directory structure but ignore actual uploaded files

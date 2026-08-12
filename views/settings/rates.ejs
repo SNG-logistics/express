@@ -68,6 +68,14 @@
                                 </div>
                             </div>
 
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    ราคาเพิ่มต่อกิโลกรัม (THB/Kg)
+                                </label>
+                                <input type="number" step="0.01" min="0" name="price_per_kg" value="0"
+                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-emerald-500 focus:border-emerald-500">
+                            </div>
+
                             <button type="submit"
                                 class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-save"></i> บันทึก
@@ -87,13 +95,14 @@
                                         <th class="px-6 py-4 font-bold text-center">ขนาด (cm)</th>
                                         <th class="px-6 py-4 font-bold text-center">น้ำหนัก (Kg)</th>
                                         <th class="px-6 py-4 font-bold text-right">ราคา</th>
+                                        <th class="px-6 py-4 font-bold text-right">ต่อ กก.</th>
                                         <th class="px-6 py-4 font-bold text-right">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-white/5 text-slate-300">
                                     <% if (rates.length===0) { %>
                                         <tr>
-                                            <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+                                            <td colspan="6" class="px-6 py-12 text-center text-slate-500">
                                                 <i class="fa-solid fa-scale-unbalanced text-4xl mb-3 opacity-20"></i>
                                                 <p>ยังไม่มีเรทราคา</p>
                                             </td>
@@ -114,6 +123,9 @@
                                                     <td
                                                         class="px-6 py-4 text-right font-mono font-bold text-emerald-400">
                                                         ฿<%= Number(rate.price).toLocaleString() %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-right font-mono text-xs text-emerald-300">
+                                                        ฿<%= Number(rate.price_per_kg || 0).toLocaleString() %>
                                                     </td>
                                                     <td class="px-6 py-4 text-right">
                                                         <form action="/settings/rates/<%= rate.id %>/delete"
@@ -605,7 +617,7 @@
         <div class="glass-panel-dark rounded-3xl p-6 md:p-8 border border-red-500/30 bg-red-500/5 relative overflow-hidden">
             <!-- Warning Background Pattern -->
             <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: repeating-linear-gradient(45deg, #ef4444 25%, transparent 25%, transparent 75%, #ef4444 75%, #ef4444), repeating-linear-gradient(45deg, #ef4444 25%, transparent 25%, transparent 75%, #ef4444 75%, #ef4444); background-position: 0 0, 20px 20px; background-size: 40px 40px;"></div>
-            
+
             <div class="relative z-10 flex flex-col gap-6">
                 <div>
                     <h3 class="text-lg font-bold text-red-400 flex items-center gap-2 mb-2">
@@ -615,11 +627,11 @@
                         เลือกหัวข้อข้อมูลทดสอบที่ต้องการเคลียร์ออกจากระบบ ข้อมูลจะถูกลบอย่างถาวรและไม่สามารถกู้คืนได้ (แนะนำให้ใช้ล้างข้อมูลหลังจากการทดสอบระบบเสร็จสิ้นแล้วเท่านั้น)
                     </p>
                 </div>
-                
+
                 <div class="w-full">
                     <form action="/settings/clear-test-data" method="post" class="space-y-5" onsubmit="return confirm('คำเตือนขั้นสูงสุด: ข้อมูลที่ท่านเลือกจะถูกลบออกจากฐานข้อมูลอย่างถาวร ยืนยันใช่หรือไม่?');">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                        
+
                         <!-- Checkboxes list -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/25 p-5 rounded-2xl border border-white/5">
                             <label class="flex items-start gap-3 cursor-pointer group">
@@ -630,7 +642,7 @@
                                     <p class="text-xs text-slate-500 mt-1">ลบออเดอร์, ประวัติสถานะพัสดุ และธงสกรีนพัสดุ</p>
                                 </div>
                             </label>
-                            
+
                             <label class="flex items-start gap-3 cursor-pointer group">
                                 <input type="checkbox" name="clear_trips" value="1" checked
                                        class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
@@ -639,7 +651,7 @@
                                     <p class="text-xs text-slate-500 mt-1">ลบรอบเดินรถ และการจัดสรรสินค้าในเที่ยววิ่ง</p>
                                 </div>
                             </label>
-                            
+
                             <label class="flex items-start gap-3 cursor-pointer group">
                                 <input type="checkbox" name="clear_payments" value="1"
                                        class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
@@ -648,7 +660,7 @@
                                     <p class="text-xs text-slate-500 mt-1">ลบรายการรับเงินค่าส่ง และยอดเคลียร์บิลปลายทาง COD</p>
                                 </div>
                             </label>
-                            
+
                             <label class="flex items-start gap-3 cursor-pointer group">
                                 <input type="checkbox" name="clear_expenses" value="1"
                                        class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
@@ -657,7 +669,7 @@
                                     <p class="text-xs text-slate-500 mt-1">ลบรายจ่ายรอบรถ (OPEX), รายจ่ายบริษัท และเงินลงทุน (CAPEX)</p>
                                 </div>
                             </label>
-                            
+
                             <label class="flex items-start gap-3 cursor-pointer group md:col-span-2 border-t border-white/5 pt-4 mt-2">
                                 <input type="checkbox" name="clear_crm" value="1"
                                        class="mt-1 w-4 h-4 rounded border-slate-700 text-red-600 bg-slate-900 focus:ring-red-500">
@@ -667,7 +679,7 @@
                                 </div>
                             </label>
                         </div>
-                        
+
                         <div class="flex flex-col sm:flex-row gap-3 pt-2">
                             <input type="password" name="admin_password" required placeholder="ใส่รหัสผ่านแอดมินเพื่อยืนยัน"
                                 class="w-full sm:w-64 bg-slate-900 border border-red-500/30 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-red-500 focus:border-red-500 placeholder-slate-600">
@@ -723,4 +735,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-
+

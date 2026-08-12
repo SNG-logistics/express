@@ -11,10 +11,12 @@
  *   GET  /rider/history                — history
  */
 import pool from '../config/db.js';
+import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
+import { kickNotificationWorker } from '../services/notificationService.js';
 
 // ── Haversine distance (meters) ────────────────────────────────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
-  if (!lat1 || !lng1 || !lat2 || !lng2) return null;
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return null;
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -26,35 +28,14 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 // ── Log delivery event ─────────────────────────────────────────────────────────
-async function logEvent(order_id, rider_id, event_type, note = '', lat = null, lng = null, photo_url = null) {
-  try {
-    await pool.query(
-      'INSERT INTO delivery_events (order_id, rider_id, event_type, note, lat, lng, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [order_id, rider_id, event_type, note, lat, lng, photo_url]
-    );
-  } catch (e) {
-    console.error('[Rider] logEvent error:', e.message);
-  }
+async function logEvent(order_id, rider_id, event_type, note = '', lat = null, lng = null, photo_url = null, conn = pool) {
+  await conn.query(
+    'INSERT INTO delivery_events (order_id, rider_id, event_type, note, lat, lng, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [order_id, rider_id, event_type, note, lat, lng, photo_url]
+  );
 }
 
 // ── WhatsApp: แจ้งลูกค้าหลังส่งสำเร็จ ────────────────────────────────────────
-async function notifyDelivered(order) {
-  try {
-    const { sendWhatsApp } = await import('../services/whatsapp.js').catch(() => ({ sendWhatsApp: null }));
-    if (!sendWhatsApp) return;
-    const phone = order.receiver_phone || order.sender_phone;
-    if (!phone) return;
-    const msg =
-      `✅ พัสดุของท่านถูกส่งถึงแล้ว\n` +
-      `📦 เลขพัสดุ: ${order.job_no}\n` +
-      `👤 รับโดย: ${order.recipient_name || 'ผู้รับ'}\n` +
-      `🙏 ขอบคุณที่ใช้บริการ SNG Logistics`;
-    await sendWhatsApp(phone, msg);
-  } catch (e) {
-    console.error('[Rider] WhatsApp notify error:', e.message);
-  }
-}
-
 // ── GET /rider — งานของฉัน ────────────────────────────────────────────────────
 export async function myJobs(req, res) {
   try {
@@ -65,12 +46,12 @@ export async function myJobs(req, res) {
         s.name  AS sender_name_r,  s.phone  AS sender_phone,
         r.name  AS receiver_name_r, r.phone AS receiver_phone,
         r.address AS receiver_address,
-        r.lat   AS dest_lat,       r.lng    AS dest_lng
+        o.receiver_lat AS dest_lat, o.receiver_lng AS dest_lng
       FROM orders o
       LEFT JOIN customers s ON o.sender_id   = s.id
       LEFT JOIN customers r ON o.receiver_id = r.id
       WHERE o.rider_id = ?
-        AND o.status IN ('ASSIGNED_TO_RIDER','ACCEPTED_BY_RIDER','PICKED_UP_BY_RIDER','OUT_FOR_DELIVERY')
+        AND o.status IN ('RIDER_ASSIGNED','RIDER_ACCEPTED','OUT_FOR_DELIVERY')
       ORDER BY o.assigned_at DESC
     `, [riderId]);
 
@@ -79,7 +60,7 @@ export async function myJobs(req, res) {
         COUNT(*) AS cnt,
         COALESCE(SUM(cod_collected_amount), 0) AS cod_total
       FROM orders
-      WHERE rider_id = ? AND status = 'DELIVERED'
+      WHERE rider_id = ? AND status IN ('DELIVERED','COD_COLLECTED','COD_REMITTED','CLOSED')
         AND DATE(delivered_at) = CURDATE()
     `, [riderId]);
 
@@ -107,7 +88,7 @@ export async function jobDetail(req, res) {
         s.name  AS sender_name_r,  s.phone  AS sender_phone,
         r.name  AS receiver_name_r, r.phone AS receiver_phone,
         r.address AS receiver_address,
-        r.lat   AS dest_lat,       r.lng    AS dest_lng
+        o.receiver_lat AS dest_lat, o.receiver_lng AS dest_lng
       FROM orders o
       LEFT JOIN customers s ON o.sender_id   = s.id
       LEFT JOIN customers r ON o.receiver_id = r.id
@@ -139,19 +120,26 @@ export async function acceptJob(req, res) {
   try {
     const riderId = req.session.user.id;
     const { orderId } = req.params;
-    const [result] = await pool.query(
-      `UPDATE orders SET status='ACCEPTED_BY_RIDER', accepted_at=NOW()
-       WHERE id=? AND rider_id=? AND status='ASSIGNED_TO_RIDER'`,
-      [orderId, riderId]
-    );
-    if (!result.affectedRows) {
-      return res.status(400).json({ success: false, message: 'ไม่สามารถรับงานได้ (สถานะไม่ถูกต้อง)' });
-    }
-    await logEvent(orderId, riderId, 'ACCEPTED', 'ไรเดอร์รับงานแล้ว');
+    await withTransaction(async (conn) => {
+      await transitionOrder({
+        orderId,
+        toStatus: 'RIDER_ACCEPTED',
+        userId: riderId,
+        note: 'Rider accepted delivery job',
+        source: 'RIDER_ACCEPT',
+        updates: { accepted_at: new Date() },
+        connection: conn,
+        validate: order => {
+          if (String(order.rider_id) !== String(riderId)) throw new WorkflowError('Job is not assigned to this rider', 403);
+        },
+      });
+      await logEvent(orderId, riderId, 'ACCEPTED', 'Rider accepted the job', null, null, null, conn);
+    });
+    kickNotificationWorker(orderId);
     res.json({ success: true, message: 'รับงานสำเร็จ' });
   } catch (e) {
     console.error('[Rider] acceptJob:', e);
-    res.status(500).json({ success: false, message: e.message });
+    res.status(e.statusCode || 500).json({ success: false, message: e.message });
   }
 }
 
@@ -162,20 +150,32 @@ export async function pickupJob(req, res) {
     const { orderId } = req.params;
     const { lat, lng } = req.body;
 
-    await pool.query(
-      `UPDATE orders SET
-         status='OUT_FOR_DELIVERY',
-         picked_up_at=NOW(),
-         out_for_delivery_at=NOW()
-       WHERE id=? AND rider_id=?
-         AND status IN ('ACCEPTED_BY_RIDER','ASSIGNED_TO_RIDER')`,
-      [orderId, riderId]
-    );
-    await logEvent(orderId, riderId, 'PICKED_UP', 'รับสินค้าออกจากคลังแล้ว', lat || null, lng || null);
+    await withTransaction(async (conn) => {
+      await transitionOrder({
+        orderId,
+        toStatus: 'OUT_FOR_DELIVERY',
+        userId: riderId,
+        note: 'Rider picked up parcel',
+        source: 'RIDER_PICKUP',
+        updates: { picked_up_at: new Date() },
+        connection: conn,
+        validate: order => {
+          if (String(order.rider_id) !== String(riderId)) throw new WorkflowError('Job is not assigned to this rider', 403);
+        },
+      });
+      await logEvent(orderId, riderId, 'PICKED_UP', 'Rider picked up parcel', lat || null, lng || null, null, conn);
+      await conn.query(
+        `UPDATE branch_deliveries bd JOIN riders r ON r.id=bd.rider_id
+         SET bd.status='PICKED_UP', bd.picked_up_at=NOW()
+         WHERE bd.order_id=? AND r.user_id=?`,
+        [orderId, riderId]
+      );
+    });
+    kickNotificationWorker(orderId);
     res.json({ success: true, message: 'รับสินค้าสำเร็จ กำลังออกส่ง' });
   } catch (e) {
     console.error('[Rider] pickupJob:', e);
-    res.status(500).json({ success: false, message: e.message });
+    res.status(e.statusCode || 500).json({ success: false, message: e.message });
   }
 }
 
@@ -196,56 +196,87 @@ export async function deliverJob(req, res) {
 
     // Get order for WhatsApp + GPS check
     const [[order]] = await pool.query(
-      'SELECT o.*, r.lat AS dest_lat, r.lng AS dest_lng FROM orders o LEFT JOIN customers r ON o.receiver_id=r.id WHERE o.id=? AND o.rider_id=?',
+      'SELECT o.*, o.receiver_lat AS dest_lat, o.receiver_lng AS dest_lng FROM orders o WHERE o.id=? AND o.rider_id=?',
       [orderId, riderId]
     );
     if (!order) return res.status(404).json({ success: false, message: 'ไม่พบงาน' });
+
+    if (order.status !== 'OUT_FOR_DELIVERY') {
+      return res.status(409).json({ success: false, message: `Job is not out for delivery (${order.status})` });
+    }
+
+    const codCollected = Number(cod_collected || 0);
+    if (!Number.isFinite(codCollected) || codCollected < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid COD amount' });
+    }
+    if (Number(order.cod_amount) > 0 && Math.abs(codCollected - Number(order.cod_amount)) > 0.01) {
+      return res.status(400).json({ success: false, message: `COD must equal ${Number(order.cod_amount)}` });
+    }
 
     // GPS distance
     const distM = haversine(parseFloat(lat), parseFloat(lng), parseFloat(order.dest_lat), parseFloat(order.dest_lng));
     const gpsVerified = distM !== null && distM <= 300;
 
     // Photo URL (use first file)
-    const photoUrl = '/uploads/' + req.files[0].filename;
+    const photoUrl = '/uploads/orders/' + req.files[0].filename;
 
-    await pool.query(`
-      UPDATE orders SET
-        status                = 'DELIVERED',
-        delivered_at          = NOW(),
-        recipient_name        = ?,
-        pod_photo_url         = ?,
-        delivery_lat          = ?,
-        delivery_lng          = ?,
-        delivery_accuracy     = ?,
-        delivery_distance_m   = ?,
-        gps_verified          = ?,
-        cod_collected_amount  = ?
-      WHERE id = ? AND rider_id = ?
-    `, [
-      recipient_name.trim(),
-      photoUrl,
-      lat    || null,
-      lng    || null,
-      accuracy || null,
-      distM,
-      gpsVerified ? 1 : 0,
-      parseFloat(cod_collected) || 0,
-      orderId, riderId,
-    ]);
-
-    await logEvent(orderId, riderId, 'DELIVERED',
-      `ส่งถึง: ${recipient_name} | COD: ${cod_collected || 0} | GPS: ${distM ?? '?'}m`,
-      lat || null, lng || null, photoUrl
-    );
-
-    // Notify via WhatsApp
-    order.recipient_name = recipient_name;
-    await notifyDelivered(order);
+    await withTransaction(async (conn) => {
+      await transitionOrder({
+        orderId,
+        toStatus: 'DELIVERED',
+        userId: riderId,
+        note: `Delivered to ${recipient_name.trim()}`,
+        source: 'RIDER_DELIVERED',
+        updates: {
+          recipient_name: recipient_name.trim(),
+          pod_photo_url: photoUrl,
+          delivery_lat: lat || null,
+          delivery_lng: lng || null,
+          delivery_accuracy: accuracy || null,
+          delivery_distance_m: distM,
+          gps_verified: gpsVerified ? 1 : 0,
+          cod_collected_amount: codCollected,
+          delivered_by: riderId,
+        },
+        connection: conn,
+        validate: lockedOrder => {
+          if (String(lockedOrder.rider_id) !== String(riderId)) throw new WorkflowError('Job is not assigned to this rider', 403);
+        },
+      });
+      if (Number(order.cod_amount) > 0) {
+        await conn.query(
+          `INSERT INTO cod_settlements (order_id, cod_amount, status, collected_at)
+           VALUES (?, ?, 'COLLECTED', NOW())
+           ON DUPLICATE KEY UPDATE status='COLLECTED', collected_at=NOW(), cod_amount=VALUES(cod_amount)`,
+          [orderId, order.cod_amount]
+        );
+        await transitionOrder({
+          orderId,
+          toStatus: 'COD_COLLECTED',
+          userId: riderId,
+          note: 'COD collected at delivery',
+          source: 'RIDER_COD',
+          connection: conn,
+          notify: false,
+        });
+      }
+      await logEvent(orderId, riderId, 'DELIVERED',
+        `Delivered to ${recipient_name.trim()} | COD: ${codCollected} | GPS: ${distM ?? '?'}m`,
+        lat || null, lng || null, photoUrl, conn);
+      await conn.query(
+        `UPDATE branch_deliveries bd JOIN riders r ON r.id=bd.rider_id
+         SET bd.status='DELIVERED', bd.delivered_at=NOW(), bd.recipient_name=?, bd.proof_image=?
+         WHERE bd.order_id=? AND r.user_id=?`,
+        [recipient_name.trim(), photoUrl, orderId, riderId]
+      );
+      await conn.query(`UPDATE riders SET status='active' WHERE user_id=?`, [riderId]);
+    });
+    kickNotificationWorker(orderId);
 
     res.json({ success: true, message: `ส่งสำเร็จ! ${order.job_no}`, gpsVerified, distM });
   } catch (e) {
     console.error('[Rider] deliverJob:', e);
-    res.status(500).json({ success: false, message: e.message });
+    res.status(e.statusCode || 500).json({ success: false, message: e.message });
   }
 }
 
@@ -260,29 +291,43 @@ export async function failJob(req, res) {
       return res.status(400).json({ success: false, message: 'กรุณาเลือกเหตุผล' });
     }
 
-    const photoUrl = req.files?.[0] ? '/uploads/' + req.files[0].filename : null;
+    const photoUrl = req.files?.[0] ? '/uploads/orders/' + req.files[0].filename : null;
 
-    await pool.query(`
-      UPDATE orders SET
-        status              = 'DELIVERY_FAILED',
-        delivery_failed_at  = NOW(),
-        fail_reason         = ?,
-        fail_note           = ?,
-        next_attempt_date   = ?,
-        delivery_lat        = ?,
-        delivery_lng        = ?
-      WHERE id = ? AND rider_id = ?
-    `, [fail_reason, fail_note || '', next_attempt_date || null, lat || null, lng || null, orderId, riderId]);
-
-    await logEvent(orderId, riderId, 'FAILED',
-      `เหตุผล: ${fail_reason} | หมายเหตุ: ${fail_note || '-'}`,
-      lat || null, lng || null, photoUrl
-    );
+    await withTransaction(async (conn) => {
+      await transitionOrder({
+        orderId,
+        toStatus: 'DELIVERY_FAILED',
+        userId: riderId,
+        note: `Delivery failed: ${fail_reason}`,
+        source: 'RIDER_FAILED',
+        updates: {
+          fail_reason,
+          fail_note: fail_note || '',
+          next_attempt_date: next_attempt_date || null,
+          delivery_lat: lat || null,
+          delivery_lng: lng || null,
+        },
+        connection: conn,
+        validate: order => {
+          if (String(order.rider_id) !== String(riderId)) throw new WorkflowError('Job is not assigned to this rider', 403);
+        },
+      });
+      await logEvent(orderId, riderId, 'FAILED',
+        `Reason: ${fail_reason} | Note: ${fail_note || '-'}`,
+        lat || null, lng || null, photoUrl, conn);
+      await conn.query(
+        `UPDATE branch_deliveries bd JOIN riders r ON r.id=bd.rider_id
+         SET bd.status='FAILED', bd.notes=? WHERE bd.order_id=? AND r.user_id=?`,
+        [fail_note || fail_reason, orderId, riderId]
+      );
+      await conn.query(`UPDATE riders SET status='active' WHERE user_id=?`, [riderId]);
+    });
+    kickNotificationWorker(orderId);
 
     res.json({ success: true, message: 'บันทึกส่งไม่สำเร็จแล้ว' });
   } catch (e) {
     console.error('[Rider] failJob:', e);
-    res.status(500).json({ success: false, message: e.message });
+    res.status(e.statusCode || 500).json({ success: false, message: e.message });
   }
 }
 
@@ -296,7 +341,7 @@ export async function history(req, res) {
       FROM orders o
       LEFT JOIN customers r ON o.receiver_id = r.id
       WHERE o.rider_id = ?
-        AND o.status IN ('DELIVERED','DELIVERY_FAILED','RETURN_TO_BRANCH')
+        AND o.status IN ('DELIVERED','COD_COLLECTED','COD_REMITTED','CLOSED','DELIVERY_FAILED','RETURN_TO_SENDER')
       ORDER BY COALESCE(o.delivered_at, o.delivery_failed_at) DESC
       LIMIT 100
     `, [riderId]);

@@ -21,30 +21,33 @@ import { requireLogin, requireRole, ROLES_SCANNER } from '../middleware/auth.js'
 import upload from '../config/upload.js';
 
 const router = Router();
+const WAREHOUSE_SCAN = ['admin', 'manager', 'dispatcher', 'warehouse_th', 'warehouse_la'];
+const AUTO_SCAN = [...WAREHOUSE_SCAN, 'branch_operator', 'driver_support'];
+const QUICK_STATUS = ['admin', 'manager', 'dispatcher'];
 
 // ─── Page routes ──────────────────────────────────────────────────────────────
 router.get('/scanner',                         requireLogin, requireRole(ROLES_SCANNER), scanner.showScanner);
-router.get('/scanner/pda',                     requireLogin, requireRole(ROLES_SCANNER), scanner.showPda);
-router.get('/scanner/auto',                    requireLogin, requireRole(ROLES_SCANNER), scanner.showAutoScan);
-router.get('/scanner/quick',                   requireLogin, requireRole(ROLES_SCANNER), scanner.showQuickScan);
+router.get('/scanner/pda',                     requireLogin, requireRole(AUTO_SCAN), scanner.showPda);
+router.get('/scanner/auto',                    requireLogin, requireRole(AUTO_SCAN), scanner.showAutoScan);
+router.get('/scanner/quick',                   requireLogin, requireRole(QUICK_STATUS), scanner.showQuickScan);
 router.get('/scanner/lookup',                  requireLogin, requireRole(ROLES_SCANNER), scanner.showLookup);
-router.get('/scanner/receive',                 requireLogin, requireRole(ROLES_SCANNER), scanner.showReceive);
-router.get('/scanner/handoff/:tripId',         requireLogin, requireRole(ROLES_SCANNER), scanner.showHandoff);
+router.get('/scanner/receive',                 requireLogin, requireRole(WAREHOUSE_SCAN), scanner.showReceive);
+router.get('/scanner/handoff/:tripId',         requireLogin, requireRole(WAREHOUSE_SCAN), scanner.showHandoff);
 
 // ─── AJAX API routes ──────────────────────────────────────────────────────────
 router.post('/scanner/scan',                   requireLogin, requireRole(ROLES_SCANNER), scanner.processScan);
-router.post('/scanner/auto-update',            requireLogin, requireRole(ROLES_SCANNER), scanner.processAutoScan);
-router.post('/scanner/update/:id',             requireLogin, requireRole(ROLES_SCANNER), scanner.quickStatusUpdate);
-router.post('/scanner/receive/:id',            requireLogin, requireRole(ROLES_SCANNER), upload.array('intake_photos', 5), scanner.receiveParcel);
-router.post('/scanner/exception/:id',          requireLogin, requireRole(ROLES_SCANNER), scanner.logException);
+router.post('/scanner/auto-update',            requireLogin, requireRole(AUTO_SCAN), scanner.processAutoScan);
+router.post('/scanner/update/:id',             requireLogin, requireRole(QUICK_STATUS), scanner.quickStatusUpdate);
+router.post('/scanner/receive/:id',            requireLogin, requireRole(WAREHOUSE_SCAN), upload.array('intake_photos', 5), scanner.receiveParcel);
+router.post('/scanner/exception/:id',          requireLogin, requireRole(WAREHOUSE_SCAN), scanner.logException);
 router.post('/scanner/handoff/:tripId/confirm/:orderId',
-                                               requireLogin, requireRole(ROLES_SCANNER), scanner.confirmHandoff);
-router.get('/scanner/unload/:tripId',          requireLogin, requireRole(ROLES_SCANNER), scanner.showUnload);
-router.post('/scanner/unload/:tripId/confirm/:orderId', requireLogin, requireRole(ROLES_SCANNER), scanner.confirmUnload);
+                                               requireLogin, requireRole(WAREHOUSE_SCAN), scanner.confirmHandoff);
+router.get('/scanner/unload/:tripId',          requireLogin, requireRole(WAREHOUSE_SCAN), scanner.showUnload);
+router.post('/scanner/unload/:tripId/confirm/:orderId', requireLogin, requireRole(WAREHOUSE_SCAN), scanner.confirmUnload);
 router.get('/scanner/session',                 requireLogin, requireRole(ROLES_SCANNER), scanner.sessionSummary);
 
 // ─── Screening ────────────────────────────────────────────────────────────────
-router.get('/scanner/screening',               requireLogin, requireRole(ROLES_SCANNER), scanner.showScreening);
-router.post('/scanner/screening/:id',          requireLogin, requireRole(ROLES_SCANNER), scanner.processScreening);
+router.get('/scanner/screening',               requireLogin, requireRole(WAREHOUSE_SCAN), scanner.showScreening);
+router.post('/scanner/screening/:id',          requireLogin, requireRole(WAREHOUSE_SCAN), scanner.processScreening);
 
 export default router;

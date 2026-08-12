@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0f172a">
@@ -353,7 +354,8 @@
   const canWH_TH = isAdmin || role === 'warehouse_th';
   const canWH_LA = isAdmin || role === 'warehouse_la';
   const canTruck  = isAdmin || ['dispatcher','driver_support'].includes(role);
-  const canDest   = isAdmin || ['warehouse_th','warehouse_la','branch_operator'].includes(role);
+  const canWarehouseDest = isAdmin || ['warehouse_th','warehouse_la'].includes(role);
+  const canBranch = isAdmin || (role === 'branch_operator' && Boolean(user?.branch_id));
 %>
 <body>
 <div id="app">
@@ -363,7 +365,7 @@
     <div class="logo"><img src="/images/snglogo.png" alt="SNG"></div>
     <div class="title">
       <h1>SNG PDA Scanner</h1>
-      <p>Gprinter IT68 Mode · <%= user?.username %></p>
+      <p>iT78 / Gprinter IT68 Mode · <%= user?.username %></p>
     </div>
     <div class="status-dot" id="netDot" title="Online"></div>
   </div>
@@ -387,6 +389,10 @@
           <% if (canWH_LA) { %>
           <optgroup label="คลังลาว">
             <option value="RECEIVED_WH_LA">📦 รับเข้าคลังลาว</option>
+          </optgroup>
+          <% } %>
+          <% if (canWarehouseDest) { %>
+          <optgroup label="คลังปลายทาง">
             <option value="AT_DEST_WH">🏭 ถึงคลังปลายทาง</option>
           </optgroup>
           <% } %>
@@ -396,9 +402,9 @@
             <option value="OUT_FOR_DELIVERY">🏃 ออกจ่าย</option>
           </optgroup>
           <% } %>
-          <% if (canDest) { %>
-          <optgroup label="ปลายทาง">
-            <option value="DELIVERED">✅ ส่งสำเร็จ</option>
+          <% if (canBranch) { %>
+          <optgroup label="สาขาปลายทาง">
+            <option value="BRANCH_RECEIVED">🏢 สาขารับพัสดุแล้ว</option>
           </optgroup>
           <% } %>
         </select>
@@ -423,7 +429,7 @@
         <div class="sz-corner br"></div>
         <i class="fa-solid fa-barcode sz-icon" id="scanIcon"></i>
         <div class="sz-text" id="scanText">แตะเพื่อโฟกัส แล้วยิงบาร์โค้ด</div>
-        <div class="sz-sub" id="scanSub">รองรับ Gprinter IT68 / ปืนเลเซอร์ทุกรุ่น</div>
+        <div class="sz-sub" id="scanSub">รองรับ iT78, Gprinter IT68 และเครื่องสแกนแบบ Keyboard Wedge</div>
         <input type="text" id="barcodeInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
 
@@ -578,6 +584,8 @@ let scanLog = [];
 let scanOk = 0, scanErr = 0;
 let isProcessing = false;
 const barcodeInput = document.getElementById('barcodeInput');
+const CSRF_TOKEN    = document.querySelector('meta[name="csrf-token"]')?.content || '';
+const JSON_HEADERS  = { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN };
 const scanZone     = document.getElementById('scanZone');
 const resIcon      = document.getElementById('resIcon');
 const resTitle     = document.getElementById('resTitle');
@@ -611,17 +619,17 @@ barcodeInput.addEventListener('focus', () => {
   scanZone.classList.add('focused');
   document.getElementById('scanIcon').style.color = 'var(--yellow)';
   document.getElementById('scanText').textContent  = '🟢 พร้อมรับสัญญาณ — ยิงบาร์โค้ดได้เลย';
-  document.getElementById('scanSub').textContent   = 'กดปุ่มสแกนบน IT68';
+  document.getElementById('scanSub').textContent   = 'กดปุ่มสแกนบน iT78 / IT68';
 });
 barcodeInput.addEventListener('blur', () => {
   scanZone.classList.remove('focused');
   document.getElementById('scanIcon').style.color = '';
   document.getElementById('scanText').textContent = 'แตะเพื่อโฟกัส แล้วยิงบาร์โค้ด';
-  document.getElementById('scanSub').textContent  = 'รองรับ Gprinter IT68 / ปืนเลเซอร์ทุกรุ่น';
+  document.getElementById('scanSub').textContent  = 'รองรับ iT78, Gprinter IT68 และเครื่องสแกนแบบ Keyboard Wedge';
 });
 
 // ─── Barcode Input Handler ───────────────────────────────────────
-// IT68 sends barcode text + Enter key
+// iT78 / IT68 keyboard-wedge mode sends barcode text + Enter key
 barcodeInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -669,7 +677,7 @@ async function processAutoScan(barcode) {
   try {
     const res  = await fetch('/scanner/auto-update', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
       body:    JSON.stringify({ barcode, target_status: targetStatus, trip_id: tripId })
     });
     const data = await res.json();
@@ -748,7 +756,7 @@ async function doLookup() {
   try {
     const res  = await fetch('/scanner/scan', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
       body:    JSON.stringify({ barcode: q })
     });
     const data = await res.json();
@@ -784,31 +792,13 @@ function renderOrderCard(o) {
   document.getElementById('oc-route').textContent      = (o.origin_branch||'?') + ' → ' + (o.destination_branch||'?');
   document.getElementById('oc-weight').textContent     = (o.actual_weight||o.declared_weight||'?') + ' kg · ' + (o.item_count||1) + ' ชิ้น';
   document.getElementById('oc-cod').textContent        = 'COD ₭' + Number(o.cod_amount||0).toLocaleString() + ' · ค่าส่ง ₭' + Number((o.price_amount||0)*700).toLocaleString();
-  // Quick action buttons
+  // Lookup is read-only. Delivery completion must use the POD workflow.
   const acts = document.getElementById('oc-actions');
   acts.innerHTML = `
     <button class="btn-action btn-info" onclick="window.open('/orders/${o.id}','_blank')">
       <i class="fa-solid fa-eye"></i> ดูรายละเอียด
     </button>
-    <button class="btn-action btn-ok" onclick="quickUpdate(${o.id}, 'DELIVERED')">
-      <i class="fa-solid fa-check"></i> ส่งสำเร็จ
-    </button>
   `;
-}
-
-async function quickUpdate(id, status) {
-  showToast('กำลังอัปเดต...');
-  try {
-    const res  = await fetch('/scanner/update/' + id, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-    const data = await res.json();
-    showToast(data.success ? '✅ อัปเดตสำเร็จ' : '❌ ' + data.message);
-    if (data.success) { playOk(); doLookup(); }
-    else playErr();
-  } catch(e) { showToast('📡 เชื่อมต่อไม่ได้'); playErr(); }
 }
 
 // ─── Session Summary ─────────────────────────────────────────────

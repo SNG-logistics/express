@@ -32,6 +32,7 @@ import webhookRoutes from './routes/webhooks.js';   // ─ FB + LINE webhooks (p
 import webhookSimRoutes from './routes/webhookSim.js'; // ─ Dev simulator (blocked in prod)
 import { setIo } from './services/channelService.js'; // ─ Socket.io ref
 import { startSlaChecker } from './services/automationService.js'; // ─ SLA engine
+import { startNotificationWorker } from './services/notificationService.js';
 import { createServer } from 'http';                // ─ Socket.io needs raw http server
 import { Server as SocketIO } from 'socket.io';    // ─ Real-time CRM inbox
 import * as tracking from './controllers/trackingController.js';
@@ -200,8 +201,7 @@ if (!sessionSecret || sessionSecret.startsWith('change_me')) {
   console.warn('[SECURITY] SESSION_SECRET is not configured — using insecure default for local dev only.');
 }
 
-app.use(
-  session({
+const sessionMiddleware = session({
     store: sessionStore,
     secret: sessionSecret || 'dev_only_insecure_fallback_' + Date.now(),
     resave: false,
@@ -213,8 +213,8 @@ app.use(
       sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24 // 1 day
     }
-  })
-);
+  });
+app.use(sessionMiddleware);
 
 // ─── i18n (Thai/Lao) ────────────────────────────────────────────────────────
 app.use(i18nMiddleware);
@@ -291,7 +291,7 @@ app.use((req, res, next) => {
     processCustoms:    has('admin','manager','customs'),
     customsClear:      has('admin','manager','customs'),  // used in customs/create.ejs inline buttons
     // Scanner
-    useScanner:        has('admin','manager','dispatcher','warehouse_th','warehouse_la','branch_operator','driver_support','rider'),
+    useScanner:        has('admin','manager','dispatcher','warehouse_th','warehouse_la','branch_operator','driver_support'),
     // Customers
     editCustomer:      has('admin','manager','dispatcher'),
     deleteCustomer:    has('admin','manager'),
@@ -368,7 +368,8 @@ app.get('/', (req, res) => res.redirect('/dashboard'));
 
 // Temporary DB Migration Route for Production
 import { exec } from 'child_process';
-app.get('/api/fix-db', (req, res) => {
+app.post('/api/fix-db', (req, res) => {
+  if (req.session?.user?.role !== 'admin') return res.status(404).send('Not found');
   const nodePath = process.execPath;
   const scriptPath = path.join(__dirname, '../scripts/migrate_db.js');
   exec(`"${nodePath}" "${scriptPath}"`, { env: process.env }, (err, stdout, stderr) => {
@@ -424,7 +425,7 @@ app.use((err, req, res, next) => {
 });
 
 // Generic error handler — NEVER leak internal error details to client
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('[APP ERROR]', err);
   const userMessage = isProduction
     ? 'Internal Server Error'
@@ -442,30 +443,55 @@ export default app;
 
 // ─── Socket.io Real-time Server ───────────────────────────────────────────────
 const httpServer = createServer(app);
+const socketOrigins = String(process.env.APP_ORIGIN || '')
+  .split(',').map(value => value.trim()).filter(Boolean);
 const io = new SocketIO(httpServer, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: {
+    origin: isProduction ? socketOrigins : true,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
   transports: ['polling'],  // WebSocket blocked by Apache proxy on Hostinger — use polling
 });
 
+io.engine.use(sessionMiddleware);
+io.use((socket, next) => {
+  if (socket.request.session?.user) return next();
+  const error = new Error('Authentication required');
+  error.data = { code: 'AUTH_REQUIRED' };
+  return next(error);
+});
+
 io.on('connection', (socket) => {
+  const sessionUser = socket.request.session.user;
+  const crmRoles = ['admin','manager','crm_admin','crm_supervisor','crm_agent',
+    'sales_agent','logistics_support','finance_support'];
   // CRM agents join a shared room for inbox updates
-  socket.on('crm:join', (data) => {
+  socket.on('crm:join', () => {
+    if (!crmRoles.includes(sessionUser.role)) return;
     socket.join('crm:inbox');
     // Supervisors also join the supervisors-only alert room
-    if (data?.role && ['admin','crm_admin','crm_supervisor'].includes(data.role)) {
+    if (['admin','crm_admin','crm_supervisor'].includes(sessionUser.role)) {
       socket.join('crm:supervisors');
     }
-    console.log(`[Socket.io] Client ${socket.id} joined crm:inbox (role: ${data?.role || 'unknown'})`);
+    console.log(`[Socket.io] Client ${socket.id} joined crm:inbox (role: ${sessionUser.role})`);
   });
 
   // Agent joins a specific conversation room for typing indicators
   socket.on('crm:join_conversation', ({ conversationId }) => {
-    if (conversationId) socket.join(`crm:conv:${conversationId}`);
+    if (crmRoles.includes(sessionUser.role) && /^\d+$/.test(String(conversationId))) {
+      socket.join(`crm:conv:${conversationId}`);
+    }
   });
 
   // Typing indicator relay
-  socket.on('crm:typing', ({ conversationId, agentName, isTyping }) => {
-    socket.to(`crm:conv:${conversationId}`).emit('crm:typing', { agentName, isTyping });
+  socket.on('crm:typing', ({ conversationId, isTyping }) => {
+    if (crmRoles.includes(sessionUser.role) && /^\d+$/.test(String(conversationId))) {
+      socket.to(`crm:conv:${conversationId}`).emit('crm:typing', {
+        agentName: sessionUser.name || sessionUser.username,
+        isTyping: Boolean(isTyping),
+      });
+    }
   });
 
   socket.on('disconnect', () => {
@@ -478,6 +504,7 @@ setIo(io);
 
 await initDb();
 startSlaChecker(io); // Phase 5 — periodic SLA breach check
+startNotificationWorker();
 
 httpServer.listen(PORT, () => {
   console.log(`✅ SNG Logistics + CRM running at http://localhost:${PORT}`);
@@ -485,4 +512,3 @@ httpServer.listen(PORT, () => {
   console.log(`   DB_HOST  : ${process.env.DB_HOST}`);
   console.log(`   Socket.io: enabled (CRM real-time inbox)`);
 });
-

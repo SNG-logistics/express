@@ -12,11 +12,13 @@
  */
 
 import pool from '../config/db.js';
+import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
+import { kickNotificationWorker } from '../services/notificationService.js';
 
 // ─── Allowed trip status transitions ─────────────────────────────────────────
 const TRIP_TRANSITIONS = {
-  'PLANNED':   ['LOADING'],
-  'LOADING':   ['DEPARTED', 'PLANNED'],  // allow rollback to PLANNED if no orders moved yet
+  'PLANNED':   ['LOADING', 'CANCELLED'],
+  'LOADING':   ['DEPARTED', 'PLANNED', 'CANCELLED'],
   'DEPARTED':  ['AT_BORDER'],
   'AT_BORDER': ['CROSSED'],
   'CROSSED':   ['ARRIVED'],
@@ -28,8 +30,6 @@ const TRIP_TRANSITIONS = {
 
 // Order status that gets set when trip advances
 const TRIP_TO_ORDER_STATUS = {
-  'LOADING':   'ON_TRUCK',
-  'DEPARTED':  'ON_TRUCK_BORDER',
   'AT_BORDER': 'CROSSING_BORDER',
   'CROSSED':   'ARRIVED_BORDER_WH'
   // When Trip is ARRIVED or UNLOADING, we do NOT auto-cascade to AT_DEST_WH
@@ -47,14 +47,6 @@ const TRIP_STATUS_LABELS = {
   'COMPLETED': 'เสร็จสิ้น',
   'CANCELLED': 'ยกเลิก',
 };
-
-async function logStatus(orderId, fromStatus, toStatus, note, userId) {
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [orderId, fromStatus || null, toStatus, note, userId || null]
-  );
-}
 
 // ─── LIST ─────────────────────────────────────────────────────────────────────
 export async function list(req, res) {
@@ -110,7 +102,8 @@ export async function showCreate(req, res) {
       JOIN trips t ON t.id = to2.trip_id
       WHERE t.status NOT IN ('COMPLETED','CANCELLED')
     )
-    AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA','NEW')
+    AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
+    AND o.screening_status = 'PASSED'
   `;
   const params = [];
   if (direction) {
@@ -154,7 +147,6 @@ export async function create(req, res) {
     vehicle, driver_name,
     max_weight, notes,
     order_ids = [],
-    initial_status = 'PLANNED',
   } = req.body;
 
   if (!trip_no || !trip_date || !direction || !border_checkpoint) {
@@ -168,62 +160,55 @@ export async function create(req, res) {
   }
 
   try {
-    // Check duplicate trip_no
-    const [[existing]] = await pool.query('SELECT id FROM trips WHERE trip_no = ?', [trip_no]);
-    if (existing) {
-      throw new Error(`Trip No "${trip_no}" ถูกใช้แล้ว`);
-    }
-
-    const tripStatus = initial_status === 'COMPLETED' ? 'COMPLETED' : 'PLANNED';
-
-    const [result] = await pool.query(
-      `INSERT INTO trips (trip_no, trip_date, direction, origin_border, dest_border, border_checkpoint, vehicle, driver_name, notes, max_weight, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [trip_no, trip_date, direction, origin_border || null, dest_border || null, border_checkpoint,
-       vehicle || null, driver_name || null, notes || null,
-       max_weight ? Number(max_weight) : null, tripStatus]
-    );
-    const tripId = result.insertId;
-
-    // Attach orders
     const ordersArray = (Array.isArray(order_ids) ? order_ids : [order_ids]).filter(Boolean);
-    if (ordersArray.length > 0) {
-      const numericIds = ordersArray.map(Number).filter(n => !isNaN(n));
-      if (numericIds.length > 0) {
-        const [currentRows] = await pool.query(
-          `SELECT id, status FROM orders WHERE id IN (${numericIds.map(() => '?').join(',')})`,
+    const numericIds = [...new Set(ordersArray.map(Number).filter(Number.isInteger))];
+    let tripId;
+
+    await withTransaction(async (conn) => {
+      const [[existing]] = await conn.query('SELECT id FROM trips WHERE trip_no=? FOR UPDATE', [trip_no]);
+      if (existing) throw new WorkflowError(`Trip No "${trip_no}" is already used`, 409);
+
+      const [result] = await conn.query(
+        `INSERT INTO trips (trip_no, trip_date, direction, origin_border, dest_border, border_checkpoint, vehicle, driver_name, notes, max_weight, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PLANNED')`,
+        [trip_no, trip_date, direction, origin_border || null, dest_border || null, border_checkpoint,
+          vehicle || null, driver_name || null, notes || null, max_weight ? Number(max_weight) : null]
+      );
+      tripId = result.insertId;
+
+      if (numericIds.length) {
+        const placeholders = numericIds.map(() => '?').join(',');
+        const [orders] = await conn.query(
+          `SELECT id, direction, status, screening_status,
+                  COALESCE(actual_weight,declared_weight,weight_kg,0) AS load_weight
+           FROM orders WHERE id IN (${placeholders}) FOR UPDATE`,
           numericIds
         );
-        const statusById = Object.fromEntries(currentRows.map(o => [o.id, o.status]));
-
-        // Insert trip_orders
+        if (orders.length !== numericIds.length) throw new WorkflowError('One or more orders do not exist', 404);
+        const expectedStatus = direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
+        for (const order of orders) {
+          if (order.direction !== direction || order.status !== expectedStatus) {
+            throw new WorkflowError(`Order ${order.id} is not eligible for this trip`, 409);
+          }
+          if (order.screening_status !== 'PASSED') {
+            throw new WorkflowError(`Order ${order.id} has not passed screening`, 409);
+          }
+        }
+        const totalWeight = orders.reduce((sum, order) => sum + Number(order.load_weight || 0), 0);
+        if (max_weight && totalWeight > Number(max_weight)) {
+          throw new WorkflowError(`Trip capacity exceeded (${totalWeight} > ${Number(max_weight)} kg)`, 409);
+        }
         const vals = numericIds.map(() => '(?,?)').join(',');
-        await pool.query(
-          `INSERT IGNORE INTO trip_orders (trip_id, order_id) VALUES ${vals}`,
-          numericIds.flatMap(oid => [tripId, oid])
+        await conn.query(
+          `INSERT INTO trip_orders (trip_id, order_id) VALUES ${vals}`,
+          numericIds.flatMap(orderId => [tripId, orderId])
         );
-
-        // Update order status to DELIVERED if trip completed, else ON_TRUCK
-        if (tripStatus === 'COMPLETED') {
-          await pool.query(
-            `UPDATE orders SET status = 'DELIVERED', delivered_at = NOW(), trip_id = ? WHERE id IN (${numericIds.map(() => '?').join(',')})`,
-            [tripId, ...numericIds]
-          );
-        } else {
-          await pool.query(
-            `UPDATE orders SET status = 'ON_TRUCK', trip_id = ? WHERE id IN (${numericIds.map(() => '?').join(',')})`,
-            [tripId, ...numericIds]
-          );
-        }
-
-        // Status logs
-        const targetOrderStatus = tripStatus === 'COMPLETED' ? 'DELIVERED' : 'ON_TRUCK';
-        for (const oid of numericIds) {
-          await logStatus(oid, statusById[oid] || null, targetOrderStatus,
-            tripStatus === 'COMPLETED' ? `ผูกรอบรถย้อนหลัง ${trip_no} (สถานะสำเร็จ)` : `ผูกรอบรถ ${trip_no}`, req.session.user?.id);
-        }
+        await conn.query(
+          `UPDATE orders SET trip_id=? WHERE id IN (${placeholders})`,
+          [tripId, ...numericIds]
+        );
       }
-    }
+    });
 
     req.session.flash = { type: 'success', message: `สร้างรอบรถ ${trip_no} สำเร็จ` };
     res.redirect(`/trips/${tripId}`);
@@ -239,7 +224,8 @@ export async function create(req, res) {
         SELECT to2.order_id FROM trip_orders to2
         JOIN trips t ON t.id = to2.trip_id WHERE t.status NOT IN ('COMPLETED','CANCELLED')
       )
-      AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA','NEW')
+      AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
+      AND o.screening_status = 'PASSED'
       ORDER BY o.created_at ASC
     `);
     res.render('trips/new', {
@@ -301,7 +287,8 @@ export async function detail(req, res) {
       SELECT to2.order_id FROM trip_orders to2
       JOIN trips t ON t.id = to2.trip_id WHERE t.status NOT IN ('COMPLETED','CANCELLED')
     )
-    AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA','NEW')
+    AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
+    AND o.screening_status = 'PASSED'
     AND o.direction = ?
     ORDER BY o.created_at ASC
   `, [trip.direction || 'TH_TO_LA']);
@@ -385,25 +372,40 @@ export async function attachOrders(req, res) {
   if (!numericIds.length) return res.redirect(`/trips/${id}`);
 
   try {
-    const [currentRows] = await pool.query(
-      `SELECT id, status FROM orders WHERE id IN (${numericIds.map(() => '?').join(',')})`,
-      numericIds
-    );
-    const statusById = Object.fromEntries(currentRows.map(o => [o.id, o.status]));
-
-    const vals = numericIds.map(() => '(?,?)').join(',');
-    await pool.query(
-      `INSERT IGNORE INTO trip_orders (trip_id, order_id) VALUES ${vals}`,
-      numericIds.flatMap(oid => [id, oid])
-    );
-    await pool.query(
-      `UPDATE orders SET status = 'ON_TRUCK', trip_id = ? WHERE id IN (${numericIds.map(() => '?').join(',')})`,
-      [id, ...numericIds]
-    );
-    for (const oid of numericIds) {
-      await logStatus(oid, statusById[oid] || null, 'ON_TRUCK',
-        `เพิ่มเข้ารอบรถ ${trip.trip_no}`, req.session.user?.id);
-    }
+    await withTransaction(async (conn) => {
+      const placeholders = numericIds.map(() => '?').join(',');
+      const [orders] = await conn.query(
+        `SELECT id, direction, status, screening_status,
+                COALESCE(actual_weight,declared_weight,weight_kg,0) load_weight
+         FROM orders WHERE id IN (${placeholders}) FOR UPDATE`,
+        numericIds
+      );
+      if (orders.length !== numericIds.length) throw new WorkflowError('One or more orders do not exist', 404);
+      const expectedStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
+      for (const order of orders) {
+        if (order.direction !== trip.direction || order.status !== expectedStatus || order.screening_status !== 'PASSED') {
+          throw new WorkflowError(`Order ${order.id} is not eligible for this trip`, 409);
+        }
+      }
+      const [[current]] = await conn.query(
+        `SELECT COALESCE(SUM(COALESCE(o.actual_weight,o.declared_weight,o.weight_kg,0)),0) total
+         FROM trip_orders t JOIN orders o ON o.id=t.order_id WHERE t.trip_id=?`,
+        [id]
+      );
+      const added = orders.reduce((sum, order) => sum + Number(order.load_weight || 0), 0);
+      if (trip.max_weight && Number(current.total) + added > Number(trip.max_weight)) {
+        throw new WorkflowError('Trip capacity would be exceeded', 409);
+      }
+      const vals = numericIds.map(() => '(?,?)').join(',');
+      await conn.query(
+        `INSERT INTO trip_orders (trip_id, order_id) VALUES ${vals}`,
+        numericIds.flatMap(orderId => [id, orderId])
+      );
+      await conn.query(
+        `UPDATE orders SET trip_id=? WHERE id IN (${placeholders})`,
+        [id, ...numericIds]
+      );
+    });
 
     req.session.flash = { type: 'success', message: `เพิ่ม ${numericIds.length} ออเดอร์สำเร็จ` };
     res.redirect(`/trips/${id}`);
@@ -429,10 +431,17 @@ export async function detachOrder(req, res) {
     return res.redirect(`/trips/${id}`);
   }
 
-  await pool.query('DELETE FROM trip_orders WHERE trip_id = ? AND order_id = ?', [id, orderId]);
-  await pool.query(`UPDATE orders SET trip_id = NULL, status = 'RECEIVED_WH_TH' WHERE id = ?`, [orderId]);
-  await logStatus(orderId, order.status, 'RECEIVED_WH_TH',
-    `ถอดออกจากรอบรถ ${trip.trip_no}`, req.session.user?.id);
+  const revertStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
+  await withTransaction(async (conn) => {
+    await conn.query('DELETE FROM trip_orders WHERE trip_id=? AND order_id=?', [id, orderId]);
+    if (order.status === 'ON_TRUCK') {
+      await transitionOrder({ orderId, toStatus: revertStatus, userId: req.session.user?.id,
+        note: `Detached from trip ${trip.trip_no}`, source: 'TRIP_DETACH',
+        updates: { trip_id: null }, connection: conn, force: true, notify: false });
+    } else {
+      await conn.query('UPDATE orders SET trip_id=NULL WHERE id=?', [orderId]);
+    }
+  });
 
   req.session.flash = { type: 'success', message: `ถอดออเดอร์ ${order.job_no} ออกจากรอบรถแล้ว` };
   res.redirect(`/trips/${id}`);
@@ -467,31 +476,41 @@ export async function updateStatus(req, res) {
       }
     }
 
-    await pool.query('UPDATE trips SET status = ? WHERE id = ?', [status, id]);
-
-    // Auto-cascade order status
-    const toOrderStatus = TRIP_TO_ORDER_STATUS[status];
-    if (toOrderStatus) {
-      const [tripOrders] = await pool.query(
-        'SELECT order_id FROM trip_orders WHERE trip_id = ?', [id]
+    let notificationOrderIds = [];
+    await withTransaction(async (conn) => {
+      const [[lockedTrip]] = await conn.query('SELECT * FROM trips WHERE id=? FOR UPDATE', [id]);
+      const lockedAllowed = TRIP_TRANSITIONS[lockedTrip.status] || [];
+      if (!lockedAllowed.includes(status)) throw new WorkflowError('Trip status changed; reload and retry', 409);
+      const [tripOrders] = await conn.query(
+        `SELECT o.id, o.status FROM trip_orders t JOIN orders o ON o.id=t.order_id
+         WHERE t.trip_id=? FOR UPDATE`,
+        [id]
       );
-      const orderIds = tripOrders.map(t => t.order_id);
-
-      if (orderIds.length > 0) {
-        const ph = orderIds.map(() => '?').join(',');
-        const [currentRows] = await pool.query(
-          `SELECT id, status FROM orders WHERE id IN (${ph})`, orderIds
-        );
-        await pool.query(
-          `UPDATE orders SET status = ? WHERE id IN (${ph})`, [toOrderStatus, ...orderIds]
-        );
-        for (const row of currentRows) {
-          await logStatus(row.id, row.status, toOrderStatus,
-            `Trip ${trip.trip_no} → ${status}${note ? ': ' + note : ''}`,
-            req.session.user?.id);
+      if (status === 'DEPARTED') {
+        if (!tripOrders.length) throw new WorkflowError('Cannot depart with an empty trip', 409);
+        const notLoaded = tripOrders.filter(order => order.status !== 'ON_TRUCK');
+        if (notLoaded.length) {
+          throw new WorkflowError(`${notLoaded.length} order(s) have not been confirmed by handoff scanner`, 409);
         }
       }
-    }
+      await conn.query('UPDATE trips SET status=? WHERE id=?', [status, id]);
+
+      const toOrderStatus = TRIP_TO_ORDER_STATUS[status];
+      if (toOrderStatus) {
+        for (const order of tripOrders) {
+          await transitionOrder({
+            orderId: order.id,
+            toStatus: toOrderStatus,
+            userId: req.session.user?.id,
+            note: `Trip ${lockedTrip.trip_no} -> ${status}${note ? ': ' + note : ''}`,
+            source: 'TRIP_STATUS',
+            connection: conn,
+          });
+          notificationOrderIds.push(order.id);
+        }
+      }
+    });
+    for (const orderId of notificationOrderIds) kickNotificationWorker(orderId);
 
     req.session.flash = {
       type: 'success',
@@ -731,63 +750,72 @@ export async function cancelTrip(req, res) {
   const { cancel_reason = '' } = req.body;
 
   try {
-    const [[trip]] = await pool.query('SELECT * FROM trips WHERE id = ?', [id]);
-    if (!trip) {
-      req.session.flash = { type: 'error', message: 'ไม่พบรอบรถ' };
-      return res.redirect('/trips');
-    }
+    const result = await withTransaction(async conn => {
+      const [[trip]] = await conn.query('SELECT * FROM trips WHERE id=? FOR UPDATE', [id]);
+      if (!trip) throw new WorkflowError('ไม่พบรอบรถ', 404, 'TRIP_NOT_FOUND');
+      if (!(TRIP_TRANSITIONS[trip.status] || []).includes('CANCELLED')) {
+        throw new WorkflowError('ยกเลิกได้เฉพาะรอบที่ยังไม่ออกรถ', 409, 'TRIP_CANNOT_CANCEL');
+      }
 
-    if (trip.status === 'CANCELLED') {
-      req.session.flash = {
-        type: 'error',
-        message: 'รอบรถนี้ถูกยกเลิกไปแล้ว',
-      };
-      return res.redirect(`/trips/${id}`);
-    }
-
-    // Determine revert status based on trip direction
-    const revertStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
-    const note = `ยกเลิกรอบรถ ${trip.trip_no}${cancel_reason ? ': ' + cancel_reason : ''}`;
-
-    // Get all orders in this trip
-    const [tripOrders] = await pool.query(
-      'SELECT o.id, o.status FROM trip_orders to2 JOIN orders o ON o.id = to2.order_id WHERE to2.trip_id = ?',
-      [id]
-    );
-
-    // Cancel the trip
-    await pool.query("UPDATE trips SET status = 'CANCELLED' WHERE id = ?", [id]);
-
-    // Revert orders back to warehouse received status & detach from trip
-    if (tripOrders.length > 0) {
-      const orderIds = tripOrders.map(o => o.id);
-      const ph = orderIds.map(() => '?').join(',');
-
-      await pool.query(
-        `UPDATE orders SET status = ?, trip_id = NULL WHERE id IN (${ph})`,
-        [revertStatus, ...orderIds]
+      const revertStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
+      const note = `ยกเลิกรอบรถ ${trip.trip_no}${cancel_reason ? ': ' + cancel_reason : ''}`;
+      const [tripOrders] = await conn.query(
+        `SELECT o.id, o.status FROM trip_orders to2
+         JOIN orders o ON o.id=to2.order_id
+         WHERE to2.trip_id=? FOR UPDATE`,
+        [id]
       );
-
-      // Log each order status change
-      for (const order of tripOrders) {
-        await logStatus(
-          order.id,
-          order.status,
-          revertStatus,
-          note,
-          req.session.user?.id
+      const invalid = tripOrders.find(order => ![revertStatus, 'ON_TRUCK'].includes(order.status));
+      if (invalid) {
+        throw new WorkflowError(
+          `Order ${invalid.id} already advanced to ${invalid.status}; trip cannot be cancelled`,
+          409,
+          'ORDER_ALREADY_IN_TRANSIT'
         );
       }
-    }
+
+      const [tripUpdate] = await conn.query(
+        "UPDATE trips SET status='CANCELLED' WHERE id=? AND status=?",
+        [id, trip.status]
+      );
+      if (tripUpdate.affectedRows !== 1) throw new WorkflowError('Trip changed; reload and try again', 409);
+
+      const notifyOrderIds = [];
+      for (const order of tripOrders) {
+        if (order.status === 'ON_TRUCK') {
+          await transitionOrder({
+            orderId: order.id,
+            toStatus: revertStatus,
+            userId: req.session.user?.id,
+            note,
+            source: 'TRIP_CANCEL',
+            updates: { trip_id: null },
+            connection: conn,
+            force: true,
+          });
+          notifyOrderIds.push(order.id);
+        } else {
+          await conn.query('UPDATE orders SET trip_id=NULL WHERE id=?', [order.id]);
+          await conn.query(
+            `INSERT INTO order_status_logs
+               (order_id, from_status, to_status, note, action_by, action_at)
+             VALUES (?,?,?,?,?,NOW())`,
+            [order.id, order.status, order.status, `${note} [detached]`, req.session.user?.id || null]
+          );
+        }
+      }
+      return { trip, tripOrders, notifyOrderIds };
+    });
+    for (const orderId of result.notifyOrderIds) kickNotificationWorker(orderId);
 
     console.log(
-      `[Trip cancelTrip] Trip ${trip.trip_no} (id=${id}) CANCELLED by admin=${req.session.user?.username}` +
-      ` | ${tripOrders.length} orders reverted to ${revertStatus}`
+      `[Trip cancelTrip] Trip ${result.trip.trip_no} (id=${id}) CANCELLED by admin=${req.session.user?.username}` +
+      ` | ${result.tripOrders.length} orders detached`
     );
 
     req.session.flash = {
       type: 'success',
-      message: `ยกเลิกรอบรถ ${trip.trip_no} สำเร็จ — ออเดอร์ ${tripOrders.length} รายการ คืนสู่คลังแล้ว`,
+      message: `ยกเลิกรอบรถ ${result.trip.trip_no} สำเร็จ — ถอดออเดอร์ ${result.tripOrders.length} รายการแล้ว`,
     };
     res.redirect(`/trips/${id}`);
   } catch (err) {

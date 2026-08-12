@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 
 const xamppPath = 'C:/xampp/mysql/bin/my.ini';
 

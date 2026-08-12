@@ -176,6 +176,11 @@ async function startSock() {
                 }).catch(bridgeErr => {
                     console.warn('[WhatsApp] CRM bridge attach failed:', bridgeErr.message);
                 });
+                import('./notificationService.js').then(({ kickNotificationWorker }) => {
+                    kickNotificationWorker();
+                }).catch(workerErr => {
+                    console.warn('[WhatsApp] Notification worker wake-up failed:', workerErr.message);
+                });
             }
         });
 
@@ -257,8 +262,9 @@ export const stopClient = async () => {
  */
 export async function sendOrderUpdate(orderId, newStatus) {
     if (!isClientReady || !sock) {
-        console.log('[WhatsApp] Client not ready or socket null. Message skipped.');
-        return;
+        const error = new Error('WhatsApp client is not ready');
+        error.code = 'WHATSAPP_NOT_READY';
+        throw error;
     }
 
     try {
@@ -276,13 +282,13 @@ export async function sendOrderUpdate(orderId, newStatus) {
             [orderId]
         );
 
-        if (!order) return;
+        if (!order) return { skipped: true, reason: 'Order not found' };
 
         // 2. Determine Receiver
         let phone = order.receiver_phone || order.sender_phone;
         if (!phone) {
             console.log(`[WhatsApp] No phone number found for Order ${order.job_no}`);
-            return;
+            return { skipped: true, reason: 'Customer phone number is missing' };
         }
 
         // Clean phone number (basic)
@@ -293,9 +299,11 @@ export async function sendOrderUpdate(orderId, newStatus) {
         // SNG Logistics handles TH and LA.
         // Laos prefix 20, 30. Thai prefix 08, 09, 06.
 
-        if (phone.startsWith('0')) {
+        if (phone.startsWith('020') || phone.startsWith('030')) {
+            phone = '856' + phone.substring(1);
+        } else if (phone.startsWith('0')) {
             phone = '66' + phone.substring(1); // Assume TH if 0 leading
-        } else if (phone.startsWith('20') || phone.startsWith('30')) {
+        } else if ((phone.startsWith('20') || phone.startsWith('30')) && !phone.startsWith('856')) {
             phone = '856' + phone; // Laos Country Code
             // Wait, Laos phones usually entered as 20xxxxxxxx? 
             // If user stores "209999999", we need to check if 856 is needed.
@@ -316,6 +324,16 @@ export async function sendOrderUpdate(orderId, newStatus) {
         const jobNo = order.job_no;
 
         switch (newStatus) {
+            case 'RECEIVED_WH_TH':
+            case 'RECEIVED_WH_LA':
+                message = `📦 *SNG EXPRESS*\nรับพัสดุ ${jobNo} เข้าคลังเรียบร้อยแล้ว สามารถติดตามสถานะได้จากระบบ SNG`;
+                break;
+            case 'ON_TRUCK':
+                message = `🚚 *SNG EXPRESS*\nพัสดุ ${jobNo} ขึ้นรถขนส่งและกำลังเดินทางไปยังจุดหมายถัดไป`;
+                break;
+            case 'CROSSING_BORDER':
+                message = `🛂 *SNG EXPRESS*\nพัสดุ ${jobNo} กำลังผ่านขั้นตอนข้ามแดน`;
+                break;
             case 'ARRIVED_BORDER_WH':
                 message = `🏁 *SNG EXPRESS*\nພັດສະດຸ ${jobNo} **ຮອດດ່ານຊາຍແດນປາຍທາງແລ້ວ** \nກຳລັງດຳເນີນພິທີການ ລໍຖ້າໜ້ອຍໜຶ່ງ 🇱🇦`;
                 break;
@@ -331,15 +349,36 @@ export async function sendOrderUpdate(orderId, newStatus) {
             case 'OUT_FOR_DELIVERY':
                 message = `🚚 *SNG Logistics* \nພັດສະດຸ ${jobNo} **ກຳລັງນຳສົ່ງໄປຫາທ່ານ** \nລໍຖ້າຮັບໂທລະສັບຈາກໄລເດີ້ໄດ້ເລີຍເດີ້!`;
                 break;
+            case 'BRANCH_TRANSFER':
+                message = `🏢 *SNG EXPRESS*\nพัสดุ ${jobNo} กำลังส่งต่อไปยังสาขาปลายทาง`;
+                break;
+            case 'BRANCH_RECEIVED':
+                message = `🏢 *SNG EXPRESS*\nพัสดุ ${jobNo} ถึงสาขาปลายทางแล้ว และกำลังรอจัดส่ง`;
+                break;
+            case 'RIDER_ASSIGNED':
+                message = `🛵 *SNG EXPRESS*\nพัสดุ ${jobNo} ได้รับการมอบหมายให้ไรเดอร์แล้ว`;
+                break;
             case 'DELIVERED': {
                 const rcvName = order.receiver_name ? `ທ່ານ *${order.receiver_name}*` : 'ລູກຄ້າ';
                 message = `✅ *SNG Logistics*\nພັດສະດຸ ${jobNo} ຂອງ ${rcvName} *ສົ່ງຮອດມືແລ້ວ*\nຂອບໃຈທີ່ໃຊ້ບໍລິການ SNG Express 🙏`;
                 break;
             }
+            case 'DELIVERY_FAILED':
+                message = `⚠️ *SNG EXPRESS*\nการนำส่งพัสดุ ${jobNo} ยังไม่สำเร็จ เจ้าหน้าที่จะติดต่อเพื่อดำเนินการอีกครั้ง`;
+                break;
+            case 'RETURN_TO_SENDER':
+                message = `↩️ *SNG EXPRESS*\nพัสดุ ${jobNo} อยู่ระหว่างดำเนินการส่งคืนผู้ส่ง`;
+                break;
+            case 'SCREENING_CUSTOMS_REQUIRED':
+                message = `🛡️ *SNG EXPRESS*\nพัสดุ ${jobNo} ต้องตรวจสอบเอกสารศุลกากรเพิ่มเติม เจ้าหน้าที่จะติดต่อกลับ`;
+                break;
+            case 'SCREENING_REJECTED':
+                message = `⚠️ *SNG EXPRESS*\nพัสดุ ${jobNo} ไม่ผ่านการคัดกรอง กรุณารอเจ้าหน้าที่ติดต่อเพื่อแก้ไขหรือรับพัสดุคืน`;
+                break;
 
             default:
                 // ไม่ต้องแจ้งเตือนสถานะอื่น เพื่อไม่ให้รบกวนลูกค้ามากเกินไป
-                return;
+                return { skipped: true, reason: `No message template for ${newStatus}` };
         }
 
         console.log(`[WhatsApp] Sending to ${jid}:`, message);
@@ -347,9 +386,10 @@ export async function sendOrderUpdate(orderId, newStatus) {
         await sock.sendMessage(jid, { text: message });
 
         console.log(`[WhatsApp] Sent to ${jid}`);
+        return { sent: true, recipient: phone };
 
     } catch (err) {
         console.error('[WhatsApp Send Error]', err);
+        throw err;
     }
 }
-

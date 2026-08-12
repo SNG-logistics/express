@@ -1,4 +1,7 @@
 import pool from '../config/db.js';
+import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
+import { kickNotificationWorker } from '../services/notificationService.js';
+import { assignOrderToBranch } from './branchesController.js';
 
 // ─── GET /dispatch/sorting ───
 export async function showSortingBoard(req, res) {
@@ -73,43 +76,52 @@ export async function assignOrders(req, res) {
       return res.redirect('/dispatch/sorting');
     }
 
-    const oIds = Array.isArray(orderIds) ? orderIds : [orderIds];
-    const newStatus = 'OUT_FOR_DELIVERY'; // Setting standard status for leaving sorting
-
-    for (const id of oIds) {
-      // Create dispatch assignment
-      await pool.query(`
-        INSERT INTO dispatch_assignments
-        (order_id, dispatch_type, branch_id, carrier_id, carrier_tracking_no, dispatched_at, dispatched_by)
-        VALUES (?, ?, ?, ?, ?, NOW(), ?)
-      `, [
-        id,
-        dispatchType,
-        dispatchType === 'BRANCH_PICKUP' ? branchId : null,
-        dispatchType === 'PARTNER_CARRIER' ? carrierId : null,
-        dispatchType === 'PARTNER_CARRIER' ? trackingNo : null,
-        userId
-      ]);
-
-      // Update order status & branch if needed
-      let setClause = 'status = ?, updated_at = NOW()';
-      let setParams = [newStatus];
-      
-      if (dispatchType === 'BRANCH_PICKUP') {
-        setClause += ', dest_branch_id = ?';
-        setParams.push(branchId);
-      }
-      setParams.push(id);
-
-      await pool.query(`UPDATE orders SET ${setClause} WHERE id = ?`, setParams);
-
-      // Log it
-      const title = dispatchType === 'BRANCH_PICKUP' ? 'ส่งต่อสาขา' : 'ส่งต่อพาร์ทเนอร์';
-      await pool.query(`
-        INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-        VALUES (?, 'AT_DEST_WH', ?, ?, ?)
-      `, [id, newStatus, `[DISPATCH] ${title}`, userId]);
+    if (!['BRANCH_PICKUP', 'PARTNER_CARRIER'].includes(dispatchType)) {
+      throw new WorkflowError('Invalid dispatch type', 400);
     }
+    const oIds = [...new Set((Array.isArray(orderIds) ? orderIds : [orderIds]).map(Number))]
+      .filter(Number.isInteger);
+    if (!oIds.length) throw new WorkflowError('No valid orders selected', 400);
+
+    await withTransaction(async (conn) => {
+      for (const id of oIds) {
+        const [[order]] = await conn.query('SELECT status FROM orders WHERE id=? FOR UPDATE', [id]);
+        if (!order || order.status !== 'AT_DEST_WH') {
+          throw new WorkflowError(`Order ${id} is not at destination warehouse`, 409);
+        }
+        await conn.query(
+          `INSERT INTO dispatch_assignments
+           (order_id, dispatch_type, branch_id, carrier_id, carrier_tracking_no, dispatched_at, dispatched_by)
+           VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
+          [id, dispatchType,
+            dispatchType === 'BRANCH_PICKUP' ? branchId : null,
+            dispatchType === 'PARTNER_CARRIER' ? carrierId : null,
+            dispatchType === 'PARTNER_CARRIER' ? trackingNo : null,
+            userId]
+        );
+        if (dispatchType === 'BRANCH_PICKUP') {
+          await assignOrderToBranch(id, Number(branchId), conn);
+          await transitionOrder({
+            orderId: id,
+            toStatus: 'BRANCH_TRANSFER',
+            userId,
+            note: '[DISPATCH] Transfer to destination branch',
+            source: 'DISPATCH_BRANCH',
+            connection: conn,
+          });
+        } else {
+          await transitionOrder({
+            orderId: id,
+            toStatus: 'OUT_FOR_DELIVERY',
+            userId,
+            note: `[DISPATCH] Partner carrier tracking=${trackingNo || '-'}`,
+            source: 'DISPATCH_PARTNER',
+            connection: conn,
+          });
+        }
+      }
+    });
+    for (const id of oIds) kickNotificationWorker(id);
 
     req.session.flash = { type: 'success', message: `Dispatch สำเร็จ ${oIds.length} รายการ` };
     res.redirect('/dispatch/sorting');

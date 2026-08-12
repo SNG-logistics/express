@@ -1,15 +1,4 @@
-<%#
-  views/components/status-pill.ejs
-  
-  Usage:
-    <%- include('../components/status-pill', { status: order.status }) %>
-  
-  From any directory depth:
-    <%- include('../../components/status-pill', { status: order.status }) %>
-    
-  statusLabels must be passed from controller as res.locals or as template variable.
-  Fallback: uses status string directly.
-%>
+<%# Status pill component; expects status and optional statusLabels. %>
 <%
   const STATUS_CLASSES = {
     'NEW':               'new',

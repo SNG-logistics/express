@@ -1,4 +1,5 @@
 import { getQr, getStatus, getLastError, restartClient, stopClient, getLogs, deleteSession } from '../services/whatsappService.js';
+import { requeueFailedNotifications } from '../services/notificationService.js';
 
 export function showStatus(req, res) {
     res.render('whatsapp/index', {
@@ -22,8 +23,9 @@ export function getStatusApi(req, res) {
 }
 
 export async function restartApi(req, res) {
+    const requeued = await requeueFailedNotifications();
     await restartClient();
-    res.json({ success: true, message: 'Restarting client...' });
+    res.json({ success: true, message: 'Restarting client...', requeued });
 }
 
 export async function logoutApi(req, res) {

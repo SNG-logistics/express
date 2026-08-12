@@ -9,7 +9,7 @@
 import * as codModel from '../models/codModel.js';
 import { getCodSummary } from '../models/dashboardModel.js';
 import pool from '../config/db.js';
-import { ORDER_STATUS, ORDER_STATUS_LABELS } from '../constants/statuses.js';
+import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
 
 // ─── List page ────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ export async function index(req, res) {
         LEFT JOIN customers r ON r.id = o.receiver_id
         LEFT JOIN cod_settlements cs ON cs.order_id = o.id
         WHERE o.cod_amount > 0
-          AND o.status NOT IN ('CLOSED', 'RETURN_TO_SENDER', 'DELIVERY_FAILED', 'CUSTOMS_REJECTED')
+          AND o.status IN ('DELIVERED', 'COD_COLLECTED')
           AND (cs.status IS NULL OR cs.status = 'PENDING')
         ORDER BY o.updated_at ASC
       `;

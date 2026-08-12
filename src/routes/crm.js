@@ -16,8 +16,9 @@ import * as ctrl from '../controllers/crmController.js';
 
 const router = Router();
 
-// All CRM routes require login
-router.use(requireLogin);
+// Scope the guard to CRM paths. A router-level catch-all here would also
+// intercept public routes mounted later (for example /track/:jobNo).
+router.use(['/crm', '/api/crm'], requireLogin);
 
 // ���� CRM role guard helper ��������������������������������������������������������������������������������������������������������
 function requireCrmAccess(res, user, roles = ROLES_CRM_VIEW) {

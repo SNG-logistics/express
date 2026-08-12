@@ -7,16 +7,12 @@
 import pool from '../config/db.js';
 import { SCANNER_ALLOWED_STATUSES } from '../constants/statuses.js';
 import { canTransitionOrder } from '../constants/transitions.js';
+import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
+import { assignBranchToOrder } from './branchesController.js';
+import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
+import { canAutoScanTarget, canUnloadAtDestination } from '../services/operationalAccessService.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function logStatus(orderId, fromStatus, toStatus, note, userId) {
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [orderId, fromStatus || null, toStatus, note || null, userId || null]
-  );
-}
 
 async function getOrderFull(value, byId = false) {
   const field = byId ? 'o.id' : 'o.job_no';
@@ -220,27 +216,29 @@ export async function receiveParcel(req, res) {
     const photoLabel = photoUrls.length > 0 ? `[แนบรูป ${photoUrls.length} รูป]` : '';
     const auditNote = ['รับเข้าคลัง', condLabel, photoLabel, weight_actual ? `น้ำหนักจริง: ${weight_actual} กก.` : '', note ? `หมายเหตุ: ${note}` : ''].filter(Boolean).join(' — ');
 
-    const setCols = ['status = ?', 'updated_at = NOW()'];
-    const setVals = [toStatus];
-    
-    if (weight_actual) { setCols.push('actual_weight = ?'); setVals.push(Number(weight_actual)); }
-    if (photoUrls.length > 0) {
-      setCols.push('intake_photos = ?');
-      setVals.push(JSON.stringify(photoUrls));
-    }
-    
-    setVals.push(id);
-
-    await pool.query(`UPDATE orders SET ${setCols.join(', ')} WHERE id = ?`, setVals);
-    await logStatus(id, order.status, toStatus, auditNote, userId);
-    if (condition === 'DAMAGED') {
-      await logStatus(id, toStatus, toStatus, `[EXCEPTION] สภาพพัสดุ: เสียหาย — ${note || 'ไม่ระบุ'}`, userId);
-    }
+    const updates = {};
+    if (weight_actual) updates.actual_weight = Number(weight_actual);
+    if (photoUrls.length > 0) updates.intake_photos = JSON.stringify(photoUrls);
+    await transitionOrder({
+      orderId: id,
+      toStatus,
+      userId,
+      note: auditNote,
+      source: 'SCANNER_RECEIVE',
+      updates,
+      afterTransition: condition === 'DAMAGED'
+        ? async (conn) => conn.query(
+          `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
+           VALUES (?, ?, ?, ?, ?)`,
+          [id, toStatus, toStatus, `[EXCEPTION] DAMAGED — ${note || 'No note'}`, userId]
+        )
+        : null,
+    });
 
     res.json({ success: true, message: `รับเข้าคลังสำเร็จ${condLabel ? ' (' + condition + ')' : ''}`, newStatus: toStatus, jobNo: order.job_no });
   } catch (error) {
     console.error('[Scanner] receiveParcel error:', error);
-    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด' });
+    res.status(error.statusCode || 500).json({ success: false, message: error.message || 'เกิดข้อผิดพลาด' });
   }
 }
 
@@ -283,8 +281,13 @@ export async function confirmHandoff(req, res) {
       return res.status(400).json({ success: false, message: `ไม่สามารถยืนยัน Handoff จากสถานะ "${order.status}"` });
     }
 
-    await pool.query('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', ['ON_TRUCK', orderId]);
-    await logStatus(orderId, order.status, 'ON_TRUCK', `[HANDOFF] ยืนยันขึ้นรถ trip_id:${tripId}`, userId);
+    await transitionOrder({
+      orderId,
+      toStatus: 'ON_TRUCK',
+      userId,
+      note: `[HANDOFF] trip_id:${tripId}`,
+      source: 'SCANNER_HANDOFF',
+    });
 
     res.json({ success: true, message: `ยืนยัน ${order.job_no} ขึ้นรถสำเร็จ`, jobNo: order.job_no });
   } catch (error) {
@@ -336,23 +339,49 @@ export async function confirmUnload(req, res) {
   try {
     const { tripId, orderId } = req.params;
     const userId = req.session.user?.id;
+    const userRole = req.session.user?.role || '';
 
-    const [[order]] = await pool.query('SELECT id, status, job_no, trip_id FROM orders WHERE id = ?', [orderId]);
+    const [[order]] = await pool.query(
+      'SELECT id, status, job_no, trip_id, direction FROM orders WHERE id = ?',
+      [orderId]
+    );
     if (!order) return res.status(404).json({ success: false, message: 'ไม่พบออเดอร์' });
     if (String(order.trip_id) !== String(tripId)) return res.status(400).json({ success: false, message: 'ออเดอร์ไม่ได้อยู่ในรอบรถนี้' });
     if (order.status === 'AT_DEST_WH') return res.json({ success: true, message: 'รับลงคลังแล้ว', alreadyDone: true });
     
-    // We let them unload as long as it isn't AT_DEST_WH
-    await pool.query('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', ['AT_DEST_WH', orderId]);
-    await logStatus(orderId, order.status, 'AT_DEST_WH', `[UNLOAD] รับลงคลังสำเร็จ trip_id:${tripId}`, userId);
-    
-    // Record when it was unloaded
-    await pool.query('UPDATE trip_orders SET unloaded_at = NOW() WHERE trip_id = ? AND order_id = ?', [tripId, orderId]);
+    await transitionOrder({
+      orderId,
+      toStatus: 'AT_DEST_WH',
+      userId,
+      note: `[UNLOAD] trip_id:${tripId}`,
+      source: 'SCANNER_UNLOAD',
+      afterTransition: async (conn) => {
+        const [[trip]] = await conn.query('SELECT status, direction FROM trips WHERE id=? FOR UPDATE', [tripId]);
+        if (!trip || !['ARRIVED', 'UNLOADING'].includes(trip.status)) {
+          throw new WorkflowError('Trip must be ARRIVED or UNLOADING before unload', 409);
+        }
+        if (!canUnloadAtDestination({
+          role: userRole,
+          orderDirection: order.direction,
+          tripDirection: trip.direction,
+        })) {
+          throw new WorkflowError('This warehouse cannot unload the selected trip direction', 403, 'WRONG_WAREHOUSE');
+        }
+        await conn.query(
+          'UPDATE trip_orders SET unloaded_at=NOW() WHERE trip_id=? AND order_id=?',
+          [tripId, orderId]
+        );
+        await assignBranchToOrder(orderId, conn);
+      },
+    });
 
     res.json({ success: true, message: `รับลงคลัง ${order.job_no} สำเร็จ`, jobNo: order.job_no });
   } catch (error) {
     console.error('[Scanner] confirmUnload error:', error);
-    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด' });
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'เกิดข้อผิดพลาด',
+    });
   }
 }
 
@@ -372,16 +401,17 @@ export async function quickStatusUpdate(req, res) {
       return res.status(400).json({ success: false, message: `ไม่สามารถเปลี่ยนจาก "${order.status}" → "${status}" ได้` });
     }
 
-    await pool.query('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
-    await pool.query(
-      `INSERT INTO order_status_logs (order_id, from_status, to_status, action_by, action_at)
-       VALUES (?, ?, ?, ?, NOW())`,
-      [id, order.status, status, userId || null]
-    );
+    await transitionOrder({
+      orderId: id,
+      toStatus: status,
+      userId,
+      note: '[QUICK-SCAN]',
+      source: 'SCANNER_QUICK',
+    });
     res.json({ success: true, message: 'อัพเดทสถานะสำเร็จ' });
   } catch (error) {
     console.error('[Scanner] quickStatusUpdate error:', error);
-    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ' });
+    res.status(error.statusCode || 500).json({ success: false, message: error.message || 'เกิดข้อผิดพลาดในการอัปเดตสถานะ' });
   }
 }
 
@@ -413,13 +443,13 @@ export async function sessionSummary(req, res) {
   }
 }
 
-// ─── GET /scanner/pda — PDA Mode (Gprinter IT68) ─────────────────────────────
+// ─── GET /scanner/pda — PDA Mode (iT78 / keyboard-wedge scanners) ────────────
 export async function showPda(req, res) {
   try {
     const [trips] = await pool.query(
       `SELECT id, trip_no, driver_name
        FROM trips
-       WHERE status IN ('PLANNED','IN_TRANSIT')
+       WHERE status IN ('PLANNED','LOADING')
        ORDER BY created_at DESC LIMIT 20`
     );
     res.render('scanner/pda', {
@@ -450,18 +480,18 @@ export async function showScreening(req, res) {
        LEFT JOIN customers s ON s.id = o.sender_id
        LEFT JOIN customers r ON r.id = o.receiver_id
        WHERE o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
-         AND (o.screening_status IS NULL OR o.screening_status = '')
+         AND (o.screening_status IS NULL OR o.screening_status IN ('', 'PENDING'))
        ORDER BY o.updated_at ASC
        LIMIT 50`
     );
 
     const [[stats]] = await pool.query(
       `SELECT
-         SUM(CASE WHEN screening_status IS NULL OR screening_status = '' THEN 1 ELSE 0 END) AS pending,
+         SUM(CASE WHEN screening_status IS NULL OR screening_status IN ('', 'PENDING') THEN 1 ELSE 0 END) AS pending,
          SUM(CASE WHEN screening_status = 'PASSED' AND DATE(screened_at) = CURDATE() THEN 1 ELSE 0 END) AS passed_today,
          SUM(CASE WHEN screening_status = 'REJECTED' AND DATE(screened_at) = CURDATE() THEN 1 ELSE 0 END) AS rejected_today
        FROM orders
-       WHERE status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA','READY_TO_LOAD','SCREENING_FAILED','PENDING_CUSTOMS')`
+       WHERE status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')`
     );
 
     res.render('scanner/screening', {
@@ -491,19 +521,12 @@ export async function processScreening(req, res) {
     const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     if (!order) return res.status(404).json({ success: false, message: 'ไม่พบออเดอร์' });
 
-    // Determine new status
-    let newStatus = order.status;
-    if (result === 'PASSED') newStatus = order.status; // Stay in same status, just mark screened
-    else if (result === 'CUSTOMS_REQUIRED') newStatus = 'PENDING_CUSTOMS';
-    else if (result === 'REJECTED') newStatus = 'SCREENING_FAILED';
-
     // Build update
     const setCols = [
       'screening_status = ?', 'screening_note = ?',
       'screened_by = ?', 'screened_at = NOW()',
-      'status = ?',
     ];
-    const setVals = [result, note || null, userId, newStatus];
+    const setVals = [result, note || null, userId];
 
     // Update actual weight if provided
     if (actual_weight && Number(actual_weight) > 0) {
@@ -511,27 +534,38 @@ export async function processScreening(req, res) {
       setVals.push(Number(actual_weight));
     }
 
-    setVals.push(id);
-    await pool.query(`UPDATE orders SET ${setCols.join(', ')} WHERE id = ?`, setVals);
-
-    // Save flags
     const flagList = Array.isArray(flags) ? flags : (flags ? [flags] : []);
-    for (const flagType of flagList) {
-      await pool.query(
-        `INSERT INTO order_flags (order_id, flag_type, flagged_by) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE flagged_at = NOW()`,
-        [id, flagType, userId]
-      ).catch(() => {});
-    }
-
-    // Status log
     const noteMsg = result === 'PASSED'
       ? `ผ่านการคัดกรอง${actual_weight ? ' (น้ำหนักจริง: ' + actual_weight + ' กก.)' : ''}`
       : result === 'CUSTOMS_REQUIRED'
         ? `ต้องแจ้งศุลกากร: ${note || ''}`
         : `ปฏิเสธสินค้า: ${note || ''}`;
 
-    await logStatus(id, order.status, newStatus, noteMsg, userId);
+    await withTransaction(async (conn) => {
+      setVals.push(id);
+      await conn.query(`UPDATE orders SET ${setCols.join(', ')} WHERE id = ?`, setVals);
+      for (const flagType of flagList) {
+        await conn.query(
+          `INSERT INTO order_flags (order_id, flag_type, flagged_by) VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE flagged_at=NOW()`,
+          [id, flagType, userId]
+        );
+      }
+      const [logResult] = await conn.query(
+        `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
+         VALUES (?, ?, ?, ?, ?)`,
+        [id, order.status, order.status, `[SCREENING:${result}] ${noteMsg}`, userId]
+      );
+      if (result !== 'PASSED') {
+        await enqueueOrderNotification(conn, {
+          orderId: id,
+          status: `SCREENING_${result}`,
+          eventKey: `ORDER_STATUS_LOG:${logResult.insertId}`,
+          source: 'SCANNER_SCREENING',
+        });
+      }
+    });
+    if (result !== 'PASSED') kickNotificationWorker(id);
 
     const msgs = { PASSED: 'ผ่านการคัดกรอง', CUSTOMS_REQUIRED: 'ต้องดำเนินการศุลกากร', REJECTED: 'ปฏิเสธสินค้า' };
     res.json({ success: true, message: `✅ ${order.job_no} — ${msgs[result]}`, jobNo: order.job_no, result });
@@ -548,7 +582,7 @@ export async function showAutoScan(req, res) {
     const [trips] = await pool.query(
       `SELECT id, trip_no, driver_name 
        FROM trips 
-       WHERE status IN ('PLANNED', 'IN_TRANSIT') 
+       WHERE status IN ('PLANNED', 'LOADING')
        ORDER BY created_at DESC LIMIT 20`
     );
     
@@ -573,6 +607,13 @@ export async function processAutoScan(req, res) {
     if (!barcode || !target_status) {
       return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (Barcode / Target Status)' });
     }
+    const autoAllowedStatuses = new Set([
+      'RECEIVED_WH_TH', 'RECEIVED_WH_LA', 'ON_TRUCK',
+      'AT_DEST_WH', 'BRANCH_RECEIVED', 'OUT_FOR_DELIVERY',
+    ]);
+    if (!autoAllowedStatuses.has(target_status)) {
+      return res.status(400).json({ success: false, message: `สถานะ "${target_status}" ต้องใช้ขั้นตอนที่มีหลักฐานเฉพาะ` });
+    }
 
     const order = await getOrderFull(barcode.trim());
     if (!order) {
@@ -583,20 +624,17 @@ export async function processAutoScan(req, res) {
       return res.status(400).json({ success: false, message: `พัสดุอยู่ในสถานะ "${target_status}" อยู่แล้ว` });
     }
 
-    // Role-based validation
-    const whThAllowed = ['RECEIVED_WH_TH', 'AT_DEST_WH', 'DELIVERED'];
-    const whLaAllowed = ['RECEIVED_WH_LA', 'AT_DEST_WH', 'DELIVERED'];
-    const driverAllowed = ['ON_TRUCK', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-    
-    let isAllowed = false;
-    if (['admin', 'manager'].includes(userRole)) isAllowed = true;
-    else if (userRole === 'warehouse_th' && whThAllowed.includes(target_status)) isAllowed = true;
-    else if (userRole === 'warehouse_la' && whLaAllowed.includes(target_status)) isAllowed = true;
-    else if (['dispatcher', 'driver_support'].includes(userRole) && driverAllowed.includes(target_status)) isAllowed = true;
-    else if (userRole === 'branch_operator' && ['BRANCH_RECEIVED', 'DELIVERED'].includes(target_status)) isAllowed = true;
-
-    if (!isAllowed) {
+    if (!canAutoScanTarget({
+      role: userRole,
+      targetStatus: target_status,
+      order,
+      sessionBranchId: req.session.user?.branch_id,
+    })) {
       return res.status(403).json({ success: false, message: `ไม่มีสิทธิ์เปลี่ยนสถานะเป็น "${target_status}"` });
+    }
+
+    if (!canTransitionOrder(order.status, target_status)) {
+      return res.status(409).json({ success: false, message: `ไม่สามารถเปลี่ยน ${order.status} → ${target_status}` });
     }
 
     // Additional logic for ON_TRUCK
@@ -604,23 +642,43 @@ export async function processAutoScan(req, res) {
       if (!trip_id) {
         return res.status(400).json({ success: false, message: 'กรุณาเลือกรอบรถ (Trip ID) สำหรับการขึ้นรถ' });
       }
-      // Update trip_id in orders
-      await pool.query('UPDATE orders SET trip_id = ? WHERE id = ?', [trip_id, order.id]);
-      
-      // Ensure it's in trip_orders
-      await pool.query(
-        `INSERT INTO trip_orders (trip_id, order_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE trip_id = ?`,
-        [trip_id, order.id, trip_id]
-      );
     }
 
-    // Update the status
-    await pool.query('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', [target_status, order.id]);
-    
-    // Log
     let note = `[AUTO-SCAN] ยืนยันสถานะเป็น ${target_status}`;
     if (target_status === 'ON_TRUCK') note += ` (Trip ID: ${trip_id})`;
-    await logStatus(order.id, order.status, target_status, note, userId);
+    await transitionOrder({
+      orderId: order.id,
+      toStatus: target_status,
+      userId,
+      note,
+      source: 'SCANNER_AUTO',
+      updates: target_status === 'ON_TRUCK' ? { trip_id: Number(trip_id) } : {},
+      afterTransition: target_status === 'ON_TRUCK'
+        ? async (conn) => {
+          const [[trip]] = await conn.query('SELECT * FROM trips WHERE id=? FOR UPDATE', [trip_id]);
+          if (!trip || !['PLANNED','LOADING'].includes(trip.status)) {
+            throw new WorkflowError('Trip is not available for loading', 409);
+          }
+          if (trip.direction !== order.direction) {
+            throw new WorkflowError('Order direction does not match trip direction', 409);
+          }
+          const [[weight]] = await conn.query(
+            `SELECT COALESCE(SUM(COALESCE(o.actual_weight,o.declared_weight,o.weight_kg,0)),0) total
+             FROM trip_orders t JOIN orders o ON o.id=t.order_id WHERE t.trip_id=?`,
+            [trip_id]
+          );
+          const orderWeight = Number(order.actual_weight || order.declared_weight || order.weight_kg || 0);
+          if (trip.max_weight && Number(weight.total) + orderWeight > Number(trip.max_weight)) {
+            throw new WorkflowError('Trip capacity would be exceeded', 409);
+          }
+          await conn.query(
+            `INSERT INTO trip_orders (trip_id, order_id) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE trip_id=VALUES(trip_id)`,
+            [trip_id, order.id]
+          );
+        }
+        : null,
+    });
 
     res.json({ 
       success: true, 
@@ -631,7 +689,6 @@ export async function processAutoScan(req, res) {
 
   } catch (error) {
     console.error('[Scanner] processAutoScan error:', error);
-    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการทำ Auto Scan' });
+    res.status(error.statusCode || 500).json({ success: false, message: error.message || 'เกิดข้อผิดพลาดในการทำ Auto Scan' });
   }
 }
-

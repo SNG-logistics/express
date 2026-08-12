@@ -121,7 +121,7 @@
 
         <!-- Action: Mark Delivered (ASSIGNED/PICKED_UP) -->
         <% if (isAssigned || isPickedUp) { %>
-        <button onclick="showDeliverModal(<%= delivery.id %>)"
+        <button onclick="showDeliverModal(<%= delivery.id %>, <%= Number(delivery.cod_amount || 0) %>)"
           class="flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center gap-1.5">
           <i class="fa-solid fa-circle-check"></i> ส่งแล้ว
         </button>
@@ -170,13 +170,19 @@
       <div class="space-y-3">
         <div>
           <label class="text-xs text-slate-400 mb-1 block">ชื่อผู้รับจริง</label>
-          <input type="text" name="recipient_name" placeholder="ชื่อ-นามสกุล ผู้รับ"
+          <input type="text" name="recipient_name" placeholder="ชื่อ-นามสกุล ผู้รับ" required maxlength="120"
             class="w-full px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:border-emerald-500/50">
         </div>
         <div>
           <label class="text-xs text-slate-400 mb-1 block">รูปหลักฐาน (ถ่ายหน้าบ้าน)</label>
-          <input type="file" name="proof_image" accept="image/*"
+          <input type="file" name="proof_image" accept="image/*" capture="environment" required
             class="w-full px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-slate-400 text-xs file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-500/20 file:text-emerald-400">
+        </div>
+        <div id="codConfirmGroup" class="hidden">
+          <label class="text-xs text-amber-400 mb-1 block">ยืนยันยอด COD ที่รับจริง: <span id="codExpected"></span></label>
+          <input id="codCollectedAmount" type="number" name="cod_collected_amount" min="0" step="0.01"
+            placeholder="กรอกยอด COD ให้ตรงกับยอดที่เรียกเก็บ"
+            class="w-full px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-500/5 text-white text-sm focus:outline-none focus:border-amber-400">
         </div>
         <div>
           <label class="text-xs text-slate-400 mb-1 block">หมายเหตุ (ถ้ามี)</label>
@@ -198,8 +204,15 @@
 </div>
 
 <script>
-function showDeliverModal(deliveryId) {
+function showDeliverModal(deliveryId, codAmount) {
   document.getElementById('deliverForm').action = `/branch/deliveries/${deliveryId}/deliver`;
+  const codGroup = document.getElementById('codConfirmGroup');
+  const codInput = document.getElementById('codCollectedAmount');
+  const expected = Number(codAmount || 0);
+  codGroup.classList.toggle('hidden', expected <= 0);
+  codInput.required = expected > 0;
+  codInput.value = '';
+  document.getElementById('codExpected').textContent = expected.toLocaleString();
   document.getElementById('deliverModal').classList.remove('hidden');
 }
 </script>

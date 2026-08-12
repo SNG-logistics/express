@@ -22,7 +22,8 @@ const ORDER_TRANSITIONS = {
   ],
   [ORDER_STATUS.BRANCH_TRANSFER]:   [ORDER_STATUS.BRANCH_RECEIVED],
   [ORDER_STATUS.BRANCH_RECEIVED]:   [ORDER_STATUS.RIDER_ASSIGNED],
-  [ORDER_STATUS.RIDER_ASSIGNED]:    [ORDER_STATUS.OUT_FOR_DELIVERY],
+  [ORDER_STATUS.RIDER_ASSIGNED]:    [ORDER_STATUS.RIDER_ACCEPTED, ORDER_STATUS.OUT_FOR_DELIVERY],
+  [ORDER_STATUS.RIDER_ACCEPTED]:    [ORDER_STATUS.OUT_FOR_DELIVERY],
   [ORDER_STATUS.OUT_FOR_DELIVERY]:  [ORDER_STATUS.DELIVERED, ORDER_STATUS.DELIVERY_FAILED],
   [ORDER_STATUS.DELIVERED]:         [ORDER_STATUS.COD_COLLECTED, ORDER_STATUS.CLOSED],
   [ORDER_STATUS.DELIVERY_FAILED]:   [ORDER_STATUS.AT_DEST_WH, ORDER_STATUS.RETURN_TO_SENDER],
@@ -35,7 +36,7 @@ const ORDER_TRANSITIONS = {
 // ─── Trip Allowed Transitions ────────────────────────────────────────────────
 const TRIP_TRANSITIONS = {
   [TRIP_STATUS.PLANNED]:   [TRIP_STATUS.LOADING, TRIP_STATUS.CANCELLED],
-  [TRIP_STATUS.LOADING]:   [TRIP_STATUS.DEPARTED, TRIP_STATUS.PLANNED],   // allow rollback
+  [TRIP_STATUS.LOADING]:   [TRIP_STATUS.DEPARTED, TRIP_STATUS.PLANNED, TRIP_STATUS.CANCELLED],
   [TRIP_STATUS.DEPARTED]:  [TRIP_STATUS.AT_BORDER],
   [TRIP_STATUS.AT_BORDER]: [TRIP_STATUS.CROSSED],
   [TRIP_STATUS.CROSSED]:   [TRIP_STATUS.ARRIVED],
@@ -56,9 +57,14 @@ const TRIP_TRANSITIONS = {
  * @returns {boolean}
  */
 export function canTransitionOrder(from, to) {
-  const allowed = ORDER_TRANSITIONS[from];
+  const normalizedFrom = resolveStatus(from);
+  const normalizedTo = resolveStatus(to);
+  // READY_TO_LOAD was written by an older screening flow. Screening is now
+  // orthogonal to logistics status, but legacy rows must still be loadable.
+  if (from === 'READY_TO_LOAD') return normalizedTo === ORDER_STATUS.ON_TRUCK;
+  const allowed = ORDER_TRANSITIONS[normalizedFrom];
   if (!allowed) return false;
-  return allowed.includes(to);
+  return allowed.includes(normalizedTo);
 }
 
 /**
@@ -93,8 +99,13 @@ export function getNextTripStatuses(currentStatus) {
  * @returns {string}
  */
 export function resolveStatus(raw) {
-  return LEGACY_STATUS_MAP[raw] || raw;
+  return Object.prototype.hasOwnProperty.call(LEGACY_STATUS_MAP, raw)
+    ? LEGACY_STATUS_MAP[raw]
+    : raw;
 }
+
+export const ORDER_TRANSITION_RULES = Object.freeze(ORDER_TRANSITIONS);
+export const TRIP_TRANSITION_RULES = Object.freeze(TRIP_TRANSITIONS);
 
 /**
  * ตรวจสอบว่า order ปิดการทำงาน COD ครบแล้วหรือไม่ ก่อนจะ CLOSE ได้

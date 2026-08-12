@@ -24,6 +24,7 @@ export const ORDER_STATUS = {
   BRANCH_RECEIVED:   'BRANCH_RECEIVED',   // สาขารับพัสดุแล้ว รอ assign ไรเดอร์
   RIDER_ASSIGNED:    'RIDER_ASSIGNED',    // ไรเดอร์รับงานแล้ว กำลังออกไปรับ
   // ────────────────────────────────────────────────────
+  RIDER_ACCEPTED:    'RIDER_ACCEPTED',
   OUT_FOR_DELIVERY:  'OUT_FOR_DELIVERY',
   DELIVERED:         'DELIVERED',
   DELIVERY_FAILED:   'DELIVERY_FAILED',
@@ -38,6 +39,11 @@ export const LEGACY_STATUS_MAP = {
   'ON_TRUCK_BORDER':   ORDER_STATUS.ON_TRUCK,
   'CUSTOMS_CLEARANCE': ORDER_STATUS.CUSTOMS_HOLD,
   'CLEARED':           ORDER_STATUS.CUSTOMS_CLEARED,
+  'PENDING_CUSTOMS':   ORDER_STATUS.CUSTOMS_HOLD,
+  'SCREENING_FAILED':  ORDER_STATUS.CUSTOMS_REJECTED,
+  'ASSIGNED_TO_RIDER': ORDER_STATUS.RIDER_ASSIGNED,
+  'ACCEPTED_BY_RIDER': ORDER_STATUS.RIDER_ACCEPTED,
+  'PICKED_UP_BY_RIDER': ORDER_STATUS.OUT_FOR_DELIVERY,
   'FAILED':            ORDER_STATUS.DELIVERY_FAILED,
   'RETURNED':          ORDER_STATUS.RETURN_TO_SENDER,
 };
@@ -52,7 +58,6 @@ export const SCANNER_ALLOWED_STATUSES = new Set([
   ORDER_STATUS.ARRIVED_BORDER_WH,
   ORDER_STATUS.AT_DEST_WH,
   ORDER_STATUS.OUT_FOR_DELIVERY,
-  ORDER_STATUS.DELIVERED,
 ]);
 
 // ─── Trip Statuses ───────────────────────────────────────────────────────────
@@ -85,7 +90,8 @@ export const ORDER_STATUS_LABELS = {
   // Branch Hub statuses
   [ORDER_STATUS.BRANCH_TRANSFER]:   { label: 'ส่งไปสาขา',          cssClass: 'transit' },
   [ORDER_STATUS.BRANCH_RECEIVED]:   { label: 'สาขารับแล้ว',        cssClass: 'warehouse' },
-  [ORDER_STATUS.RIDER_ASSIGNED]:    { label: 'ไรเดอร์รับงาน',       cssClass: 'delivery' },
+  [ORDER_STATUS.RIDER_ASSIGNED]:    { label: 'มอบหมายไรเดอร์',   cssClass: 'delivery' },
+  [ORDER_STATUS.RIDER_ACCEPTED]:    { label: 'ไรเดอร์รับงานแล้ว', cssClass: 'delivery' },
   [ORDER_STATUS.OUT_FOR_DELIVERY]:  { label: 'กำลังส่ง',           cssClass: 'delivery' },
   [ORDER_STATUS.DELIVERED]:         { label: 'ส่งสำเร็จ',          cssClass: 'completed' },
   [ORDER_STATUS.DELIVERY_FAILED]:   { label: 'ส่งไม่สำเร็จ',      cssClass: 'failed' },
@@ -109,6 +115,7 @@ export const IN_TRANSIT_STATUSES = [
   ORDER_STATUS.BRANCH_TRANSFER,
   ORDER_STATUS.BRANCH_RECEIVED,
   ORDER_STATUS.RIDER_ASSIGNED,
+  ORDER_STATUS.RIDER_ACCEPTED,
   ORDER_STATUS.OUT_FOR_DELIVERY,
 ];
 

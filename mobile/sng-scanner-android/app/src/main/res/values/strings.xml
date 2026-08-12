@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SNG Scanner</string>
+    <string name="scanner_title">SNG Scanner · iT78</string>
+    <string name="network_offline">● Offline</string>
+    <string name="network_cellular_no_internet">● Net SIM ไม่มีอินเทอร์เน็ต</string>
+    <string name="network_no_internet">● เครือข่ายไม่มีอินเทอร์เน็ต</string>
+    <string name="network_online_cellular">● Online · Net SIM</string>
+    <string name="network_online_wifi">● Online · Wi-Fi</string>
+    <string name="network_online">● Online</string>
+</resources>

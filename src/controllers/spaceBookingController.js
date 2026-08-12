@@ -5,6 +5,15 @@
 
 import pool from '../config/db.js';
 
+const BOOKING_TRANSITIONS = Object.freeze({
+  DRAFT: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['LOADED', 'CANCELLED'],
+  LOADED: ['IN_TRANSIT', 'CANCELLED'],
+  IN_TRANSIT: ['COMPLETED'],
+  COMPLETED: [],
+  CANCELLED: [],
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function logBooking(bookingId, fromStatus, toStatus, note, userId) {
@@ -330,7 +339,6 @@ export async function bookingDetail(req, res) {
       req.session.flash = { type: 'error', message: 'ไม่พบรายการจอง' };
       return res.redirect('/freight');
     }
-
     const [logs] = await pool.query(
       `SELECT sbl.*, u.username
        FROM space_booking_logs sbl
@@ -381,6 +389,10 @@ export async function updateStatus(req, res) {
       req.session.flash = { type: 'error', message: 'ไม่พบรายการจอง' };
       return res.redirect('/freight');
     }
+    if (!(BOOKING_TRANSITIONS[booking.status] || []).includes(new_status)) {
+      req.session.flash = { type: 'error', message: `ไม่สามารถเปลี่ยน ${booking.status} → ${new_status}` };
+      return res.redirect(`/freight/${id}`);
+    }
 
     const updates = { status: new_status };
     if (new_status === 'CONFIRMED') updates.confirmed_by = userId;
@@ -418,7 +430,21 @@ export async function recordPayment(req, res) {
       return res.redirect('/freight');
     }
 
-    const newPaid = Number(booking.paid_amount_thb) + Number(paid_amount || 0);
+    const paymentAmount = Number(paid_amount);
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      req.session.flash = { type: 'error', message: 'ยอดชำระต้องมากกว่า 0' };
+      return res.redirect(`/freight/${id}`);
+    }
+    if (['CANCELLED', 'COMPLETED'].includes(booking.status)) {
+      req.session.flash = { type: 'error', message: 'ไม่สามารถรับชำระรายการที่ปิดแล้ว' };
+      return res.redirect(`/freight/${id}`);
+    }
+
+    const newPaid = Number(booking.paid_amount_thb) + paymentAmount;
+    if (newPaid > Number(booking.grand_total_thb) + 0.01) {
+      req.session.flash = { type: 'error', message: 'ยอดชำระเกินยอดคงเหลือ' };
+      return res.redirect(`/freight/${id}`);
+    }
     const payStatus = newPaid >= Number(booking.grand_total_thb) ? 'PAID'
       : newPaid > 0 ? 'PARTIAL' : 'UNPAID';
 

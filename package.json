@@ -17,13 +17,16 @@
     "fix-rates": "node fix_rates_tables.js",
     "clean": "node scripts/clean_and_restart.js",
     "force-update": "node scripts/force_update.js",
-    "lint": "eslint .",
+    "lint": "eslint src scripts tests eslint.config.js",
+    "test": "node --test tests/unit/*.test.js",
+    "test:db": "node --test tests/db-integration.test.js",
+    "check-db": "node scripts/check_migration.mjs",
     "migrate-crm": "node scripts/run_crm_migration.mjs",
     "check-crm": "node scripts/run_crm_migration.mjs --check"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.0",
-    "bcrypt": "^5.1.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.4.1",
     "csurf": "^1.11.0",
@@ -43,6 +46,11 @@
   "devDependencies": {
     "eslint": "^8.57.0",
     "nodemon": "^3.1.0"
+  },
+  "overrides": {
+    "csurf": {
+      "cookie": "^0.7.2"
+    }
   },
   "engines": {
     "node": ">=20"

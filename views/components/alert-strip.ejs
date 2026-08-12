@@ -1,12 +1,4 @@
-<%#
-  views/components/alert-strip.ejs
-
-  Props:
-    alerts — array of { type: 'warning'|'danger', icon: 'fa-...',  message: '...', link: '/...' }
-
-  Usage:
-    <%- include('../components/alert-strip', { alerts: dashboardAlerts }) %>
-%>
+<%# Alert strip component; expects an alerts array. %>
 <% if (alerts && alerts.length > 0) { %>
   <div class="space-y-2 mb-6">
     <% alerts.forEach(function(alert) { %>

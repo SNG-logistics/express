@@ -11,6 +11,8 @@
  */
 import pool from '../config/db.js';
 import { ORDER_STATUS } from '../constants/statuses.js';
+import { transitionOrder, withTransaction } from '../services/orderWorkflowService.js';
+import { kickNotificationWorker } from '../services/notificationService.js';
 
 // Statuses that can enter customs processing
 const CUSTOMS_ELIGIBLE_STATUSES = [
@@ -80,25 +82,25 @@ export async function startClearance(order, feeAmount, note, userId) {
     );
   }
 
-  const fromStatus = order.status;
-  const toStatus   = ORDER_STATUS.CUSTOMS_HOLD;
-
-  await pool.query('UPDATE orders SET status = ? WHERE id = ?', [toStatus, order.id]);
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [order.id, fromStatus, toStatus, note || 'เริ่มพิธีการศุลกากร', userId || null]
-  );
-
-  // Record customs fee if provided
-  const fee = Number(feeAmount);
-  if (!Number.isNaN(fee) && fee > 0) {
-    await pool.query(
-      `INSERT INTO payments (order_id, type, method, amount, currency, status, ref_no)
-       VALUES (?, 'customs', 'other', ?, 'THB', 'PENDING', ?)`,
-      [order.id, fee, note || 'customs fee']
-    );
-  }
+  await withTransaction(async (conn) => {
+    await transitionOrder({
+      orderId: order.id,
+      toStatus: ORDER_STATUS.CUSTOMS_HOLD,
+      userId,
+      note: note || 'Customs clearance started',
+      source: 'CUSTOMS_START',
+      connection: conn,
+      allowSame: true,
+    });
+    const fee = Number(feeAmount);
+    if (Number.isFinite(fee) && fee > 0) {
+      await conn.query(
+        `INSERT INTO payments (order_id, type, method, amount, currency, status, ref_no)
+         VALUES (?, 'customs', 'other', ?, 'THB', 'PENDING', ?)`,
+        [order.id, fee, note || 'customs fee']
+      );
+    }
+  });
 }
 
 /**
@@ -114,40 +116,18 @@ export async function clearOrder(order, note, userId) {
     );
   }
 
-  // Move order to CUSTOMS_CLEARED first, then ARRIVED_BORDER_WH
-  await pool.query(
-    'UPDATE orders SET status = ? WHERE id = ?',
-    [ORDER_STATUS.CUSTOMS_CLEARED, order.id]
-  );
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [
-      order.id,
-      ORDER_STATUS.CUSTOMS_HOLD,
-      ORDER_STATUS.CUSTOMS_CLEARED,
-      note || 'ผ่านพิธีการศุลกากร',
-      userId || null,
-    ]
-  );
-
-  // Mark any pending customs payment as PAID
-  await pool.query(
-    `UPDATE payments SET status = 'PAID', paid_at = NOW()
-     WHERE order_id = ? AND type = 'customs' AND status = 'PENDING'`,
-    [order.id]
-  );
-
-  // Auto-advance to ARRIVED_BORDER_WH (customs cleared → continue journey)
-  await pool.query(
-    'UPDATE orders SET status = ? WHERE id = ?',
-    [ORDER_STATUS.ARRIVED_BORDER_WH, order.id]
-  );
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, 'ส่งต่อหลังผ่านพิธีศุลกากร', ?)`,
-    [order.id, ORDER_STATUS.CUSTOMS_CLEARED, ORDER_STATUS.ARRIVED_BORDER_WH, userId || null]
-  );
+  await withTransaction(async (conn) => {
+    await transitionOrder({ orderId: order.id, toStatus: ORDER_STATUS.CUSTOMS_CLEARED,
+      userId, note: note || 'Customs cleared', source: 'CUSTOMS_CLEAR', connection: conn });
+    await conn.query(
+      `UPDATE payments SET status='PAID', paid_at=NOW()
+       WHERE order_id=? AND type='customs' AND status='PENDING'`,
+      [order.id]
+    );
+    await transitionOrder({ orderId: order.id, toStatus: ORDER_STATUS.ARRIVED_BORDER_WH,
+      userId, note: 'Released after customs clearance', source: 'CUSTOMS_RELEASE', connection: conn });
+  });
+  kickNotificationWorker(order.id);
 }
 
 /**
@@ -161,19 +141,12 @@ export async function rejectOrder(order, reason, userId) {
     );
   }
 
-  await pool.query(
-    'UPDATE orders SET status = ? WHERE id = ?',
-    [ORDER_STATUS.CUSTOMS_REJECTED, order.id]
-  );
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [
-      order.id,
-      ORDER_STATUS.CUSTOMS_HOLD,
-      ORDER_STATUS.CUSTOMS_REJECTED,
-      reason || 'ศุลกากรไม่อนุมัติ',
-      userId || null,
-    ]
-  );
+  await transitionOrder({
+    orderId: order.id,
+    toStatus: ORDER_STATUS.CUSTOMS_REJECTED,
+    userId,
+    note: reason || 'Customs rejected shipment',
+    source: 'CUSTOMS_REJECT',
+    notify: false,
+  });
 }

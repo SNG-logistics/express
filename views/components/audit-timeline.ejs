@@ -1,13 +1,4 @@
-<%#
-  views/components/audit-timeline.ejs
-
-  Props:
-    logs  — array of order_status_logs rows, ordered by action_at DESC
-            Each row: { from_status, to_status, action_at, actor_name, actor_role, note }
-    
-  Usage:
-    <%- include('../components/audit-timeline', { logs: statusLogs }) %>
-%>
+<%# Audit timeline component; expects statusLogs as logs. %>
 <%
   const STATUS_DOT_COLOR = {
     'NEW':               '#60a5fa',

@@ -19,7 +19,7 @@ async function genQuoteNo() {
 }
 
 // ─── Helper: calculate totals ─────────────────────────────────────────────────
-function calcQuote({ product_price_thb, shipping_th_thb, weight_kg, exchange_rate, fx_spread_pct, sng_shipping_lak, service_fee_lak }) {
+function calcQuote({ product_price_thb, shipping_th_thb, exchange_rate, fx_spread_pct, sng_shipping_lak, service_fee_lak }) {
     const productThb  = parseFloat(product_price_thb) || 0;
     const shippingThb = parseFloat(shipping_th_thb)   || 0;
     const rate        = parseFloat(exchange_rate)      || 1;

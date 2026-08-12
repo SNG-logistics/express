@@ -11,6 +11,7 @@
  */
 import pool from '../config/db.js';
 import { ORDER_STATUS } from '../constants/statuses.js';
+import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -46,8 +47,8 @@ export async function getSettlement(orderId) {
 /**
  * Upsert cod_settlements row when an order with COD is created / edited.
  */
-export async function ensureCodRow(orderId, codAmount) {
-  await pool.query(
+export async function ensureCodRow(orderId, codAmount, conn = pool) {
+  await conn.query(
     `INSERT INTO cod_settlements (order_id, cod_amount, status)
      VALUES (?, ?, 'PENDING')
      ON DUPLICATE KEY UPDATE cod_amount = VALUES(cod_amount)`,
@@ -63,37 +64,30 @@ export async function ensureCodRow(orderId, codAmount) {
  * Guard: order must be in DELIVERED status.
  */
 export async function markCollected(orderId, userId) {
-  const [[order]] = await pool.query('SELECT status FROM orders WHERE id = ?', [orderId]);
-  if (!order) throw new Error('ไม่พบ order');
-
-  // Accept DELIVERED or already COD_COLLECTED (idempotent)
-  const validFromStatuses = [ORDER_STATUS.DELIVERED, ORDER_STATUS.COD_COLLECTED];
-  if (!validFromStatuses.includes(order.status)) {
-    throw new Error(
-      `ไม่สามารถเก็บ COD ได้ — order อยู่ในสถานะ "${order.status}" (ต้องเป็น DELIVERED)`
+  return withTransaction(async (conn) => {
+    const [[order]] = await conn.query('SELECT status, cod_amount FROM orders WHERE id=? FOR UPDATE', [orderId]);
+    if (!order) throw new WorkflowError('Order not found', 404);
+    if (order.status === ORDER_STATUS.COD_COLLECTED) return { changed: false };
+    if (order.status !== ORDER_STATUS.DELIVERED || Number(order.cod_amount) <= 0) {
+      throw new WorkflowError(`COD collection requires a delivered COD order (${order.status})`, 409);
+    }
+    await ensureCodRow(orderId, order.cod_amount, conn);
+    await conn.query(
+      `UPDATE cod_settlements SET status='COLLECTED', collected_at=NOW()
+       WHERE order_id=? AND status='PENDING'`,
+      [orderId]
     );
-  }
-
-  const fromStatus = order.status;
-
-  await pool.query(
-    `UPDATE cod_settlements
-     SET status = 'COLLECTED', collected_at = NOW()
-     WHERE order_id = ?`,
-    [orderId]
-  );
-  await pool.query(
-    `UPDATE orders SET status = ? WHERE id = ? AND status = ?`,
-    [ORDER_STATUS.COD_COLLECTED, orderId, ORDER_STATUS.DELIVERED]
-  );
-  // Only log if actually changed
-  if (fromStatus === ORDER_STATUS.DELIVERED) {
-    await pool.query(
-      `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-       VALUES (?, ?, ?, 'เก็บ COD จากลูกค้าแล้ว', ?)`,
-      [orderId, ORDER_STATUS.DELIVERED, ORDER_STATUS.COD_COLLECTED, userId || null]
-    );
-  }
+    return transitionOrder({
+      orderId,
+      toStatus: ORDER_STATUS.COD_COLLECTED,
+      userId,
+      note: 'COD collected from customer',
+      source: 'COD_COLLECT',
+      updates: { cod_collected_amount: Number(order.cod_amount) },
+      connection: conn,
+      notify: false,
+    });
+  });
 }
 
 /**
@@ -104,51 +98,30 @@ export async function markCollected(orderId, userId) {
  * Guard: settlement must be COLLECTED, order must be COD_COLLECTED.
  */
 export async function markRemitted(orderId, remittedTo, userId) {
-  const [[order]]      = await pool.query('SELECT status FROM orders WHERE id = ?', [orderId]);
-  const [[settlement]] = await pool.query(
-    'SELECT status FROM cod_settlements WHERE order_id = ? LIMIT 1', [orderId]
-  );
-
-  if (!order)      throw new Error('ไม่พบ order');
-  if (!settlement) throw new Error('ไม่มี cod_settlements record — กรุณา Collect ก่อน');
-
-  if (settlement.status !== 'COLLECTED') {
-    throw new Error(
-      `ไม่สามารถ Remit ได้ — settlement อยู่ในสถานะ "${settlement.status}" (ต้องเป็น COLLECTED)`
+  return withTransaction(async (conn) => {
+    const [[order]] = await conn.query('SELECT status FROM orders WHERE id=? FOR UPDATE', [orderId]);
+    const [[settlement]] = await conn.query(
+      'SELECT status FROM cod_settlements WHERE order_id=? FOR UPDATE', [orderId]
     );
-  }
-  if (order.status !== ORDER_STATUS.COD_COLLECTED) {
-    throw new Error(
-      `ไม่สามารถ Remit ได้ — order อยู่ในสถานะ "${order.status}" (ต้องเป็น COD_COLLECTED)`
+    if (!order || !settlement) throw new WorkflowError('Order or COD settlement not found', 404);
+    if (settlement.status !== 'COLLECTED' || order.status !== ORDER_STATUS.COD_COLLECTED) {
+      throw new WorkflowError('COD must be collected before remittance', 409);
+    }
+    await conn.query(
+      `UPDATE cod_settlements SET status='REMITTED', remitted_at=NOW(), remitted_to=?
+       WHERE order_id=? AND status='COLLECTED'`,
+      [remittedTo || '', orderId]
     );
-  }
-
-  // Step 1: settlement → REMITTED
-  await pool.query(
-    `UPDATE cod_settlements
-     SET status = 'REMITTED', remitted_at = NOW(), remitted_to = ?
-     WHERE order_id = ?`,
-    [remittedTo || '', orderId]
-  );
-
-  // Step 2: order → COD_REMITTED (not CLOSED yet — CLOSED is a separate action)
-  await pool.query(
-    `UPDATE orders SET status = ? WHERE id = ? AND status = ?`,
-    [ORDER_STATUS.COD_REMITTED, orderId, ORDER_STATUS.COD_COLLECTED]
-  );
-
-  // Step 3: Log COD_COLLECTED → COD_REMITTED
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [
+    return transitionOrder({
       orderId,
-      ORDER_STATUS.COD_COLLECTED,
-      ORDER_STATUS.COD_REMITTED,
-      `โอน COD คืนลูกค้า/ต้นทาง: ${remittedTo || '–'}`,
-      userId || null,
-    ]
-  );
+      toStatus: ORDER_STATUS.COD_REMITTED,
+      userId,
+      note: `COD remitted to ${remittedTo || '-'}`,
+      source: 'COD_REMIT',
+      connection: conn,
+      notify: false,
+    });
+  });
 }
 
 /**
@@ -157,21 +130,12 @@ export async function markRemitted(orderId, remittedTo, userId) {
  * Called explicitly by the finance/manager, not auto-closed.
  */
 export async function closeAfterRemit(orderId, userId) {
-  const [[order]] = await pool.query('SELECT status FROM orders WHERE id = ?', [orderId]);
-  if (!order) throw new Error('ไม่พบ order');
-  if (order.status !== ORDER_STATUS.COD_REMITTED) {
-    throw new Error(
-      `ยังปิดไม่ได้ — order อยู่ใน "${order.status}" (ต้อง COD_REMITTED ก่อน)`
-    );
-  }
-
-  await pool.query(
-    `UPDATE orders SET status = ? WHERE id = ?`,
-    [ORDER_STATUS.CLOSED, orderId]
-  );
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, ?, ?, 'ปิด order หลัง Remit COD', ?)`,
-    [orderId, ORDER_STATUS.COD_REMITTED, ORDER_STATUS.CLOSED, userId || null]
-  );
+  return transitionOrder({
+    orderId,
+    toStatus: ORDER_STATUS.CLOSED,
+    userId,
+    note: 'Order closed after COD remittance',
+    source: 'COD_CLOSE',
+    notify: false,
+  });
 }

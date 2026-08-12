@@ -1,4 +1,8 @@
 import pool from '../config/db.js';
+import bcrypt from 'bcryptjs';
+import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
+import { kickNotificationWorker } from '../services/notificationService.js';
+import { canManageBranchResource } from '../services/operationalAccessService.js';
 
 // ─── Haversine distance (km) ──────────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -184,28 +188,89 @@ export async function updateStatus(req, res) {
 
 export async function createRider(req, res) {
   const { id: branch_id } = req.params;
-  const { name, phone, vehicle_type, vehicle_no } = req.body;
+  const { name, phone, vehicle_type, vehicle_no, username, password } = req.body;
+  if (!canManageBranchResource({
+    role: req.session.user?.role,
+    sessionBranchId: req.session.user?.branch_id,
+    targetBranchId: branch_id,
+  })) {
+    return res.status(403).render('errors/403', {
+      user: req.session.user,
+      title: 'Forbidden',
+      requiredRoles: ['branch_operator-own-branch'],
+    });
+  }
 
-  if (!name?.trim() || !phone?.trim()) {
-    req.session.flash = { type: 'error', message: 'ต้องระบุชื่อและเบอร์โทรไรเดอร์' };
+  if (!name?.trim() || !phone?.trim() || !username?.trim() || !password) {
+    req.session.flash = { type: 'error', message: 'ต้องระบุชื่อ เบอร์โทร Username และ Password ของไรเดอร์' };
+    return res.redirect(`/branches/${branch_id}`);
+  }
+  if (password.length < 8) {
+    req.session.flash = { type: 'error', message: 'Password ต้องมีอย่างน้อย 8 ตัวอักษร' };
     return res.redirect(`/branches/${branch_id}`);
   }
 
-  await pool.query(
-    'INSERT INTO riders (branch_id, name, phone, vehicle_type, vehicle_no) VALUES (?, ?, ?, ?, ?)',
-    [branch_id, name.trim(), phone.trim(), vehicle_type || 'motorcycle', vehicle_no || null]
-  );
-  req.session.flash = { type: 'success', message: `เพิ่มไรเดอร์ ${name} แล้ว` };
+  try {
+    const passwordHash = await bcrypt.hash(password, 12);
+    await withTransaction(async (conn) => {
+      const [[branch]] = await conn.query(
+        "SELECT id FROM branches WHERE id=? AND status='active' FOR UPDATE",
+        [branch_id]
+      );
+      if (!branch) throw new WorkflowError('Branch not found', 404);
+      const [userResult] = await conn.query(
+        `INSERT INTO users (username, password_hash, role, name, phone, status, branch_id)
+         VALUES (?, ?, 'rider', ?, ?, 'active', ?)`,
+        [username.trim(), passwordHash, name.trim(), phone.trim(), branch_id]
+      );
+      await conn.query(
+        `INSERT INTO riders (user_id, branch_id, name, phone, vehicle_type, vehicle_no)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [userResult.insertId, branch_id, name.trim(), phone.trim(), vehicle_type || 'motorcycle', vehicle_no || null]
+      );
+    });
+    req.session.flash = { type: 'success', message: `เพิ่มไรเดอร์ ${name} และบัญชี ${username} แล้ว` };
+  } catch (error) {
+    req.session.flash = {
+      type: 'error',
+      message: error.code === 'ER_DUP_ENTRY' ? 'Username หรือบัญชีไรเดอร์นี้มีอยู่แล้ว' : error.message,
+    };
+  }
   res.redirect(`/branches/${branch_id}`);
 }
 
 export async function updateRiderStatus(req, res) {
   const { id: branch_id, riderId } = req.params;
   const { status } = req.body;
-  await pool.query(
-    'UPDATE riders SET status=? WHERE id=? AND branch_id=?',
-    [status, riderId, branch_id]
-  );
+  if (!canManageBranchResource({
+    role: req.session.user?.role,
+    sessionBranchId: req.session.user?.branch_id,
+    targetBranchId: branch_id,
+  })) {
+    return res.status(403).render('errors/403', {
+      user: req.session.user,
+      title: 'Forbidden',
+      requiredRoles: ['branch_operator-own-branch'],
+    });
+  }
+  if (!['active', 'inactive'].includes(status)) {
+    req.session.flash = { type: 'error', message: 'สถานะไรเดอร์ไม่ถูกต้อง' };
+    return res.redirect(`/branches/${branch_id}`);
+  }
+  await withTransaction(async (conn) => {
+    const [[rider]] = await conn.query(
+      'SELECT id, user_id FROM riders WHERE id=? AND branch_id=? FOR UPDATE',
+      [riderId, branch_id]
+    );
+    if (!rider) throw new WorkflowError('Rider not found in this branch', 404);
+    await conn.query('UPDATE riders SET status=? WHERE id=?', [status, riderId]);
+    if (rider.user_id) {
+      await conn.query(
+        'UPDATE users SET status=? WHERE id=? AND role=\'rider\'',
+        [status === 'inactive' ? 'inactive' : 'active', rider.user_id]
+      );
+    }
+  });
   res.redirect(`/branches/${branch_id}`);
 }
 
@@ -217,10 +282,10 @@ export async function updateRiderStatus(req, res) {
  * findNearestBranch — คำนวณสาขาที่ใกล้ที่สุดสำหรับ receiver GPS
  * Returns { branch, zone, fee } หรือ null ถ้าไม่มีสาขาในรัศมี
  */
-export async function findNearestBranch(receiverLat, receiverLng) {
+export async function findNearestBranch(receiverLat, receiverLng, conn = pool) {
   if (!receiverLat || !receiverLng) return null;
 
-  const [branches] = await pool.query(
+  const [branches] = await conn.query(
     `SELECT * FROM branches WHERE status='active' AND lat IS NOT NULL AND lng IS NOT NULL`
   );
 
@@ -256,45 +321,58 @@ export async function assignBranchToOrder(orderId, conn = pool) {
   );
   if (!order || !order.receiver_lat || !order.receiver_lng) return null;
 
-  const result = await findNearestBranch(order.receiver_lat, order.receiver_lng);
+  const result = await findNearestBranch(order.receiver_lat, order.receiver_lng, conn);
   if (!result) return null; // ไม่มีสาขาในรัศมี
+  return assignOrderToBranch(orderId, result.branch.id, conn, result);
+}
 
-  const { branch, zone, fee } = result;
+export async function assignOrderToBranch(orderId, branchId, conn = pool, precomputed = null) {
+  const [[order]] = await conn.query('SELECT * FROM orders WHERE id=?', [orderId]);
+  const [[branch]] = await conn.query("SELECT * FROM branches WHERE id=? AND status='active'", [branchId]);
+  if (!order || !branch) throw new WorkflowError('Order or active branch not found', 404);
 
-  // คำนวณ split amount
-  const hubAmt    = fee * (branch.split_hub_pct / 100);
-  const branchAmt = fee * (branch.split_branch_pct / 100);
-  const riderAmt  = fee - hubAmt - branchAmt; // อาจเป็น 0 สำหรับ Plan A
+  let zone = precomputed?.zone || 'X';
+  let fee = Number(precomputed?.fee || 0);
+  if (!precomputed && order.receiver_lat && order.receiver_lng && branch.lat && branch.lng) {
+    const distKm = haversineKm(order.receiver_lat, order.receiver_lng, branch.lat, branch.lng);
+    if (distKm <= Number(branch.zone_a_km)) { zone = 'A'; fee = Number(branch.fee_zone_a); }
+    else if (distKm <= Number(branch.zone_b_km)) { zone = 'B'; fee = Number(branch.fee_zone_b); }
+    else if (distKm <= Number(branch.zone_c_km)) { zone = 'C'; fee = Number(branch.fee_zone_c); }
+  }
 
-  // อัปเดต order
+  const hubAmt = fee * (Number(branch.split_hub_pct) / 100);
+  const branchAmt = fee * (Number(branch.split_branch_pct) / 100);
+  const riderAmt = fee - hubAmt - branchAmt;
+  const deliveryNo = genDeliveryNo(orderId);
+
   await conn.query(
     'UPDATE orders SET dest_branch_id=?, delivery_zone=?, last_mile_fee=? WHERE id=?',
     [branch.id, zone, fee, orderId]
   );
-
-  // สร้าง branch_delivery
-  const deliveryNo = genDeliveryNo(orderId);
   await conn.query(
     `INSERT INTO branch_deliveries
-      (delivery_no, order_id, branch_id, zone, delivery_fee, hub_amount, branch_amount, rider_amount)
+       (delivery_no, order_id, branch_id, zone, delivery_fee, hub_amount, branch_amount, rider_amount)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE delivery_fee=VALUES(delivery_fee)`,
+     ON DUPLICATE KEY UPDATE branch_id=VALUES(branch_id), zone=VALUES(zone),
+       delivery_fee=VALUES(delivery_fee), hub_amount=VALUES(hub_amount),
+       branch_amount=VALUES(branch_amount), rider_amount=VALUES(rider_amount)`,
     [deliveryNo, orderId, branch.id, zone, fee, hubAmt, branchAmt, riderAmt]
   );
 
-  // บันทึก revenue ledger
-  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const [[bd]] = await conn.query(
+  const [[delivery]] = await conn.query(
     'SELECT id FROM branch_deliveries WHERE delivery_no=?', [deliveryNo]
   );
-  if (bd) {
+  if (delivery) {
+    const period = new Date().toISOString().slice(0, 7);
     await conn.query(
       `INSERT INTO branch_revenue (branch_id, delivery_id, period_month, type, amount, currency, note)
-       VALUES (?, ?, ?, 'delivery_fee', ?, 'LAK', ?)`,
-      [branch.id, bd.id, period, branchAmt, `Order ${order.job_no} Zone ${zone}`]
+       SELECT ?, ?, ?, 'delivery_fee', ?, 'LAK', ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM branch_revenue WHERE delivery_id=? AND type='delivery_fee'
+       )`,
+      [branch.id, delivery.id, period, branchAmt, `Order ${order.job_no} Zone ${zone}`, delivery.id]
     );
   }
-
   return { branch, zone, fee, deliveryNo };
 }
 
@@ -338,7 +416,15 @@ export async function nearestApi(req, res) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function portalDashboard(req, res) {
-  const branchId = req.session.user?.branch_id;
+  let branchId = req.session.user?.branch_id;
+  if (!branchId && ['admin','manager'].includes(req.session.user?.role)) {
+    const requested = Number(req.query.branch_id);
+    if (Number.isInteger(requested) && requested > 0) branchId = requested;
+    else {
+      const [[firstBranch]] = await pool.query("SELECT id FROM branches WHERE status='active' ORDER BY id LIMIT 1");
+      branchId = firstBranch?.id || null;
+    }
+  }
   if (!branchId) {
     req.session.flash = { type: 'error', message: 'ไม่ได้ผูกกับสาขาใด' };
     return res.redirect('/');
@@ -381,30 +467,41 @@ export async function portalDashboard(req, res) {
 export async function assignRider(req, res) {
   const { deliveryId } = req.params;
   const { rider_id }   = req.body;
-  const branchId = req.session.user?.branch_id;
-
-  const [[bd]] = await pool.query(
-    'SELECT * FROM branch_deliveries WHERE id=? AND branch_id=?', [deliveryId, branchId]
-  );
+  const sessionBranchId = req.session.user?.branch_id;
+  const [[bd]] = await pool.query('SELECT * FROM branch_deliveries WHERE id=?', [deliveryId]);
   if (!bd) {
     req.session.flash = { type: 'error', message: 'ไม่พบรายการนี้' };
     return res.redirect('/branch/dashboard');
   }
+  if (req.session.user?.role === 'branch_operator' && String(bd.branch_id) !== String(sessionBranchId)) {
+    return res.status(403).render('errors/403', { user: req.session.user, title: 'Forbidden', requiredRoles: ['branch_operator'] });
+  }
 
-  await pool.query(
-    `UPDATE branch_deliveries SET rider_id=?, status='ASSIGNED', assigned_at=NOW() WHERE id=?`,
-    [rider_id, deliveryId]
-  );
-  // Mark rider as busy
-  await pool.query(`UPDATE riders SET status='busy' WHERE id=?`, [rider_id]);
-
-  // Update order status
-  await pool.query(`UPDATE orders SET status='RIDER_ASSIGNED' WHERE id=?`, [bd.order_id]);
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, 'BRANCH_RECEIVED', 'RIDER_ASSIGNED', 'Rider assigned by branch', ?)`,
-    [bd.order_id, req.session.user.id]
-  );
+  await withTransaction(async (conn) => {
+    const [[rider]] = await conn.query(
+      `SELECT id, user_id FROM riders
+       WHERE id=? AND branch_id=? AND status='active' FOR UPDATE`,
+      [rider_id, bd.branch_id]
+    );
+    if (!rider?.user_id) throw new WorkflowError('Rider has no active login account', 409);
+    const [deliveryUpdate] = await conn.query(
+      `UPDATE branch_deliveries SET rider_id=?, status='ASSIGNED', assigned_at=NOW()
+       WHERE id=? AND status='PENDING'`,
+      [rider_id, deliveryId]
+    );
+    if (deliveryUpdate.affectedRows !== 1) throw new WorkflowError('Delivery is no longer pending', 409);
+    await conn.query(`UPDATE riders SET status='busy' WHERE id=?`, [rider_id]);
+    await transitionOrder({
+      orderId: bd.order_id,
+      toStatus: 'RIDER_ASSIGNED',
+      userId: req.session.user.id,
+      note: 'Rider assigned by branch',
+      source: 'BRANCH_ASSIGN',
+      updates: { rider_id: rider.user_id, assigned_at: new Date() },
+      connection: conn,
+    });
+  });
+  kickNotificationWorker(bd.order_id);
 
   req.session.flash = { type: 'success', message: 'มอบหมายไรเดอร์แล้ว' };
   res.redirect('/branch/dashboard');
@@ -412,42 +509,127 @@ export async function assignRider(req, res) {
 
 export async function markDelivered(req, res) {
   const { deliveryId } = req.params;
-  const { recipient_name, notes } = req.body;
-  const branchId = req.session.user?.branch_id;
-  const proofPath = req.file ? `/uploads/pod/${req.file.filename}` : null;
+  const recipientName = String(req.body.recipient_name || '').trim();
+  const notes = String(req.body.notes || '').trim();
+  const proofPath = req.file ? `/uploads/orders/${req.file.filename}` : null;
 
-  const [[bd]] = await pool.query(
-    'SELECT * FROM branch_deliveries WHERE id=? AND branch_id=?', [deliveryId, branchId]
-  );
-  if (!bd) {
-    req.session.flash = { type: 'error', message: 'ไม่พบรายการนี้' };
+  if (!recipientName || recipientName.length > 120 || !proofPath) {
+    req.session.flash = { type: 'error', message: 'ต้องระบุชื่อผู้รับและแนบรูปหลักฐาน POD' };
     return res.redirect('/branch/dashboard');
   }
 
-  await pool.query(
-    `UPDATE branch_deliveries
-     SET status='DELIVERED', delivered_at=NOW(),
-         recipient_name=?, proof_image=?, notes=?
-     WHERE id=?`,
-    [recipient_name || null, proofPath, notes || null, deliveryId]
-  );
+  let orderId = null;
+  try {
+    const [[delivery]] = await pool.query(
+      `SELECT bd.*, o.cod_amount
+       FROM branch_deliveries bd
+       JOIN orders o ON o.id=bd.order_id
+       WHERE bd.id=?`,
+      [deliveryId]
+    );
+    if (!delivery) throw new WorkflowError('Delivery not found', 404);
+    if (!canManageBranchResource({
+      role: req.session.user?.role,
+      sessionBranchId: req.session.user?.branch_id,
+      targetBranchId: delivery.branch_id,
+    })) {
+      throw new WorkflowError('Delivery belongs to another branch', 403, 'WRONG_BRANCH');
+    }
 
-  // Free rider
-  if (bd.rider_id) {
-    await pool.query(`UPDATE riders SET status='active' WHERE id=?`, [bd.rider_id]);
+    const expectedCod = Number(delivery.cod_amount || 0);
+    const collectedCod = Number(req.body.cod_collected_amount || 0);
+    if (!Number.isFinite(collectedCod) || collectedCod < 0
+        || (expectedCod > 0 && Math.abs(collectedCod - expectedCod) > 0.01)) {
+      throw new WorkflowError(`COD must equal ${expectedCod}`, 400, 'COD_MISMATCH');
+    }
+    orderId = delivery.order_id;
+
+    await withTransaction(async (conn) => {
+      const [[lockedDelivery]] = await conn.query(
+        `SELECT bd.*, o.status AS order_status, o.cod_amount
+         FROM branch_deliveries bd
+         JOIN orders o ON o.id=bd.order_id
+         WHERE bd.id=? FOR UPDATE`,
+        [deliveryId]
+      );
+      if (!lockedDelivery || !['ASSIGNED', 'PICKED_UP'].includes(lockedDelivery.status)) {
+        throw new WorkflowError('Delivery is not ready to complete', 409);
+      }
+      if (!canManageBranchResource({
+        role: req.session.user?.role,
+        sessionBranchId: req.session.user?.branch_id,
+        targetBranchId: lockedDelivery.branch_id,
+      })) {
+        throw new WorkflowError('Delivery belongs to another branch', 403, 'WRONG_BRANCH');
+      }
+      const lockedExpectedCod = Number(lockedDelivery.cod_amount || 0);
+      if (lockedExpectedCod !== expectedCod
+          || (lockedExpectedCod > 0 && Math.abs(collectedCod - lockedExpectedCod) > 0.01)) {
+        throw new WorkflowError(`COD must equal ${lockedExpectedCod}`, 409, 'COD_CHANGED');
+      }
+
+      const [deliveryUpdate] = await conn.query(
+        `UPDATE branch_deliveries
+         SET status='DELIVERED', delivered_at=NOW(), recipient_name=?, proof_image=?, notes=?
+         WHERE id=? AND status IN ('ASSIGNED','PICKED_UP')`,
+        [recipientName, proofPath, notes || null, deliveryId]
+      );
+      if (deliveryUpdate.affectedRows !== 1) {
+        throw new WorkflowError('Delivery changed; reload and try again', 409);
+      }
+
+      if (['RIDER_ASSIGNED', 'RIDER_ACCEPTED'].includes(lockedDelivery.order_status)) {
+        await transitionOrder({
+          orderId,
+          toStatus: 'OUT_FOR_DELIVERY',
+          userId: req.session.user.id,
+          note: 'Branch supervisor confirmed rider pickup',
+          source: 'BRANCH_DELIVERY',
+          connection: conn,
+        });
+      }
+      await transitionOrder({
+        orderId,
+        toStatus: 'DELIVERED',
+        userId: req.session.user.id,
+        note: `Delivered by branch rider to ${recipientName}`,
+        source: 'BRANCH_DELIVERY',
+        updates: {
+          recipient_name: recipientName,
+          pod_photo_url: proofPath,
+          delivery_proof_image: proofPath,
+          delivered_by: req.session.user.id,
+        },
+        connection: conn,
+      });
+      if (lockedExpectedCod > 0) {
+        await conn.query(
+          `INSERT INTO cod_settlements (order_id, cod_amount, status, collected_at)
+           VALUES (?, ?, 'COLLECTED', NOW())
+           ON DUPLICATE KEY UPDATE status='COLLECTED', collected_at=NOW(), cod_amount=VALUES(cod_amount)`,
+          [orderId, lockedExpectedCod]
+        );
+        await transitionOrder({
+          orderId,
+          toStatus: 'COD_COLLECTED',
+          userId: req.session.user.id,
+          note: `COD ${collectedCod} collected by branch rider`,
+          source: 'BRANCH_DELIVERY',
+          updates: { cod_collected_amount: collectedCod },
+          connection: conn,
+          notify: false,
+        });
+      }
+      if (lockedDelivery.rider_id) {
+        await conn.query(`UPDATE riders SET status='active' WHERE id=?`, [lockedDelivery.rider_id]);
+      }
+    });
+
+    kickNotificationWorker(orderId);
+    req.session.flash = { type: 'success', message: 'บันทึกส่งสำเร็จ' };
+  } catch (error) {
+    console.error('[Branch markDelivered]', error);
+    req.session.flash = { type: 'error', message: error.message || 'บันทึกการส่งไม่สำเร็จ' };
   }
-
-  // Update order status
-  const [[order]] = await pool.query('SELECT cod_amount FROM orders WHERE id=?', [bd.order_id]);
-  const nextOrderStatus = order?.cod_amount > 0 ? 'COD_COLLECTED' : 'DELIVERED';
-
-  await pool.query(`UPDATE orders SET status=? WHERE id=?`, [nextOrderStatus, bd.order_id]);
-  await pool.query(
-    `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
-     VALUES (?, 'RIDER_ASSIGNED', ?, 'Delivered by branch rider', ?)`,
-    [bd.order_id, nextOrderStatus, req.session.user.id]
-  );
-
-  req.session.flash = { type: 'success', message: 'บันทึกส่งสำเร็จ' };
   res.redirect('/branch/dashboard');
 }

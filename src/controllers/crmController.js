@@ -4,7 +4,7 @@
  */
 
 import * as svc from '../services/crmService.js';
-import { generateSmartReplies, classifyIntent, checkAiHealth } from '../services/aiService.js';
+import { generateSmartReplies, classifyIntent } from '../services/aiService.js';
 import pool from '../config/db.js';
 import { sendOutbound } from '../services/channelService.js';
 import { bulkSyncAllLegacy, getSyncStats } from '../services/customerSyncService.js';
@@ -450,7 +450,7 @@ export async function channelList(req, res) {
 
 export async function channelSave(req, res) {
   try {
-    const { channel_type, channel_name, page_id, access_token, webhook_secret, verify_token } = req.body;
+    const { channel_type, channel_name, page_id, access_token, webhook_secret } = req.body;
     await svc.saveChannel({ channelType: channel_type, channelName: channel_name, pageId: page_id, accessToken: access_token || null, webhookSecret: webhook_secret || null });
     req.session.flash = { type: 'success', message: `บันทึก ${channel_type} Channel สำเร็จ` };
     return res.redirect('/crm/channels');

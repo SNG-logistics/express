@@ -1,7 +1,10 @@
 import pool from '../config/db.js';
-import { ORDER_STATUS, ORDER_STATUS_LABELS } from '../constants/statuses.js';
-import { canTransitionOrder, getNextOrderStatuses, canCloseOrder } from '../constants/transitions.js';
-import { sendOrderUpdate } from '../services/whatsappService.js';
+import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
+import { canTransitionOrder } from '../constants/transitions.js';
+import { transitionOrder, withTransaction } from '../services/orderWorkflowService.js';
+import { parseDimensionSum, resolveShippingRate } from '../services/pricingService.js';
+import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
+import { assignBranchToOrder } from './branchesController.js';
 
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
@@ -164,11 +167,10 @@ export async function showCreate(req, res) {
 }
 
 export async function create(req, res) {
-  console.log('[DEBUG ORDER CREATE] body:\n', JSON.stringify(req.body, null, 2));
   // 1. Parse & sanitize
   const {
     job_no, direction, sender_id, receiver_id,
-    price_amount, cod_amount, requires_customs,
+    cod_amount, requires_customs,
     service_type, declared_weight,
     dim_w, dim_h, dim_d,
     declared_value, item_description, notes,
@@ -176,23 +178,22 @@ export async function create(req, res) {
     force_duplicate, payment_method, quotation_id
   } = req.body;
 
-  const dimW    = Number(dim_w) || 0;
-  const dimH    = Number(dim_h) || 0;
-  const dimD    = Number(dim_d) || 0;
+  const dimW    = dim_w === '' || dim_w == null ? 0 : Number(dim_w);
+  const dimH    = dim_h === '' || dim_h == null ? 0 : Number(dim_h);
+  const dimD    = dim_d === '' || dim_d == null ? 0 : Number(dim_d);
   const dimStr  = (dimW && dimH && dimD) ? `${dimW}x${dimH}x${dimD}` : null;
   const volWeight = (dimW && dimH && dimD) ? Number(((dimW * dimH * dimD) / 5000).toFixed(2)) : null;
   const actualWeight = declared_weight ? Number(declared_weight) : null;
   const chargeableKg = (actualWeight || volWeight)
     ? Math.max(actualWeight || 0, volWeight || 0)
     : null;
-  const priceInput = (price_amount !== '' && price_amount !== undefined) ? Number(price_amount) : null;
 
   const payload = {
     job_no:           (job_no || '').trim().toUpperCase(),
     direction:        (direction || '').toUpperCase(),
     sender_id:        sender_id   ? Number(sender_id)   : null,
     receiver_id:      receiver_id ? Number(receiver_id) : null,
-    price_amount:     priceInput !== null ? priceInput : 0,
+    price_amount:     0,
     payment_method:   payment_method || 'ORIGIN',
     cod_amount:       cod_amount  ? Number(cod_amount)  : 0,
     requires_customs: requires_customs ? 1 : 0,
@@ -226,12 +227,16 @@ export async function create(req, res) {
     errors.receiver_id = 'เลือกผู้รับ';
   if (payload.sender_id && payload.receiver_id && payload.sender_id === payload.receiver_id)
     errors.receiver_id = 'ผู้รับต้องไม่ใช่ผู้ส่ง';
-  if (priceInput === null || isNaN(payload.price_amount) || payload.price_amount < 0)
-    errors.price_amount = 'กรอกค่าขนส่ง (0 ขึ้นไป)';
+  if (!Number.isInteger(Number(payload.service_type)) || Number(payload.service_type) <= 0)
+    errors.service_type = 'เลือกอัตราค่าขนส่ง';
   if (isNaN(payload.cod_amount) || payload.cod_amount < 0)
     errors.cod_amount = 'COD ต้องไม่ติดลบ';
   if (actualWeight !== null && (isNaN(actualWeight) || actualWeight <= 0))
     errors.declared_weight = 'น้ำหนักต้องมากกว่า 0 กก.';
+  if ([dimW, dimH, dimD].some(value => !Number.isFinite(value) || value < 0))
+    errors.declared_size = 'ขนาดพัสดุต้องเป็นตัวเลข 0 ขึ้นไป';
+  if (!Number.isInteger(payload.item_count) || payload.item_count <= 0)
+    errors.item_count = 'จำนวนชิ้นต้องมากกว่า 0';
   if (payload.declared_value !== null && (isNaN(payload.declared_value) || payload.declared_value < 0))
     errors.declared_value = 'มูลค่าสินค้าต้องไม่ติดลบ';
   if (payload.cod_amount > 0 && payload.declared_value > 0 &&
@@ -308,48 +313,59 @@ export async function create(req, res) {
       }
     }
 
-    // 6. Insert
-    const [result] = await pool.query(
-      `INSERT INTO orders (
-        job_no, direction, sender_id, receiver_id,
-        price_amount, cod_amount, requires_customs,
-        service_type, declared_weight, declared_size,
-        declared_value, item_description, notes,
-        image_path, created_by,
-        source_type, is_fragile, item_count,
-        weight_kg, dim_l_cm, dim_w_cm, dim_h_cm, chargeable_kg, payment_method, quotation_id
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        payload.job_no,          payload.direction,
-        payload.sender_id,       payload.receiver_id,
-        payload.price_amount,    payload.cod_amount,   payload.requires_customs,
-        payload.service_type,    payload.declared_weight, payload.declared_size,
-        payload.declared_value,  payload.item_description, payload.notes,
-        payload.image_path,      payload.created_by,
-        payload.source_type,     payload.is_fragile,   payload.item_count,
-        payload.weight_kg,       payload.dim_l_cm,     payload.dim_w_cm,
-        payload.dim_h_cm,        payload.chargeable_kg, payload.payment_method, payload.quotation_id
-      ]
-    );
-    const newOrderId = result.insertId;
+    // 6. Server-authoritative price + atomic insert/log/COD/quotation update.
+    const newOrderId = await withTransaction(async conn => {
+      const { rate, price } = await resolveShippingRate(conn, {
+        rateId: payload.service_type,
+        chargeableKg: payload.chargeable_kg || 0,
+        dimensionSum: dimW + dimH + dimD,
+      });
+      payload.price_amount = price;
+      payload.service_type = rate.name;
 
-    // 7. Status log
-    await logStatus(newOrderId, null, 'NEW', 'Order created', payload.created_by);
-
-    // 8. COD settlement
-    if (payload.cod_amount > 0) {
-      try {
-        await pool.query(
+      const [result] = await conn.query(
+        `INSERT INTO orders (
+          job_no, direction, sender_id, receiver_id,
+          price_amount, cod_amount, requires_customs,
+          service_type, declared_weight, declared_size,
+          declared_value, item_description, notes,
+          image_path, created_by,
+          source_type, is_fragile, item_count,
+          weight_kg, dim_l_cm, dim_w_cm, dim_h_cm, chargeable_kg, payment_method, quotation_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          payload.job_no,          payload.direction,
+          payload.sender_id,       payload.receiver_id,
+          payload.price_amount,    payload.cod_amount,   payload.requires_customs,
+          payload.service_type,    payload.declared_weight, payload.declared_size,
+          payload.declared_value,  payload.item_description, payload.notes,
+          payload.image_path,      payload.created_by,
+          payload.source_type,     payload.is_fragile,   payload.item_count,
+          payload.weight_kg,       payload.dim_l_cm,     payload.dim_w_cm,
+          payload.dim_h_cm,        payload.chargeable_kg, payload.payment_method, payload.quotation_id
+        ]
+      );
+      await conn.query(
+        `INSERT INTO order_status_logs
+           (order_id, from_status, to_status, note, action_by, action_at)
+         VALUES (?,NULL,'NEW','Order created',?,NOW())`,
+        [result.insertId, payload.created_by]
+      );
+      if (payload.cod_amount > 0) {
+        await conn.query(
           `INSERT INTO cod_settlements (order_id, cod_amount, status) VALUES (?,?,'PENDING')`,
-          [newOrderId, payload.cod_amount]
+          [result.insertId, payload.cod_amount]
         );
-      } catch (_) { /* table may not exist yet */ }
-    }
-
-    // 8.5 Update Quotation status if linked
-    if (payload.quotation_id) {
-      await pool.query('UPDATE partner_quotations SET status = "ordered" WHERE id = ?', [payload.quotation_id]);
-    }
+      }
+      if (payload.quotation_id) {
+        await conn.query(
+          `UPDATE partner_quotations SET status='ordered'
+           WHERE id=? AND status IN ('draft','sent','accepted')`,
+          [payload.quotation_id]
+        );
+      }
+      return result.insertId;
+    });
 
     // 9. Done
     delete req.session.formDraft;
@@ -404,6 +420,14 @@ export async function detail(req, res) {
 
   const [payments] = await pool.query(
     'SELECT * FROM payments WHERE order_id = ? ORDER BY created_at ASC',
+    [id]
+  );
+
+  const [notifications] = await pool.query(
+    `SELECT id, channel, event_type, status, attempts, recipient,
+            last_error, sent_at, created_at, next_attempt_at
+     FROM customer_notification_outbox
+     WHERE order_id=? ORDER BY id DESC LIMIT 30`,
     [id]
   );
 
@@ -462,6 +486,7 @@ export async function detail(req, res) {
     order,
     logs,
     payments,
+    notifications,
     codSettlement,
     customsHoldLog,
     orderFlags,
@@ -503,8 +528,6 @@ export async function receiveOrder(req, res) {
   const isThaiWH = user && ['warehouse_th','thai_warehouse'].includes(user.role);
   const isLaoWH  = user && ['warehouse_la','lao_warehouse'].includes(user.role);
 
-  const isAdmin = user && ['admin', 'manager'].includes(user.role);
-
   if (isThaiWH && toStatus !== 'RECEIVED_WH_TH') {
     req.session.flash = { type: 'error', message: 'คลังไทยรับได้เฉพาะ order TH→LA' };
     return res.redirect(`/orders/${id}`);
@@ -519,8 +542,8 @@ export async function receiveOrder(req, res) {
   if (!validateTransition(req, res, order, toStatus)) return;
 
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', [toStatus, id]);
-    await logStatus(id, order.status, toStatus, 'Received into warehouse', req.session.user?.id);
+    await transitionOrder({ orderId: id, toStatus, userId: req.session.user?.id,
+      note: 'Received into warehouse', source: 'ORDER_RECEIVE' });
 
     req.session.flash = { type: 'success', message: 'Order received into warehouse' };
     res.redirect(`/orders/${id}`);
@@ -548,14 +571,14 @@ export async function startCrossing(req, res) {
     req.session.flash = { type: 'error', message: 'Order not found' };
     return res.redirect('/orders');
   }
-  if (order.status !== 'ON_TRUCK_BORDER') {
+  if (!canTransitionOrder(order.status, 'CROSSING_BORDER')) {
     req.session.flash = { type: 'error', message: 'Not ready for CROSSING_BORDER' };
     return res.redirect(`/orders/${id}`);
   }
 
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['CROSSING_BORDER', id]);
-    await logStatus(id, order.status, 'CROSSING_BORDER', 'Departed to border', req.session.user?.id);
+    await transitionOrder({ orderId: id, toStatus: 'CROSSING_BORDER', userId: req.session.user?.id,
+      note: 'Departed to border', source: 'ORDER_CROSSING' });
     req.session.flash = { type: 'success', message: 'Order set to CROSSING_BORDER' };
     res.redirect(`/orders/${id}`);
   } catch (err) {
@@ -586,8 +609,8 @@ export async function arriveBorder(req, res) {
   }
 
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['ARRIVED_BORDER_WH', id]);
-    await logStatus(id, order.status, 'ARRIVED_BORDER_WH', 'Arrived border warehouse', req.session.user?.id);
+    await transitionOrder({ orderId: id, toStatus: 'ARRIVED_BORDER_WH', userId: req.session.user?.id,
+      note: 'Arrived border warehouse', source: 'ORDER_BORDER_ARRIVAL' });
     req.session.flash = { type: 'success', message: 'Order arrived border warehouse' };
     res.redirect(`/orders/${id}`);
   } catch (err) {
@@ -618,11 +641,14 @@ export async function arriveDestinationWh(req, res) {
   }
 
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['AT_DEST_WH', id]);
-    await logStatus(id, order.status, 'AT_DEST_WH', 'Received destination warehouse', req.session.user?.id);
-
-    // ✅ แจ้งเตือน WhatsApp: ของถึงโกดัง SNG ลาว (AT_DEST_WH)
-    sendOrderUpdate(id, 'AT_DEST_WH').catch(e => console.error('[WA] arriveDestWH:', e.message));
+    await transitionOrder({
+      orderId: id,
+      toStatus: 'AT_DEST_WH',
+      userId: req.session.user?.id,
+      note: 'Received destination warehouse',
+      source: 'ORDER_DESTINATION_ARRIVAL',
+      afterTransition: conn => assignBranchToOrder(id, conn),
+    });
 
 
     req.session.flash = { type: 'success', message: 'Order received at destination warehouse' };
@@ -655,8 +681,8 @@ export async function startDelivery(req, res) {
   }
 
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['OUT_FOR_DELIVERY', id]);
-    await logStatus(id, order.status, 'OUT_FOR_DELIVERY', 'Out for delivery', req.session.user?.id);
+    await transitionOrder({ orderId: id, toStatus: 'OUT_FOR_DELIVERY', userId: req.session.user?.id,
+      note: 'Out for delivery', source: 'ORDER_DELIVERY' });
 
     // ไม่แจ้ง WhatsApp ที่จุดนี้
 
@@ -681,6 +707,11 @@ export async function startDelivery(req, res) {
 
 export async function markDelivered(req, res) {
   const { id } = req.params;
+  const recipientName = String(req.body.recipient_name || '').trim();
+  if (!recipientName || !req.file) {
+    req.session.flash = { type: 'error', message: 'กรุณาระบุชื่อผู้รับและแนบภาพหลักฐาน POD' };
+    return res.redirect(`/orders/${id}`);
+  }
   const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
   if (!order) {
     req.session.flash = { type: 'error', message: 'Order not found' };
@@ -692,22 +723,17 @@ export async function markDelivered(req, res) {
   }
 
   try {
-    let updateQuery = 'UPDATE orders SET status = ? WHERE id = ?';
-    let params = ['DELIVERED', id];
-    let note = 'ส่งสำเร็จ';
+    const imgPath = '/uploads/orders/' + req.file.filename;
+    const note = `ส่งสำเร็จถึง ${recipientName} (บันทึกภาพ ${req.file.originalname})`;
+    const updates = {
+      delivered_by: req.session.user?.id || null,
+      recipient_name: recipientName,
+      delivery_proof_image: imgPath,
+      pod_photo_url: imgPath,
+    };
 
-    if (req.file) {
-      updateQuery = 'UPDATE orders SET status = ?, delivery_proof_image = ? WHERE id = ?';
-      const imgPath = '/uploads/' + req.file.filename;
-      params = ['DELIVERED', imgPath, id];
-      note = `ส่งสำเร็จ (บันทึกภาพ ${req.file.originalname})`;
-    }
-
-    await pool.query(updateQuery, params);
-    await logStatus(id, order.status, 'DELIVERED', note, req.session.user?.id);
-
-    // ✅ แจ้งเตือน WhatsApp: ส่งสำเร็จ
-    sendOrderUpdate(id, 'DELIVERED').catch(e => console.error('[WA] delivered:', e.message));
+    await transitionOrder({ orderId: id, toStatus: 'DELIVERED', userId: req.session.user?.id,
+      note, source: 'ORDER_DELIVERED', updates });
 
 
     req.session.flash = { type: 'success', message: 'บันทึกการจัดส่งสำเร็จแล้ว' };
@@ -745,15 +771,15 @@ export async function markDeliveryFailed(req, res) {
     let note = `เหตุผล: ${fail_reason}`;
     if (fail_note) note += ` (${fail_note})`;
 
-    await pool.query(
-      `UPDATE orders 
-       SET status = 'DELIVERY_FAILED', 
-           fail_reason = ?, 
-           fail_count = fail_count + 1 
-       WHERE id = ?`, 
-      [fail_reason || 'OTHER', id]
-    );
-    await logStatus(id, order.status, 'DELIVERY_FAILED', note, req.session.user?.id);
+    await transitionOrder({
+      orderId: id,
+      toStatus: 'DELIVERY_FAILED',
+      userId: req.session.user?.id,
+      note,
+      source: 'ORDER_DELIVERY_FAILED',
+      updates: { fail_reason: fail_reason || 'OTHER', fail_note: fail_note || null },
+      afterTransition: conn => conn.query('UPDATE orders SET fail_count=fail_count+1 WHERE id=?', [id]),
+    });
 
     req.session.flash = { type: 'error', message: 'บันทึกการส่งมอบไม่สำเร็จ' };
     res.redirect(`/orders/${id}`);
@@ -770,7 +796,7 @@ export async function closeOrder(req, res) {
     req.session.flash = { type: 'error', message: 'Order not found' };
     return res.redirect('/orders');
   }
-  if (order.status !== 'DELIVERED' && order.status !== 'COD_COLLECTED') {
+  if (!['DELIVERED', 'COD_REMITTED', 'CUSTOMS_REJECTED', 'RETURN_TO_SENDER'].includes(order.status)) {
     req.session.flash = { type: 'error', message: 'Not ready to close' };
     return res.redirect(`/orders/${id}`);
   }
@@ -786,8 +812,8 @@ export async function closeOrder(req, res) {
   }
 
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['CLOSED', id]);
-    await logStatus(id, order.status, 'CLOSED', 'Order closed', req.session.user?.id);
+    await transitionOrder({ orderId: id, toStatus: 'CLOSED', userId: req.session.user?.id,
+      note: 'Order closed', source: 'ORDER_CLOSE' });
     req.session.flash = { type: 'success', message: 'Order closed' };
     res.redirect(`/orders/${id}`);
   } catch (err) {
@@ -956,11 +982,8 @@ export async function processScan(req, res) {
     }
 
     if (nextStatus) {
-      await pool.query('UPDATE orders SET status = ? WHERE id = ?', [nextStatus, order.id]);
-      await logStatus(order.id, order.status, nextStatus, logNote, req.session.user?.id);
-
-      // Notify WhatsApp
-      // sendOrderUpdate(order.id, nextStatus);
+      await transitionOrder({ orderId: order.id, toStatus: nextStatus,
+        userId: req.session.user?.id, note: logNote, source: 'LEGACY_SCANNER' });
       req.session.scanFlash = { type: 'success', message: `สำเร็จ! ${safeJobNo} -> ${nextStatus}` };
       req.session.lastScan = { job_no: safeJobNo, status: nextStatus, time: new Date() };
     } else {
@@ -992,10 +1015,14 @@ export async function showEdit(req, res) {
   }
 
   const [customers] = await pool.query("SELECT id, name, type FROM customers WHERE active = 1 ORDER BY name ASC");
+  const [shippingRates] = await pool.query(
+    'SELECT * FROM shipping_rates WHERE active=1 ORDER BY price ASC, max_weight ASC'
+  );
 
   res.render('orders/edit', {
     user: req.session.user,
     customers,
+    shippingRates,
     order,
     error: null,
     title: `แก้ไขออเดอร์ ${order.job_no}`
@@ -1006,59 +1033,99 @@ export async function update(req, res) {
   const { id } = req.params;
   const {
     direction, sender_id, receiver_id,
-    price_amount, cod_amount, requires_customs,
+    cod_amount, requires_customs,
     service_type, declared_weight, declared_size, declared_value,
     payment_method
   } = req.body;
 
   try {
-    const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
-    if (!order) {
-      req.session.flash = { type: 'error', message: 'Order not found' };
-      return res.redirect('/orders');
-    }
-
+    const weight = declared_weight === '' || declared_weight == null ? 0 : Number(declared_weight);
+    const dimensionSum = parseDimensionSum(declared_size);
+    const dimensionParts = declared_size
+      ? String(declared_size).trim().split(/[xX×,*\s]+/).filter(Boolean).map(Number)
+      : [];
+    const volumetricWeight = dimensionParts.length === 3
+      ? (dimensionParts[0] * dimensionParts[1] * dimensionParts[2]) / 5000
+      : 0;
     const payload = {
-      direction,
+      direction: String(direction || '').toUpperCase(),
       sender_id: sender_id ? Number(sender_id) : null,
       receiver_id: receiver_id ? Number(receiver_id) : null,
-      price_amount: price_amount ? Number(price_amount) : 0,
       payment_method: payment_method || 'ORIGIN',
       cod_amount: cod_amount ? Number(cod_amount) : 0,
       requires_customs: requires_customs ? 1 : 0,
       service_type,
-      declared_weight: declared_weight ? Number(declared_weight) : null,
-      declared_size,
+      declared_weight: weight || null,
+      declared_size: declared_size ? String(declared_size).trim() : null,
       declared_value: declared_value ? Number(declared_value) : null
     };
 
-    if (!allowedDirections.includes(payload.direction)) {
-      throw new Error('Invalid direction');
+    if (!allowedDirections.includes(payload.direction)) throw new Error('Invalid direction');
+    if (!payload.sender_id || !payload.receiver_id || payload.sender_id === payload.receiver_id) {
+      throw new Error('Sender and receiver must be valid and different');
+    }
+    if (!Number.isFinite(weight) || weight < 0) throw new Error('Invalid weight');
+    if (!Number.isFinite(payload.cod_amount) || payload.cod_amount < 0) throw new Error('Invalid COD amount');
+    if (!['ORIGIN', 'DESTINATION'].includes(payload.payment_method)) throw new Error('Invalid payment method');
+    if (payload.declared_value !== null && (!Number.isFinite(payload.declared_value) || payload.declared_value < 0)) {
+      throw new Error('Invalid declared value');
     }
 
-    await pool.query(
-      `UPDATE orders SET 
-        direction=?, sender_id=?, receiver_id=?, 
-        price_amount=?, payment_method=?, cod_amount=?, requires_customs=?,
-        service_type=?, declared_weight=?, declared_size=?, declared_value=?
-       WHERE id=?`,
-      [
-        payload.direction,
-        payload.sender_id,
-        payload.receiver_id,
-        payload.price_amount,
-        payload.payment_method,
-        payload.cod_amount,
-        payload.requires_customs,
-        payload.service_type,
-        payload.declared_weight,
-        payload.declared_size,
-        payload.declared_value,
-        id
-      ]
-    );
+    await withTransaction(async conn => {
+      const [[order]] = await conn.query('SELECT * FROM orders WHERE id=? FOR UPDATE', [id]);
+      if (!order) throw new Error('Order not found');
+      if (!['NEW', 'RECEIVED_WH_TH', 'RECEIVED_WH_LA'].includes(order.status)) {
+        throw new Error('Order details can only be edited before loading onto a trip');
+      }
+      const [customers] = await conn.query(
+        'SELECT id FROM customers WHERE active=1 AND id IN (?,?)',
+        [payload.sender_id, payload.receiver_id]
+      );
+      if (customers.length !== 2) throw new Error('Sender or receiver is inactive');
 
-    await logStatus(id, order.status, order.status, 'Order details updated', req.session.user?.id);
+      const chargeableKg = Math.max(weight, volumetricWeight);
+      const { rate, price } = await resolveShippingRate(conn, {
+        rateId: payload.service_type,
+        chargeableKg,
+        dimensionSum,
+      });
+
+      await conn.query(
+        `UPDATE orders SET
+          direction=?, sender_id=?, receiver_id=?,
+          price_amount=?, payment_method=?, cod_amount=?, requires_customs=?,
+          service_type=?, declared_weight=?, declared_size=?, declared_value=?,
+          weight_kg=?, chargeable_kg=?
+         WHERE id=?`,
+        [
+          payload.direction, payload.sender_id, payload.receiver_id,
+          price, payload.payment_method, payload.cod_amount, payload.requires_customs,
+          rate.name, payload.declared_weight, payload.declared_size, payload.declared_value,
+          payload.declared_weight, chargeableKg || null, id,
+        ]
+      );
+
+      if (payload.cod_amount > 0) {
+        await conn.query(
+          `INSERT INTO cod_settlements (order_id, cod_amount, status)
+           VALUES (?,?,'PENDING')
+           ON DUPLICATE KEY UPDATE
+             cod_amount=IF(status='PENDING', VALUES(cod_amount), cod_amount)`,
+          [id, payload.cod_amount]
+        );
+      } else {
+        await conn.query(
+          "DELETE FROM cod_settlements WHERE order_id=? AND status='PENDING'",
+          [id]
+        );
+      }
+      await conn.query(
+        `INSERT INTO order_status_logs
+           (order_id, from_status, to_status, note, action_by, action_at)
+         VALUES (?,?,?,?,?,NOW())`,
+        [id, order.status, order.status, 'Order details updated', req.session.user?.id || null]
+      );
+    });
 
     req.session.flash = { type: 'success', message: 'อัปเดตข้อมูลสำเร็จ' };
     res.redirect(`/orders/${id}`);
@@ -1076,19 +1143,14 @@ export async function update(req, res) {
  */
 export async function returnToSender(req, res) {
   const { id } = req.params;
-  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
-
-  if (!order) {
-    req.session.flash = { type: 'error', message: 'Order not found' };
-    return res.redirect('/orders');
-  }
-
-  if (!validateTransition(req, res, order, 'RETURN_TO_SENDER')) return;
-
   try {
-    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['RETURN_TO_SENDER', id]);
-    await logStatus(id, order.status, 'RETURN_TO_SENDER',
-      req.body.reason || 'คืนสินค้าผู้ส่ง', req.session.user?.id);
+    await transitionOrder({
+      orderId: id,
+      toStatus: 'RETURN_TO_SENDER',
+      userId: req.session.user?.id,
+      note: req.body.reason || 'คืนสินค้าผู้ส่ง',
+      source: 'ORDER_RETURN',
+    });
 
     req.session.flash = { type: 'success', message: 'Order set to Return to Sender' };
     res.redirect(`/orders/${id}`);
@@ -1126,45 +1188,41 @@ export async function screenOrder(req, res) {
   }
 
   try {
-    // 1. Update screening status
-    let newStatus = order.status;
-    if (result === 'PASSED' && order.screening_status !== 'PASSED') {
-      newStatus = 'READY_TO_LOAD'; // ผ่านแล้ว รอขึ้นรถ
-    } else if (result === 'CUSTOMS_REQUIRED') {
-      newStatus = 'PENDING_CUSTOMS';
-    } else if (result === 'REJECTED') {
-      newStatus = 'SCREENING_FAILED';
-    }
-
-    await pool.query(
-      `UPDATE orders SET
-         screening_status = ?,
-         screening_note   = ?,
-         screened_by      = ?,
-         screened_at      = NOW(),
-         status           = ?
-       WHERE id = ?`,
-      [result, note || null, userId, newStatus, id]
-    );
-
-    // 2. Save flags if provided
     const flagList = Array.isArray(flags) ? flags : (flags ? [flags] : []);
-    for (const flagType of flagList) {
-      await pool.query(
-        `INSERT INTO order_flags (order_id, flag_type, flagged_by) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE flagged_at = NOW()`,
-        [id, flagType, userId]
-      ).catch(() => {}); // ignore duplicate
-    }
-
-    // 3. Status log
     const noteMsg = result === 'PASSED'
       ? `ผ่านการคัดกรอง${flagList.length ? ' (มี flag: ' + flagList.join(', ') + ')' : ''}`
       : result === 'CUSTOMS_REQUIRED'
         ? `ต้องแจ้งศุลกากร: ${note || ''}`
         : `ปฏิเสธสินค้า: ${note || ''}`;
 
-    await logStatus(id, order.status, newStatus, noteMsg, userId);
+    await withTransaction(async (conn) => {
+      await conn.query(
+        `UPDATE orders SET screening_status=?, screening_note=?, screened_by=?, screened_at=NOW()
+         WHERE id=?`,
+        [result, note || null, userId, id]
+      );
+      for (const flagType of flagList) {
+        await conn.query(
+          `INSERT INTO order_flags (order_id, flag_type, flagged_by) VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE flagged_at=NOW()`,
+          [id, flagType, userId]
+        );
+      }
+      const [logResult] = await conn.query(
+        `INSERT INTO order_status_logs (order_id, from_status, to_status, note, action_by)
+         VALUES (?, ?, ?, ?, ?)`,
+        [id, order.status, order.status, `[SCREENING:${result}] ${noteMsg}`, userId]
+      );
+      if (result !== 'PASSED') {
+        await enqueueOrderNotification(conn, {
+          orderId: id,
+          status: `SCREENING_${result}`,
+          eventKey: `ORDER_STATUS_LOG:${logResult.insertId}`,
+          source: 'ORDER_SCREENING',
+        });
+      }
+    });
+    if (result !== 'PASSED') kickNotificationWorker(id);
 
     const msgs = {
       PASSED:            '✅ ผ่านการคัดกรอง — พร้อมพิมพ์ Sticker',

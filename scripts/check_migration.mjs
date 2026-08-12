@@ -209,7 +209,8 @@ async function run() {
   const requiredRoles = [
     'admin','manager','finance','dispatcher',
     'warehouse_th','warehouse_la','customs',
-    'branch_operator','driver_support','customer_service','staff'
+    'branch_operator','driver_support','customer_service','staff','rider',
+    'crm_admin','crm_supervisor','crm_agent','sales_agent','logistics_support','finance_support'
   ];
   for (const r of requiredRoles) {
     check(`users.role includes '${r}'`, usersRoleEnum.includes(r), 'รัน migrate_003.sql + migrate_security_001.sql');
@@ -266,6 +267,21 @@ async function run() {
   for (const [t, idx, mig] of indexes) {
     check(`${t}.${idx}`, await hasIndex(t, idx), `รัน ${mig}`);
   }
+
+  HEAD('SECTION 9: Workflow + Notifications (migrate_014)');
+  check('schema_migrations', await hasTable('schema_migrations'), 'run npm run migrate-db');
+  check('customer_notification_outbox', await hasTable('customer_notification_outbox'), 'run migrate_014');
+  check('riders.user_id', await hasColumn('riders', 'user_id'), 'run migrate_014');
+  check('orders.rider_id', await hasColumn('orders', 'rider_id'), 'run migrate_011 + migrate_014');
+  check('riders.uq_riders_user', await hasIndex('riders', 'uq_riders_user'), 'run migrate_014');
+  check('notification pending index', await hasIndex('customer_notification_outbox', 'idx_notification_pending'), 'run migrate_014');
+  check('shipping_rates.price_per_kg', await hasColumn('shipping_rates', 'price_per_kg'), 'run migrate_016');
+  const [[legacyStatuses]] = await pool.query(
+    `SELECT COUNT(*) AS count FROM orders
+     WHERE status IN ('ON_TRUCK_BORDER','READY_TO_LOAD','PENDING_CUSTOMS','SCREENING_FAILED',
+                      'ASSIGNED_TO_RIDER','ACCEPTED_BY_RIDER','PICKED_UP_BY_RIDER')`
+  );
+  check('orders use canonical statuses', Number(legacyStatuses.count) === 0, `${legacyStatuses.count} legacy rows remain`);
 
   // ────────────────────────────────────────────────────────────────
   // SUMMARY

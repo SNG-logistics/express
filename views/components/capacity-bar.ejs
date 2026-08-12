@@ -1,15 +1,4 @@
-<%#
-  views/components/capacity-bar.ejs
-
-  Props:
-    current  — current load (orders count or weight)
-    max      — maximum capacity
-    unit     — display unit string (e.g., 'kg', 'ออเดอร์')
-    showText — boolean, show XX/YY label above bar (default true)
-
-  Usage:
-    <%- include('../components/capacity-bar', { current: trip.total_weight, max: trip.max_weight, unit: 'kg' }) %>
-%>
+<%# Capacity bar component; expects current, max, unit and optional showText. %>
 <%
   const pct     = max > 0 ? Math.min(Math.round((current / max) * 100), 100) : 0;
   const level   = pct < 70 ? 'low' : pct < 90 ? 'medium' : 'high';
