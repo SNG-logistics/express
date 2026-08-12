@@ -46,6 +46,17 @@ function checksum(sql) {
   return createHash('sha256').update(sql).digest('hex');
 }
 
+/**
+ * A migration file counts as "unchanged" if its content matches what was applied
+ * either byte-for-byte OR after normalising CRLF↔LF. This keeps the tamper check
+ * meaningful while tolerating line-ending drift between a Windows working tree
+ * and a Linux server (which would otherwise fail the deploy on identical SQL).
+ */
+function checksumMatches(sql, stored) {
+  if (checksum(sql) === stored) return true;
+  return checksum(sql.replace(/\r\n/g, '\n')) === stored;
+}
+
 async function main() {
   const conn = await createConnection({
     host: process.env.DB_HOST || '127.0.0.1',
@@ -101,7 +112,7 @@ async function main() {
         'SELECT checksum FROM schema_migrations WHERE filename=?', [file]
       );
       if (applied) {
-        if (applied.checksum !== digest) {
+        if (!checksumMatches(sql, applied.checksum)) {
           throw new Error(`Applied migration was modified: ${file}`);
         }
         console.log(`SKIP ${file}`);
