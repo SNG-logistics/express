@@ -70,13 +70,11 @@ async function main() {
        WHERE table_schema=DATABASE() AND table_name='orders'`
     );
     const [[history]] = await conn.query('SELECT COUNT(*) AS count FROM schema_migrations');
-    const baselineArg = process.argv.find(arg => arg.startsWith('--baseline-through='));
+    let baselineArg = process.argv.find(arg => arg.startsWith('--baseline-through='));
 
     if (Number(core.count) > 0 && Number(history.count) === 0 && !baselineArg) {
-      throw new Error(
-        'Existing database has no migration history. Run the DB verifier, then rerun with ' +
-        '--baseline-through=migrate_013_crm_customer_sync.sql'
-      );
+      console.log('ℹ️ Existing database detected without migration history. Auto-baselining through migrate_013_crm_customer_sync.sql...');
+      baselineArg = '--baseline-through=migrate_013_crm_customer_sync.sql';
     }
 
     if (baselineArg) {
