@@ -103,7 +103,7 @@ export async function showCreate(req, res) {
       WHERE t.status NOT IN ('COMPLETED','CANCELLED')
     )
     AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
-    AND o.screening_status = 'PASSED'
+    AND o.screening_status <> 'REJECTED'
   `;
   const params = [];
   if (direction) {
@@ -190,8 +190,8 @@ export async function create(req, res) {
           if (order.direction !== direction || order.status !== expectedStatus) {
             throw new WorkflowError(`Order ${order.id} is not eligible for this trip`, 409);
           }
-          if (order.screening_status !== 'PASSED') {
-            throw new WorkflowError(`Order ${order.id} has not passed screening`, 409);
+          if (order.screening_status === 'REJECTED') {
+            throw new WorkflowError(`Order ${order.id} was rejected in screening`, 409);
           }
         }
         const totalWeight = orders.reduce((sum, order) => sum + Number(order.load_weight || 0), 0);
@@ -225,7 +225,7 @@ export async function create(req, res) {
         JOIN trips t ON t.id = to2.trip_id WHERE t.status NOT IN ('COMPLETED','CANCELLED')
       )
       AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
-      AND o.screening_status = 'PASSED'
+      AND o.screening_status <> 'REJECTED'
       ORDER BY o.created_at ASC
     `);
     res.render('trips/new', {
@@ -288,7 +288,7 @@ export async function detail(req, res) {
       JOIN trips t ON t.id = to2.trip_id WHERE t.status NOT IN ('COMPLETED','CANCELLED')
     )
     AND o.status IN ('RECEIVED_WH_TH','RECEIVED_WH_LA')
-    AND o.screening_status = 'PASSED'
+    AND o.screening_status <> 'REJECTED'
     AND o.direction = ?
     ORDER BY o.created_at ASC
   `, [trip.direction || 'TH_TO_LA']);
@@ -383,7 +383,7 @@ export async function attachOrders(req, res) {
       if (orders.length !== numericIds.length) throw new WorkflowError('One or more orders do not exist', 404);
       const expectedStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
       for (const order of orders) {
-        if (order.direction !== trip.direction || order.status !== expectedStatus || order.screening_status !== 'PASSED') {
+        if (order.direction !== trip.direction || order.status !== expectedStatus || order.screening_status === 'REJECTED') {
           throw new WorkflowError(`Order ${order.id} is not eligible for this trip`, 409);
         }
       }
