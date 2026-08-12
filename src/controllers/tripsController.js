@@ -488,9 +488,22 @@ export async function updateStatus(req, res) {
       );
       if (status === 'DEPARTED') {
         if (!tripOrders.length) throw new WorkflowError('Cannot depart with an empty trip', 409);
-        const notLoaded = tripOrders.filter(order => order.status !== 'ON_TRUCK');
-        if (notLoaded.length) {
-          throw new WorkflowError(`${notLoaded.length} order(s) have not been confirmed by handoff scanner`, 409);
+        // Driver-friendly departure: instead of blocking when parcels were not
+        // handoff-scanned, auto-load any warehouse-received orders onto the truck
+        // so the trip can leave from the button. Orders in other states are left
+        // untouched and never block departure.
+        for (const order of tripOrders) {
+          if (order.status === 'ON_TRUCK') continue;
+          if (['RECEIVED_WH_TH', 'RECEIVED_WH_LA'].includes(order.status)) {
+            await transitionOrder({
+              orderId: order.id,
+              toStatus: 'ON_TRUCK',
+              userId: req.session.user?.id,
+              note: `Auto-loaded on depart ${lockedTrip.trip_no}`,
+              source: 'TRIP_DEPART_AUTOLOAD',
+              connection: conn,
+            });
+          }
         }
       }
       await conn.query('UPDATE trips SET status=? WHERE id=?', [status, id]);

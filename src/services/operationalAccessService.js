@@ -30,8 +30,12 @@ export function canAutoScanTarget({ role, targetStatus, order, sessionBranchId }
       && (MANAGEMENT_ROLES.has(role) || role === 'warehouse_la');
   }
   if (targetStatus === 'AT_DEST_WH') {
+    // Receiving incoming trip goods at the destination point — allow the main
+    // destination warehouse (จุดใหญ่) OR any branch operator (สาขาย่อย), so
+    // whoever staffs the Lao point can receive.
     return MANAGEMENT_ROLES.has(role)
-      || role === expectedWarehouseRole(order.direction, 'destination');
+      || role === expectedWarehouseRole(order.direction, 'destination')
+      || role === 'branch_operator';
   }
   if (targetStatus === 'ON_TRUCK') {
     // Loading onto the truck is done by dispatch/driver OR the ORIGIN warehouse

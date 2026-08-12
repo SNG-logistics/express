@@ -19,6 +19,10 @@ test('warehouse roles are scoped to the origin and destination for each directio
   assert.equal(canAutoScanTarget({
     role: 'warehouse_th', targetStatus: 'AT_DEST_WH', order: { direction: 'TH_TO_LA' },
   }), false);
+  // Any Lao point can receive incoming goods — main hub (warehouse_la) or a sub-branch
+  assert.equal(canAutoScanTarget({
+    role: 'branch_operator', targetStatus: 'AT_DEST_WH', order: { direction: 'TH_TO_LA' },
+  }), true);
   assert.equal(canAutoScanTarget({
     role: 'warehouse_th', targetStatus: 'RECEIVED_WH_TH', order: { direction: 'LA_TO_TH' },
   }), false);
