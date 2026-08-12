@@ -20,23 +20,24 @@ const SQL_FILES = [
   'schema.sql',
   'migrate_001.sql',
   'migrate_002.sql',
-  'migrate_003.sql',
+  // migrate_003.sql is a legacy MySQL-incompatible draft. 003b is its safe replacement.
   'migrate_003b.sql',
   'migrate_004.sql',
   'migrate_005_missing_cols.sql',
-  'migrate_security_001.sql',
   'migrate_006_trips_schema.sql',
   'migrate_007_production_sync.sql',
   'migrate_008_orders_notes.sql',
   'migrate_009_expenses_currency.sql',
   'migrate_010_space_booking.sql',
-  'migrate_011_rider_mode.sql',
+  'migrate_011b_rider_mode.sql',
   'migrate_012_trip_settlement.sql',
   'migrate_crm_001.sql',
   'migrate_013_crm_customer_sync.sql',
   'migrate_014_workflow_notifications.sql',
   'migrate_015_role_enum.sql',
   'migrate_016_shipping_rate_pricing.sql',
+  'migrate_017_security_compat.sql',
+  'migrate_018_app_bootstrap.sql',
 ];
 
 function checksum(sql) {

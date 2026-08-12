@@ -112,7 +112,7 @@ try {
 
   // Run migrations
   await runMigration('migrate_crm_001.sql', 'CRM Core Tables (14 tables)');
-  await runMigration('migrate_security_001.sql', 'Security Tables');
+  await runMigration('migrate_017_security_compat.sql', 'Security Tables');
 
   // Check result
   const { missing } = await checkTables();

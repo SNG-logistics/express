@@ -293,6 +293,7 @@ async function run() {
     console.log('║  🎉 DB Migration สมบูรณ์ 100% — พร้อมเข้าเฟส 2          ║');
   } else {
     console.log(`║  ⚠️  พบปัญหา ${totalFail} รายการ — ต้องแก้ก่อนดำเนินต่อ             `.substring(0,62) + '║');
+    process.exitCode = 1;
   }
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 }
