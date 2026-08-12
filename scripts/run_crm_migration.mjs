@@ -113,6 +113,10 @@ try {
   // Run migrations
   await runMigration('migrate_crm_001.sql', 'CRM Core Tables (14 tables)');
   await runMigration('migrate_017_security_compat.sql', 'Security Tables');
+  // migrate_crm_001.sql redeclares users.role with an older list that drops
+  // owner/accounting — re-assert the canonical enum right after so those roles
+  // survive every `npm run migrate-crm` (which runs on every deploy).
+  await runMigration('migrate_021_role_enum_canonical.sql', 'Canonical role enum (owner/accounting)');
 
   // Check result
   const { missing } = await checkTables();
