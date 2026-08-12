@@ -1,5 +1,6 @@
 
 import pool from '../config/db.js';
+import { toWaPhone } from '../utils/waPhone.js';
 
 import pino from 'pino';
 
@@ -256,6 +257,24 @@ export const stopClient = async () => {
     connectionStatus = 'DISABLED_MANUALLY';
     qrCodeData = null;
 };
+
+/**
+ * Send an arbitrary text message to any phone number (TH/LA normalised).
+ * Used by the rider job broadcast/claim flow via the notification worker.
+ * Throws with code WHATSAPP_NOT_READY (so the outbox retries) when offline.
+ */
+export async function sendTextMessage(phoneRaw, text) {
+  if (!isClientReady || !sock) {
+    const error = new Error('WhatsApp client is not ready');
+    error.code = 'WHATSAPP_NOT_READY';
+    throw error;
+  }
+  const phone = toWaPhone(phoneRaw);
+  if (!phone) return { skipped: true, reason: 'invalid phone' };
+  const jid = phone + '@s.whatsapp.net';
+  await sock.sendMessage(jid, { text });
+  return { sent: true, recipient: phone };
+}
 
 /**
  * Service to handle WhatsApp notifications using Baileys

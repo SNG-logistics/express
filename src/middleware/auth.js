@@ -12,9 +12,14 @@
  *  5. regenerateSession     — protects against session-fixation on login
  *
  * Role hierarchy (highest → lowest privilege):
- *   admin > manager > finance > dispatcher
+ *   owner > admin > manager > finance/accounting > dispatcher
  *   > warehouse_th > warehouse_la > customs
  *   > branch_operator > rider > staff
+ *
+ * NOTE: `owner` (เจ้าของระบบ) is a wildcard superset — requireRole() below
+ * short-circuits and allows it on every guarded route, so it does not need to
+ * be listed in each ROLES_* group. `accounting` (บัญชี) is read-only for
+ * financial/investor reporting and is only added to view-only groups.
  */
 
 // ─── Brute-force: in-memory store (per IP) ────────────────────────────────────
@@ -100,6 +105,8 @@ export function requireRole(...roleArgs) {
   return (req, res, next) => {
     const user = req.session?.user;
     if (!user) return res.redirect('/login');
+    // owner = system owner: wildcard access to every guarded route.
+    if (normalizeRole(user.role) === 'owner') return next();
     if (allowed.includes(normalizeRole(user.role))) return next();
 
     // Log denied access attempts for security audit
@@ -123,8 +130,10 @@ export const requireAnyRole = requireRole;
 export const ROLES_ADMIN_ONLY    = ['admin'];
 /** Admins + managers may manage business config */
 export const ROLES_MANAGE        = ['admin', 'manager'];
-/** All finance-sensitive actions */
+/** All finance-sensitive WRITE actions (remit COD, settle trip, etc.) */
 export const ROLES_FINANCE       = ['admin', 'manager', 'finance'];
+/** Read-only financial visibility — includes accounting (investor reporting) */
+export const ROLES_FINANCE_VIEW  = ['admin', 'manager', 'finance', 'accounting'];
 /** Customs clearance actions */
 export const ROLES_CUSTOMS       = ['admin', 'manager', 'customs'];
 /** Any warehouse-facing role */
@@ -158,8 +167,8 @@ export const ROLES_RIDER         = ['rider'];
 export const ROLES_RIDER_ASSIGN  = ['admin', 'manager', 'warehouse_la', 'warehouse_th'];
 
 export const OPERATIONAL_ROLES = Object.freeze([
-  'admin', 'manager', 'staff', 'dispatcher', 'finance', 'customs',
-  'warehouse_th', 'warehouse_la', 'branch_operator', 'customer_service',
+  'owner', 'admin', 'manager', 'staff', 'dispatcher', 'finance', 'accounting',
+  'customs', 'warehouse_th', 'warehouse_la', 'branch_operator', 'customer_service',
   'driver_support', 'rider',
 ]);
 

@@ -13,6 +13,26 @@
 import pool from '../config/db.js';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 import { kickNotificationWorker } from '../services/notificationService.js';
+import { claimOffer } from '../services/riderDispatchService.js';
+
+// ── Available (unclaimed) job offers for a rider ────────────────────────────────
+async function getAvailableOffers(riderUserId) {
+  const [offers] = await pool.query(
+    `SELECT do.id, do.claim_code, do.expires_at,
+            o.job_no, o.cod_amount, o.last_mile_fee,
+            c.name AS receiver_name, c.address AS receiver_address
+     FROM delivery_offer_recipients dor
+     JOIN delivery_offers do ON do.id = dor.offer_id
+     JOIN orders o ON o.id = do.order_id
+     LEFT JOIN customers c ON c.id = o.receiver_id
+     WHERE dor.rider_user_id = ?
+       AND do.status = 'OPEN'
+       AND (do.expires_at IS NULL OR do.expires_at > NOW())
+     ORDER BY do.created_at DESC`,
+    [riderUserId]
+  );
+  return offers;
+}
 
 // ── Haversine distance (meters) ────────────────────────────────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
@@ -64,9 +84,12 @@ export async function myJobs(req, res) {
         AND DATE(delivered_at) = CURDATE()
     `, [riderId]);
 
+    const offers = await getAvailableOffers(riderId);
+
     res.render('rider/index', {
       title: 'งานของฉัน | SNG Rider',
       jobs,
+      offers,
       pending:        jobs.length,
       todayDelivered: stat?.cnt      || 0,
       todayCOD:       stat?.cod_total || 0,
@@ -76,6 +99,32 @@ export async function myJobs(req, res) {
   } catch (e) {
     console.error('[Rider] myJobs:', e);
     res.status(500).send('เกิดข้อผิดพลาด');
+  }
+}
+
+// ── GET /rider/offers — งานเปิดรับในสาขา (JSON สำหรับ auto-refresh) ──────────────
+export async function availableOffersApi(req, res) {
+  try {
+    const offers = await getAvailableOffers(req.session.user.id);
+    res.json({ success: true, offers });
+  } catch (e) {
+    console.error('[Rider] availableOffersApi:', e);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด' });
+  }
+}
+
+// ── POST /rider/offers/:id/claim — กดรับงาน (ใครกดก่อนได้ก่อน) ───────────────────
+export async function claimOfferHttp(req, res) {
+  try {
+    const result = await claimOffer(req.params.id, req.session.user.id, 'SYSTEM');
+    if (result.won) {
+      return res.json({ success: true, message: 'รับงานสำเร็จ! 🎉', orderId: result.orderId });
+    }
+    const msg = result.reason === 'EXPIRED' ? 'งานนี้หมดเวลาแล้ว' : 'งานนี้ถูกไรเดอร์ท่านอื่นรับไปแล้ว';
+    return res.status(409).json({ success: false, message: msg, reason: result.reason });
+  } catch (e) {
+    console.error('[Rider] claimOfferHttp:', e);
+    res.status(e.statusCode || 500).json({ success: false, message: e.message });
   }
 }
 

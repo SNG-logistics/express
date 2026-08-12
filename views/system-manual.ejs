@@ -32,6 +32,9 @@
     <button @click="activeTab = 'finance'" :class="activeTab === 'finance' ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
       <i class="fa-solid fa-coins"></i> การเงิน/บัญชี
     </button>
+    <button @click="activeTab = 'roles'" :class="activeTab === 'roles' ? 'bg-yellow-500 text-black' : 'bg-white/5 text-slate-400 hover:bg-white/10'" class="px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+      <i class="fa-solid fa-user-shield"></i> สิทธิ์ตามตำแหน่ง (Roles)
+    </button>
   </div>
 
   <div class="glass-panel-dark p-6 md:p-8 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden print-container">
@@ -214,6 +217,65 @@
             <li>บันทึกรับเงินจากร้านฝากส่ง (Freight Invoices) ดูยอดหนี้ค้างชำระเครดิต</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- ROLES & PERMISSIONS -->
+    <div x-show="activeTab === 'roles'" class="print-section space-y-6 mt-12 print:mt-16">
+      <h2 class="text-2xl font-bold text-yellow-400 flex items-center gap-2 border-b border-white/10 print:border-gray-300 pb-4 print:text-black">
+        <i class="fa-solid fa-user-shield"></i> สิทธิ์การเข้าถึงตามตำแหน่ง (Roles &amp; Permissions)
+      </h2>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-yellow-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-yellow-300 print:text-yellow-800 mb-2">👑 Owner (เจ้าของระบบ)</h3>
+          <p class="text-sm text-slate-400 print:text-gray-700">เห็นและทำได้ <strong>ทุกอย่าง</strong> ทุกเมนู ทุกรายงาน รวมถึงการเงิน จัดการผู้ใช้ และตั้งค่าระบบ เป็นสิทธิ์สูงสุด (เหนือ Admin) มีเพียง Owner เท่านั้นที่สร้าง/ปิดบัญชี Owner ได้</p>
+        </div>
+        <div class="bg-white/5 print:bg-gray-50 p-4 rounded-xl border-l-4 border-emerald-500 print:border-gray-300 print:text-black">
+          <h3 class="font-bold text-emerald-300 print:text-emerald-800 mb-2">📊 Accounting (บัญชี)</h3>
+          <p class="text-sm text-slate-400 print:text-gray-700"><strong>อ่านอย่างเดียว</strong> เฉพาะข้อมูลการเงินสำหรับรายงานผู้ร่วมลงทุน: Dashboard การเงิน, รายงานกำไร-ขาดทุน (P&amp;L), สรุป COD, บัญชีรายจ่าย (ดู+พิมพ์/ส่งออก) — <strong>แก้ไข/บันทึกไม่ได้</strong> และไม่เห็นเมนูปฏิบัติการ (ออเดอร์/รอบรถ/ลูกค้า)</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="text-left border-b-2 border-white/10 print:border-gray-400 text-slate-300 print:text-black">
+              <th class="py-2 pr-3">พื้นที่ / เมนู</th>
+              <th class="py-2 px-2 text-center">Owner</th>
+              <th class="py-2 px-2 text-center">Admin</th>
+              <th class="py-2 px-2 text-center">Manager</th>
+              <th class="py-2 px-2 text-center">Accounting</th>
+              <th class="py-2 px-2 text-center">Finance</th>
+              <th class="py-2 px-2 text-center">Dispatcher</th>
+              <th class="py-2 px-2 text-center">Warehouse</th>
+              <th class="py-2 px-2 text-center">Rider</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-400 print:text-gray-700">
+            <%
+              const RM_ROWS = [
+                ['Dashboard การเงิน', '✅','✅','✅','👁️','✅','➖','➖','→/rider'],
+                ['ออเดอร์',           '✅','✅','✅','❌','👁️','✅','สแกน','❌'],
+                ['รอบรถ',             '✅','✅','✅','❌','👁️','✅','👁️','❌'],
+                ['COD',               '✅','✅','✅','👁️','✅','✅','❌','❌'],
+                ['P&L / รายจ่าย',      '✅','✅','✅','👁️','✅','เพิ่มได้','❌','❌'],
+                ['ลูกค้า',             '✅','✅','✅','❌','👁️','✅','👁️','❌'],
+                ['ผู้ใช้ / ตั้งค่าเรต',  '✅','✅','❌','❌','❌','❌','❌','❌'],
+                ['Rider Mode (ส่งของ)', '✅','✅','✅','❌','❌','❌','❌','✅'],
+              ];
+            %>
+            <% RM_ROWS.forEach(r => { %>
+            <tr class="border-b border-white/5 print:border-gray-200">
+              <td class="py-2 pr-3 font-semibold text-slate-300 print:text-black"><%= r[0] %></td>
+              <% for (let i = 1; i < r.length; i++) { %>
+              <td class="py-2 px-2 text-center"><%= r[i] %></td>
+              <% } %>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        <p class="text-xs text-slate-500 print:text-gray-600 mt-3">✅ ทำได้เต็ม · 👁️ อ่านอย่างเดียว · ➖ เห็นเฉพาะส่วนปฏิบัติการ (ไม่เห็นตัวเลขเงิน) · ❌ ซ่อน/ไม่มีสิทธิ์ (403)</p>
       </div>
     </div>
 

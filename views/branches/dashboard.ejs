@@ -92,6 +92,18 @@
           </div>
         </div>
 
+        <!-- Action: Broadcast to all riders (PENDING only) — first-come-first-served -->
+        <% if (isNew && riders.filter(r=>r.status==='active').length > 0) { %>
+        <form action="/branch/deliveries/<%= delivery.id %>/broadcast" method="POST" class="flex-shrink-0"
+              onsubmit="return confirm('กระจายงานนี้ให้ไรเดอร์ทุกคนในสาขา (ใครกดรับก่อนได้ก่อน)?');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit"
+            class="px-3 py-2 text-xs font-semibold rounded-xl bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 hover:bg-yellow-500/30 transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-bullhorn"></i> เปิดรับงาน
+          </button>
+        </form>
+        <% } %>
+
         <!-- Action: Assign rider (PENDING only) -->
         <% if (isNew && riders.filter(r=>r.status!=='inactive').length > 0) { %>
         <div class="flex-shrink-0" x-data="{ open: false }">

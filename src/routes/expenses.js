@@ -8,8 +8,10 @@ const router = express.Router();
 
 // Role configuration
 // Admins, Managers, and Finance can access everything
+// accounting (บัญชี) is read-only: view + export for investor reporting, no add/delete
 // Drivers, Dispatchers can ADD expenses (for trips) but maybe shouldn't see Capital expenses
-const ROLES_EXPENSES_VIEW = ['admin', 'manager', 'finance'];
+// (owner passes every guard via the wildcard in requireRole.)
+const ROLES_EXPENSES_VIEW = ['admin', 'manager', 'finance', 'accounting'];
 const ROLES_EXPENSES_ADD  = ['admin', 'manager', 'finance', 'dispatcher', 'driver_support'];
 
 // Configure Multer for receipt uploads

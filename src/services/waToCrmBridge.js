@@ -85,6 +85,22 @@ export function attachCrmBridge(sock) {
           continue;
         }
 
+        // ── Rider job claim interceptor ───────────────────────────────────
+        // If this message is a rider claiming a broadcast job, handle it here
+        // and do NOT forward it to the CRM inbox.
+        if (contentText) {
+          try {
+            const { tryClaimFromWhatsApp } = await import('./riderDispatchService.js');
+            const claim = await tryClaimFromWhatsApp(externalId, contentText);
+            if (claim.handled) {
+              console.log(`[WA→Claim] ${externalId} claim handled (won=${claim.won})`);
+              continue;
+            }
+          } catch (claimErr) {
+            console.error('[WA→Claim] interceptor error:', claimErr.message);
+          }
+        }
+
         const displayName = msg.pushName || externalId;
         const waChannelId = await getWaChannelId();
 

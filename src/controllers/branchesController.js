@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 import { kickNotificationWorker } from '../services/notificationService.js';
 import { canManageBranchResource } from '../services/operationalAccessService.js';
+import { broadcastOffer } from '../services/riderDispatchService.js';
 
 // ─── Haversine distance (km) ──────────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -504,6 +505,49 @@ export async function assignRider(req, res) {
   kickNotificationWorker(bd.order_id);
 
   req.session.flash = { type: 'success', message: 'มอบหมายไรเดอร์แล้ว' };
+  res.redirect('/branch/dashboard');
+}
+
+/**
+ * POST /branch/deliveries/:deliveryId/broadcast
+ * Open the delivery to every active rider in the branch (first-come-first-served).
+ */
+export async function broadcastDelivery(req, res) {
+  const { deliveryId } = req.params;
+  const [[bd]] = await pool.query('SELECT * FROM branch_deliveries WHERE id=?', [deliveryId]);
+  if (!bd) {
+    req.session.flash = { type: 'error', message: 'ไม่พบรายการนี้' };
+    return res.redirect('/branch/dashboard');
+  }
+  if (!canManageBranchResource({
+    role: req.session.user?.role,
+    sessionBranchId: req.session.user?.branch_id,
+    targetBranchId: bd.branch_id,
+  })) {
+    return res.status(403).render('errors/403', { user: req.session.user, title: 'Forbidden', requiredRoles: ['branch_operator'] });
+  }
+  if (bd.status !== 'PENDING') {
+    req.session.flash = { type: 'error', message: 'รายการนี้ไม่ได้อยู่ในสถานะรอมอบหมายแล้ว' };
+    return res.redirect('/branch/dashboard');
+  }
+
+  try {
+    const result = await broadcastOffer(bd.order_id, { createdBy: req.session.user.id });
+    if (result.ok) {
+      req.session.flash = result.already
+        ? { type: 'success', message: 'งานนี้เปิดรับอยู่แล้ว (ไรเดอร์กำลังเห็นอยู่)' }
+        : { type: 'success', message: `กระจายงานให้ไรเดอร์ ${result.riderCount} คนแล้ว (รหัสรับงาน ${result.claimCode})` };
+    } else if (result.reason === 'NO_RIDERS') {
+      req.session.flash = { type: 'error', message: 'ไม่มีไรเดอร์ที่พร้อมทำงานในสาขานี้' };
+    } else if (result.reason === 'NO_BRANCH') {
+      req.session.flash = { type: 'error', message: 'ออเดอร์นี้ยังไม่มีสาขาปลายทาง' };
+    } else {
+      req.session.flash = { type: 'error', message: 'เปิดรับงานไม่สำเร็จ' };
+    }
+  } catch (e) {
+    console.error('[Branch] broadcastDelivery:', e);
+    req.session.flash = { type: 'error', message: e.message || 'เกิดข้อผิดพลาด' };
+  }
   res.redirect('/branch/dashboard');
 }
 

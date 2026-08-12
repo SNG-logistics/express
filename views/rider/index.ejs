@@ -38,6 +38,18 @@ const STATUS_LABEL = {
     </div>
   </div>
 
+  <%# ── OFFERS: งานใหม่ในสาขา (กดรับ) ── %>
+  <div style="padding:16px 16px 0;">
+    <div id="offers-section" style="<%= (offers && offers.length) ? '' : 'display:none;' %>">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:15px;font-weight:900;color:#fbbf24;">🔔 งานใหม่ในสาขา</span>
+        <span id="offers-count" style="font-size:11px;font-weight:800;background:#f59e0b;color:#1c1917;padding:2px 8px;border-radius:99px;"><%= (offers || []).length %></span>
+        <span style="font-size:10px;color:#64748b;margin-left:auto;">ใครกดก่อนได้ก่อน</span>
+      </div>
+      <div id="offers-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+  </div>
+
   <%# ── JOB LIST ── %>
   <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
 
@@ -114,3 +126,81 @@ const STATUS_LABEL = {
   </div>
 
 </div>
+
+<script>
+(function () {
+  const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const listEl    = document.getElementById('offers-list');
+  const sectionEl = document.getElementById('offers-section');
+  const countEl   = document.getElementById('offers-count');
+  const initialOffers = <%- JSON.stringify(offers || []) %>;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+  function money(n) { const v = Number(n || 0); return v > 0 ? v.toLocaleString('en-US') : null; }
+
+  function cardHtml(o) {
+    const cod = money(o.cod_amount);
+    const fee = money(o.last_mile_fee);
+    return '' +
+      '<div style="background:#1e293b;border:1px solid #f59e0b;border-radius:14px;overflow:hidden;">' +
+        '<div style="background:#0f172a;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<span style="font-family:monospace;font-size:14px;font-weight:900;color:#fbbf24;">' + esc(o.job_no) + '</span>' +
+          '<span style="font-size:10px;font-weight:800;background:#f59e0b;color:#1c1917;padding:3px 10px;border-radius:99px;">รหัส ' + esc(o.claim_code) + '</span>' +
+        '</div>' +
+        '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;">' +
+          '<div style="font-size:14px;font-weight:800;color:#f1f5f9;"><i class="fa-solid fa-user-check" style="color:#94a3b8;margin-right:6px;"></i>' + esc(o.receiver_name || '—') + '</div>' +
+          '<div style="font-size:12px;color:#94a3b8;"><i class="fa-solid fa-location-dot" style="margin-right:6px;"></i>' + esc((o.receiver_address || 'ไม่ระบุที่อยู่').slice(0,80)) + '</div>' +
+          (cod ? '<div style="font-size:13px;font-weight:900;color:#22c55e;"><i class="fa-solid fa-money-bill-wave" style="margin-right:6px;"></i>COD ฿' + cod + '</div>' : '') +
+          (fee ? '<div style="font-size:12px;color:#fbbf24;"><i class="fa-solid fa-coins" style="margin-right:6px;"></i>ค่ารอบ ฿' + fee + '</div>' : '') +
+        '</div>' +
+        '<button data-offer="' + esc(o.id) + '" class="claim-btn" style="width:100%;border:0;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:900;font-size:15px;padding:13px;cursor:pointer;">' +
+          '<i class="fa-solid fa-hand-pointer" style="margin-right:6px;"></i>กดรับงานนี้' +
+        '</button>' +
+      '</div>';
+  }
+
+  function render(offers) {
+    if (!listEl) return;
+    if (!offers.length) { sectionEl.style.display = 'none'; return; }
+    sectionEl.style.display = '';
+    if (countEl) countEl.textContent = offers.length;
+    listEl.innerHTML = offers.map(cardHtml).join('');
+    listEl.querySelectorAll('.claim-btn').forEach(btn => btn.addEventListener('click', onClaim));
+  }
+
+  async function onClaim(e) {
+    const btn = e.currentTarget;
+    const id = btn.getAttribute('data-offer');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังรับงาน...';
+    try {
+      const res = await fetch('/rider/offers/' + id + '/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      });
+      const data = await res.json();
+      if (data.success) { location.reload(); return; }
+      alert(data.message || 'รับงานไม่สำเร็จ');
+      refresh();
+    } catch (err) {
+      alert('เครือข่ายมีปัญหา ลองใหม่อีกครั้ง');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> กดรับงานนี้';
+    }
+  }
+
+  async function refresh() {
+    try {
+      const res = await fetch('/rider/offers', { headers: { 'X-CSRF-Token': CSRF } });
+      const data = await res.json();
+      if (data.success) render(data.offers || []);
+    } catch (_) { /* keep last view on transient errors */ }
+  }
+
+  render(initialOffers);
+  setInterval(refresh, 15000);
+})();
+</script>

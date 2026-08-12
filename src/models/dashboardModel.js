@@ -31,8 +31,16 @@ const IN_TRANSIT = [
 /**
  * Run all dashboard queries in parallel.
  * Returns a plain object with all KPI data.
+ *
+ * @param {Object} [opts]
+ * @param {boolean} [opts.includeFinancials=true] — when false, business money
+ *        (revenue/cost/profit, top-customer revenue, P&L, revenue chart) is
+ *        zeroed out BEFORE returning so it never reaches the rendered page
+ *        source for roles without revenue visibility (can.viewRevenue).
+ * @param {boolean} [opts.includeCod=true] — when false, COD amounts are zeroed
+ *        out (follows can.viewCod, which also allows dispatcher).
  */
-export async function getDashboardData() {
+export async function getDashboardData({ includeFinancials = true, includeCod = true } = {}) {
   const [
     todayRow,
     todayCostRow,
@@ -324,7 +332,7 @@ export async function getDashboardData() {
     new Date(r.d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
   );
 
-  return {
+  const data = {
     kpi: {
       todayOrders:   Number(todayRow[0][0].cnt),
       todayRevenue:  Number(todayRow[0][0].rev),
@@ -373,6 +381,24 @@ export async function getDashboardData() {
       plMonthly: plMonthly[0],
     },
   };
+
+  // ── Strip monetary figures for roles without financial visibility ───────────
+  // Prevents revenue/COD/P&L from leaking into the rendered page source.
+  if (!includeFinancials) {
+    const k = data.kpi;
+    k.todayRevenue = k.todayCost = k.todayProfit = 0;
+    k.monthRevenue = k.monthCost = k.monthProfit = 0;
+    data.plMonthly    = [];
+    data.topCustomers = data.topCustomers.map(c => ({ ...c, revenue: 0 }));
+    data.charts.revenue30 = [];
+    data.charts.plMonthly = [];
+  }
+  if (!includeCod) {
+    const k = data.kpi;
+    k.codPendingAmt = k.codCollectedAmt = k.codRemittedAmt = k.codOverdueAmt = 0;
+  }
+
+  return data;
 }
 
 // ─── Standalone: COD summary for codController ───────────────────────────────

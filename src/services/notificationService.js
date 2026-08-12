@@ -48,6 +48,27 @@ export async function enqueueOrderNotification(conn, {
   return result.insertId || null;
 }
 
+/**
+ * Enqueue a rider-facing WhatsApp message (job offer / result / expiry).
+ * Unlike customer notifications, the recipient phone + full payload are stored
+ * on the row because each rider gets a distinct message.
+ */
+export async function enqueueRiderNotification(conn, {
+  orderId,
+  eventType,
+  eventKey,
+  recipient,
+  payload = {},
+}) {
+  const [result] = await conn.query(
+    `INSERT IGNORE INTO customer_notification_outbox
+       (event_key, order_id, channel, event_type, status, recipient, payload, next_attempt_at)
+     VALUES (?, ?, 'WHATSAPP', ?, 'PENDING', ?, ?, NOW())`,
+    [eventKey, orderId, eventType, recipient || null, JSON.stringify(payload)]
+  );
+  return result.insertId || null;
+}
+
 async function markSent(id, recipient = null) {
   await pool.query(
     `UPDATE customer_notification_outbox
@@ -104,7 +125,7 @@ export async function dispatchPendingNotifications({ orderId = null, limit = 20 
     params.push(Math.max(1, Math.min(Number(limit) || 20, 100)));
 
     const [rows] = await pool.query(
-      `SELECT id, order_id, event_type, attempts
+      `SELECT id, order_id, event_type, attempts, recipient, payload
        FROM customer_notification_outbox
        WHERE status IN ('PENDING','FAILED')
          AND attempts < max_attempts
@@ -119,9 +140,16 @@ export async function dispatchPendingNotifications({ orderId = null, limit = 20 
       if (!await claimNotification(row.id)) continue;
       processed++;
       try {
-        const status = row.event_type.replace('ORDER_STATUS:', '');
-        const { sendOrderUpdate } = await import('./whatsappService.js');
-        const result = await sendOrderUpdate(row.order_id, status);
+        let result;
+        if (row.event_type.startsWith('RIDER_OFFER')) {
+          // Rider job offer / result / expiry — sent to the phone on the row.
+          const { sendRiderNotification } = await import('./riderDispatchService.js');
+          result = await sendRiderNotification(row);
+        } else {
+          const status = row.event_type.replace('ORDER_STATUS:', '');
+          const { sendOrderUpdate } = await import('./whatsappService.js');
+          result = await sendOrderUpdate(row.order_id, status);
+        }
         if (result?.skipped) await markSkipped(row.id, result.reason);
         else await markSent(row.id, result?.recipient || null);
       } catch (error) {
@@ -158,6 +186,10 @@ export function startNotificationWorker(intervalMs = 30_000) {
     dispatchPendingNotifications().catch(error => {
       console.error('[Notification] worker failed:', error.message);
     });
+    // Expire timed-out rider job offers and escalate to the branch.
+    import('./riderDispatchService.js')
+      .then(m => m.expireStaleOffers())
+      .catch(error => console.error('[Notification] offer expiry failed:', error.message));
   }, intervalMs);
   workerTimer.unref?.();
   return workerTimer;

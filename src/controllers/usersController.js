@@ -17,6 +17,7 @@ import { withTransaction } from '../services/orderWorkflowService.js';
 
 /** Roles that can be assigned via the Create User form */
 const ALLOWED_CREATE_ROLES = new Set([
+  'owner', 'accounting',
   'staff', 'dispatcher', 'warehouse_th', 'warehouse_la',
   'customs', 'finance', 'manager', 'branch_operator', 'rider',
   'customer_service', 'driver_support', 'admin',
@@ -82,9 +83,15 @@ export async function create(req, res) {
     return res.redirect('/users');
   }
 
-  // Non-admin cannot create 'manager' or 'admin' accounts
-  if (['admin', 'manager'].includes(safeRole) && req.session.user?.role !== 'admin') {
-    req.session.flash = { type: 'error', message: `เฉพาะ Admin เท่านั้นที่สามารถสร้างบัญชี ${safeRole} ได้` };
+  // Only the owner can create another 'owner' account (system owner).
+  const creatorRole = req.session.user?.role;
+  if (safeRole === 'owner' && creatorRole !== 'owner') {
+    req.session.flash = { type: 'error', message: 'เฉพาะเจ้าของระบบ (Owner) เท่านั้นที่สร้างบัญชี Owner ได้' };
+    return res.redirect('/users');
+  }
+  // Only owner/admin can create 'manager' or 'admin' accounts
+  if (['admin', 'manager'].includes(safeRole) && !['owner', 'admin'].includes(creatorRole)) {
+    req.session.flash = { type: 'error', message: `เฉพาะ Owner/Admin เท่านั้นที่สามารถสร้างบัญชี ${safeRole} ได้` };
     return res.redirect('/users');
   }
 
@@ -183,8 +190,13 @@ export async function destroy(req, res) {
       return res.redirect('/users');
     }
 
-    // Prevent non-admin from deactivating admin
-    if (target.role === 'admin' && req.session.user.role !== 'admin') {
+    // Only the owner can deactivate an owner account (protect system owner).
+    if (target.role === 'owner' && req.session.user.role !== 'owner') {
+      req.session.flash = { type: 'error', message: 'ไม่มีสิทธิ์ปิดบัญชีเจ้าของระบบ (Owner)' };
+      return res.redirect('/users');
+    }
+    // Prevent non-admin/owner from deactivating admin
+    if (target.role === 'admin' && !['owner', 'admin'].includes(req.session.user.role)) {
       req.session.flash = { type: 'error', message: 'ไม่มีสิทธิ์ปิดบัญชี Admin' };
       return res.redirect('/users');
     }

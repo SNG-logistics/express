@@ -14,6 +14,10 @@ router.get('/rider',                        requireLogin, requireRole(ROLES_RIDE
 router.get('/rider/history',                requireLogin, requireRole(ROLES_RIDER), rider.history);
 router.get('/rider/job/:orderId',           requireLogin, requireRole(ROLES_RIDER), rider.jobDetail);
 
+// ── Job offers (broadcast & claim) ──────────────────────────────────────────────
+router.get('/rider/offers',                 requireLogin, requireRole(ROLES_RIDER), rider.availableOffersApi);
+router.post('/rider/offers/:id/claim',      requireLogin, requireRole(ROLES_RIDER), rider.claimOfferHttp);
+
 // ── AJAX API ──────────────────────────────────────────────────────────────────
 router.post('/rider/job/:orderId/accept',   requireLogin, requireRole(ROLES_RIDER), rider.acceptJob);
 router.post('/rider/job/:orderId/pickup',   requireLogin, requireRole(ROLES_RIDER), rider.pickupJob);

@@ -261,7 +261,8 @@ app.use((req, res, next) => {
 
   // ── UI gating helpers ─────────────────────────────────────────────────
   // Available in every EJS template as `can.createOrder`, `can.viewCod`, etc.
-  const has = (...roles) => role !== null && roles.includes(role);
+  // owner = system owner: wildcard, true for every capability.
+  const has = (...roles) => role !== null && (role === 'owner' || roles.includes(role));
 
   res.locals.currentPath = req.path;   // used by sidebar for active detection
   res.locals.userRole = role;
@@ -282,10 +283,11 @@ app.use((req, res, next) => {
     createTrip:        has('admin','manager','dispatcher'),
     closeTrip:         has('admin','manager'),
     cancelTrip:        has('admin'),  // ยกเลิกรอบรถ — admin สูงสุดเท่านั้น
-    // COD
-    viewCod:           has('admin','manager','finance','dispatcher'),
+    // COD — accounting sees the page read-only (write buttons below stay off)
+    viewCod:           has('admin','manager','finance','dispatcher','accounting'),
     collectCod:        has('admin','manager','finance','dispatcher','driver_support'),
     remitCod:          has('admin','manager','finance'),
+    setCodAmount:      has('admin','manager','dispatcher'),
     // Customs
     viewCustoms:       has('admin','manager','dispatcher','customs'),
     processCustoms:    has('admin','manager','customs'),
@@ -296,10 +298,10 @@ app.use((req, res, next) => {
     editCustomer:      has('admin','manager','dispatcher'),
     deleteCustomer:    has('admin','manager'),
     viewCustomerInfo:  has('admin','manager','dispatcher','customer_service'),
-    // Financial visibility
-    viewFinancials:    has('admin','manager','finance'),
-    viewRevenue:       has('admin','manager','finance'),
-    viewCostBreakdown: has('admin','manager','finance'),
+    // Financial visibility — accounting (บัญชี) is read-only for investor reporting
+    viewFinancials:    has('admin','manager','finance','accounting'),
+    viewRevenue:       has('admin','manager','finance','accounting'),
+    viewCostBreakdown: has('admin','manager','finance','accounting'),
     // Dispatch
     manageDispatch:    has('admin','manager','dispatcher','warehouse_la','warehouse_th'),
     // Users & system
@@ -310,6 +312,9 @@ app.use((req, res, next) => {
     branchPortal:      has('admin','manager','branch_operator'),
     // ร้านฝากส่ง
     manageFreight:     has('admin','manager','dispatcher','finance','staff'),
+    // Expenses — accounting is read-only (view/export only, no add/delete)
+    addExpense:        has('admin','manager','finance','dispatcher','driver_support'),
+    deleteExpense:     has('admin','manager'),
     // ─── CRM ──────────────────────────────────────────────────────────────
     // View the CRM section in sidebar + access /crm routes
     viewCrm:           has('admin','manager','crm_admin','crm_supervisor','crm_agent',
@@ -321,6 +326,22 @@ app.use((req, res, next) => {
     // Use the inbox (reply, note, tag, close conversations)
     useInbox:          has('admin','crm_admin','crm_supervisor','crm_agent',
                            'sales_agent','logistics_support','finance_support'),
+
+    // ─── Sidebar top-level link gating (previously ungated → leaked to every role)
+    // Dashboard home — everyone except rider (riders use /rider as their home).
+    // Financial widgets inside stay gated by viewFinancials/viewRevenue.
+    viewDashboard:     role !== null && role !== 'rider',
+    // Orders list — aligns with ROLES_READ (route guard on /orders)
+    viewOrders:        has('admin','manager','dispatcher','warehouse_th','warehouse_la',
+                           'finance','customer_service','driver_support','branch_operator','staff'),
+    // Trips list — aligns with ROLES_READ (route guard on /trips)
+    viewTrips:         has('admin','manager','dispatcher','warehouse_th','warehouse_la',
+                           'finance','customer_service','driver_support','branch_operator','staff'),
+    // Customers list — aligns with ROLES_CUSTOMER_VIEW (route guard on /customers)
+    viewCustomers:     has('admin','manager','dispatcher','warehouse_th','warehouse_la',
+                           'finance','staff','customs','customer_service'),
+    // Partner / quotation — aligns with partner route guard
+    viewPartner:       has('admin','manager','staff','branch_operator'),
   };
 
   next();

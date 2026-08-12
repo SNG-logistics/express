@@ -38,6 +38,8 @@ const SQL_FILES = [
   'migrate_016_shipping_rate_pricing.sql',
   'migrate_017_security_compat.sql',
   'migrate_018_app_bootstrap.sql',
+  'migrate_019_roles_owner_accounting.sql',
+  'migrate_020_rider_job_offers.sql',
 ];
 
 function checksum(sql) {

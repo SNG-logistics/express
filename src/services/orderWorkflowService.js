@@ -110,6 +110,14 @@ export async function transitionOrder({
 
     if (ownsTransaction) await conn.commit();
     if (notify && ownsTransaction) kickNotificationWorker(orderId);
+    // Auto-broadcast the last-mile job to branch riders once the branch receives it.
+    // Only when this call owns the transaction (post-commit); callers passing their
+    // own connection should trigger the broadcast themselves after their commit.
+    if (ownsTransaction && normalizedTo === 'BRANCH_RECEIVED') {
+      import('./riderDispatchService.js')
+        .then(m => m.autoBroadcastOnBranchReceived(orderId))
+        .catch(err => console.error('[Workflow] auto-broadcast failed:', err.message));
+    }
     return { order, fromStatus, toStatus: normalizedTo, changed: true, logId: logResult.insertId };
   } catch (error) {
     if (ownsTransaction) await conn.rollback();

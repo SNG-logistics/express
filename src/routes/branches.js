@@ -22,6 +22,7 @@ router.get('/api/branches/nearest', requireLogin, branches.nearestApi);
 // ─── Branch Portal — for branch_operator role ─────────────────────────────────
 router.get('/branch/dashboard', requireLogin, requireRole(['branch_operator','admin','manager']), branches.portalDashboard);
 router.post('/branch/deliveries/:deliveryId/assign',  requireLogin, requireRole(['branch_operator','admin','manager']), branches.assignRider);
+router.post('/branch/deliveries/:deliveryId/broadcast', requireLogin, requireRole(['branch_operator','admin','manager']), branches.broadcastDelivery);
 router.post('/branch/deliveries/:deliveryId/deliver', requireLogin, requireRole(['branch_operator','admin','manager']), upload.single('proof_image'), branches.markDelivered);
 
 export default router;

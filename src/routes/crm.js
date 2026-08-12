@@ -22,6 +22,8 @@ router.use(['/crm', '/api/crm'], requireLogin);
 
 // ���� CRM role guard helper ��������������������������������������������������������������������������������������������������������
 function requireCrmAccess(res, user, roles = ROLES_CRM_VIEW) {
+  // owner = system owner: wildcard access to every CRM route.
+  if (user?.role === 'owner') return null;
   if (!roles.includes(user?.role)) {
     return res.status(403).render('errors/403', {
       user,

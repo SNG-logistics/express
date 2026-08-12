@@ -486,7 +486,7 @@
         รายการค่าใช้จ่ายในรอบรถ (Trip Expenses)
       </div>
       <div class="flex items-center gap-3 flex-wrap">
-        <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager' || currentUser.role === 'finance')) { %>
+        <% if (currentUser && ['owner','admin','manager','finance'].includes(currentUser.role)) { %>
           <form action="/trips/<%= trip.id %>/settle" method="POST" class="flex items-center gap-1.5 bg-black/40 border border-white/5 p-1 rounded-xl">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider pl-2"><i class="fa-solid fa-circle-check text-amber-500 mr-0.5"></i> เคลียร์ยอดโดย:</span>
@@ -561,7 +561,7 @@
               <% } %>
             </td>
             <td class="px-5 py-3 text-center">
-              <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')) { %>
+              <% if (currentUser && ['owner','admin','manager'].includes(currentUser.role)) { %>
                 <form action="/expenses/<%= exp.id %>/delete?return_to=trip" method="POST" onsubmit="return confirm('ยืนยันลบรายการรายจ่ายนี้?');" class="inline">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="text-slate-500 hover:text-red-400 p-1.5 transition-colors">

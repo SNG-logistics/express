@@ -8,9 +8,11 @@
       <p class="text-slate-400 mt-1">สรุปยอดเงินลงทุน, ค่าใช้จ่ายรอบรถ, และรายจ่ายออฟฟิศ</p>
     </div>
     <div class="flex items-center gap-3">
+      <% if (can.addExpense) { %>
       <a href="/expenses/new" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2">
         <i class="fa-solid fa-plus"></i> บันทึกรายจ่ายใหม่
       </a>
+      <% } %>
     </div>
   </div>
 
@@ -344,7 +346,7 @@
                   <% } %>
                 </td>
                 <td class="p-4 text-right">
-                  <% if (user.role === 'admin' || user.role === 'manager') { %>
+                  <% if (can.deleteExpense) { %>
                     <form action="/expenses/<%= e.id %>/delete" method="POST" onsubmit="return confirm('ยืนยันลบรายการรายจ่ายนี้?');" class="inline">
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button class="text-slate-500 hover:text-red-400 p-2 transition-colors" title="ลบรายการ">

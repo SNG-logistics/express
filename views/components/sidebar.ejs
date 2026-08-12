@@ -35,17 +35,21 @@
     <%# Section: เมนูหลัก %>
     <div class="sidebar-section-title"><%= t('nav.dashboard') === 'ພາບລວມ' ? 'ເມນູຫຼັກ' : 'เมนูหลัก' %></div>
 
+    <% if (can.viewDashboard) { %>
     <a href="/dashboard"
        class="sidebar-link <%= currentPath === '/dashboard' ? 'active' : '' %>">
       <i class="fa-solid fa-chart-pie"></i>
       <span><%= t('nav.dashboard') %></span>
     </a>
+    <% } %>
 
+    <% if (can.viewOrders) { %>
     <a href="/orders"
        class="sidebar-link <%= currentPath.startsWith('/orders') ? 'active' : '' %>">
       <i class="fa-solid fa-boxes-stacked"></i>
       <span><%= t('nav.orders') %></span>
     </a>
+    <% } %>
 
     <% if (can.useScanner) { %>
     <a href="/scanner"
@@ -55,11 +59,13 @@
     </a>
     <% } %>
 
+    <% if (can.viewTrips) { %>
     <a href="/trips"
        class="sidebar-link <%= currentPath.startsWith('/trips') ? 'active' : '' %>">
       <i class="fa-solid fa-truck-fast"></i>
       <span><%= t('nav.trips') %></span>
     </a>
+    <% } %>
 
     <% if (can.manageDispatch) { %>
     <a href="/dispatch/sorting"
@@ -106,11 +112,13 @@
     <%# Section: จัดการ %>
     <div class="sidebar-section-title"><%= lang === 'lo' ? 'ຈັດການ' : 'จัดการ' %></div>
 
+    <% if (can.viewCustomers) { %>
     <a href="/customers"
        class="sidebar-link <%= currentPath.startsWith('/customers') ? 'active' : '' %>">
       <i class="fa-solid fa-users"></i>
       <span><%= t('nav.customers') %></span>
     </a>
+    <% } %>
 
     <%# ── CRM ลูกค้า Section ────────────────────────────────── %>
     <% if (can.viewCrm) { %>
@@ -200,12 +208,14 @@
     </a>
     <% } %>
 
+    <% if (can.viewPartner) { %>
     <a href="/partner"
        class="sidebar-link <%= currentPath.startsWith('/partner') ? 'active' : '' %>"
        title="ใบเสนอราคา Partner">
       <i class="fa-solid fa-calculator text-amber-400"></i>
       <span>Partner / ใบเสนอราคา</span>
     </a>
+    <% } %>
 
     <% if (can.manageFreight) { %>
     <a href="/freight"
@@ -238,7 +248,7 @@
     </a>
     <% } %>
 
-    <% if (userRole === 'admin' || userRole === 'manager') { %>
+    <% if (['owner','admin','manager'].includes(userRole)) { %>
     <a href="/whatsapp"
        class="sidebar-link <%= currentPath.startsWith('/whatsapp') ? 'active' : '' %>">
       <i class="fa-brands fa-whatsapp text-emerald-400"></i>
@@ -300,8 +310,10 @@
         <%# Role badge %>
         <span class="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5
           <%= {
+            owner:            'bg-yellow-500/20 text-yellow-300',
             admin:            'bg-red-500/20 text-red-400',
             manager:          'bg-purple-500/20 text-purple-400',
+            accounting:       'bg-emerald-500/20 text-emerald-300',
             dispatcher:       'bg-blue-500/20 text-blue-400',
             finance:          'bg-emerald-500/20 text-emerald-400',
             customs:          'bg-amber-500/20 text-amber-400',
@@ -317,8 +329,10 @@
             finance_support:  'bg-lime-500/20 text-lime-400',
           }[currentUser?.role] || 'bg-slate-500/20 text-slate-400' %>">
           <%= {
+            owner:            '👑 Owner',
             admin:            '⚡ Admin',
             manager:          '👔 Manager',
+            accounting:       '📊 บัญชี',
             dispatcher:       '🚛 Dispatcher',
             finance:          '💰 Finance',
             customs:          '🛃 Customs',
