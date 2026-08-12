@@ -58,7 +58,6 @@ jobs:
     - name: Syntax check
       run: >-
         find src scripts tests -type f \( -name '*.js' -o -name '*.mjs' \)
-        ! -path 'src/models/src/*' ! -path 'src/models/scripts/*'
         -print0 | xargs -0 -n1 node --check
 
   android:

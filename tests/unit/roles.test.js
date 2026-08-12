@@ -8,6 +8,7 @@ import {
   ROLES_CUSTOMER_SERVICE,
   ROLES_CUSTOMS,
   ROLES_FINANCE,
+  ROLES_FINANCE_VIEW,
   ROLES_ORDER_WRITE,
   ROLES_RIDER,
   ROLES_SCANNER,
@@ -33,8 +34,10 @@ function authorize(role, ...allowed) {
 
 test('every operational role has an executable primary capability', () => {
   const primary = {
+    owner: ROLES_ADMIN_ONLY,        // owner is a wildcard — passes every guard
     admin: ROLES_ADMIN_ONLY,
     manager: ROLES_FINANCE,
+    accounting: ROLES_FINANCE_VIEW, // read-only financial reporting
     staff: ROLES_ORDER_WRITE,
     dispatcher: ROLES_SCANNER,
     finance: ROLES_COD_REMIT,
@@ -50,6 +53,18 @@ test('every operational role has an executable primary capability', () => {
   for (const role of OPERATIONAL_ROLES) {
     assert.equal(authorize(role, primary[role]).nextCalled, true, role);
   }
+});
+
+test('owner is a wildcard superset and accounting is strictly read-only', () => {
+  // owner passes guards for groups it is NOT listed in
+  assert.equal(authorize('owner', ROLES_RIDER).nextCalled, true);
+  assert.equal(authorize('owner', ROLES_COD_REMIT).nextCalled, true);
+  assert.equal(authorize('owner', ROLES_CUSTOMS).nextCalled, true);
+  // accounting can view financials but never perform write/finance actions
+  assert.equal(authorize('accounting', ROLES_FINANCE_VIEW).nextCalled, true);
+  assert.equal(authorize('accounting', ROLES_COD_REMIT).statusCode, 403);
+  assert.equal(authorize('accounting', ROLES_ORDER_WRITE).statusCode, 403);
+  assert.equal(authorize('accounting', ROLES_ADMIN_ONLY).statusCode, 403);
 });
 
 test('CRM roles are recognized by their route groups and sensitive actions stay denied', () => {
