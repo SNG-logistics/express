@@ -27,6 +27,28 @@ test('warehouse roles are scoped to the origin and destination for each directio
   }), false);
 });
 
+test('origin warehouse can scan parcels onto the truck (ON_TRUCK), delivery stays dispatch-only', () => {
+  // Origin warehouse loads its own outbound truck
+  assert.equal(canAutoScanTarget({
+    role: 'warehouse_th', targetStatus: 'ON_TRUCK', order: { direction: 'TH_TO_LA' },
+  }), true);
+  assert.equal(canAutoScanTarget({
+    role: 'warehouse_la', targetStatus: 'ON_TRUCK', order: { direction: 'LA_TO_TH' },
+  }), true);
+  // A warehouse cannot load a truck for the opposite (non-origin) direction
+  assert.equal(canAutoScanTarget({
+    role: 'warehouse_th', targetStatus: 'ON_TRUCK', order: { direction: 'LA_TO_TH' },
+  }), false);
+  // Dispatch/driver still allowed
+  assert.equal(canAutoScanTarget({
+    role: 'dispatcher', targetStatus: 'ON_TRUCK', order: { direction: 'TH_TO_LA' },
+  }), true);
+  // OUT_FOR_DELIVERY remains dispatch/driver only — warehouse must not do last-mile
+  assert.equal(canAutoScanTarget({
+    role: 'warehouse_th', targetStatus: 'OUT_FOR_DELIVERY', order: { direction: 'TH_TO_LA' },
+  }), false);
+});
+
 test('branch operators can scan and manage only their own branch', () => {
   const ownOrder = { direction: 'TH_TO_LA', dest_branch_id: 7 };
   assert.equal(canAutoScanTarget({

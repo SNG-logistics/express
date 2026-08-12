@@ -32,12 +32,18 @@
           <% if (isAdmin || role === 'warehouse_th') { %>
             <optgroup label="คลังสินค้า (ไทย)">
               <option value="RECEIVED_WH_TH">รับเข้าคลังต้นทาง (ไทย)</option>
+              <% if (role === 'warehouse_th') { %>
+              <option value="ON_TRUCK">สแกนขึ้นรถ (ON TRUCK)</option>
+              <% } %>
             </optgroup>
           <% } %>
-          
+
           <% if (isAdmin || role === 'warehouse_la') { %>
             <optgroup label="คลังสินค้า (ลาว)">
               <option value="RECEIVED_WH_LA">รับเข้าคลังต้นทาง (ลาว)</option>
+              <% if (role === 'warehouse_la') { %>
+              <option value="ON_TRUCK">สแกนขึ้นรถ (ON TRUCK)</option>
+              <% } %>
             </optgroup>
           <% } %>
           

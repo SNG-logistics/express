@@ -33,7 +33,15 @@ export function canAutoScanTarget({ role, targetStatus, order, sessionBranchId }
     return MANAGEMENT_ROLES.has(role)
       || role === expectedWarehouseRole(order.direction, 'destination');
   }
-  if (targetStatus === 'ON_TRUCK' || targetStatus === 'OUT_FOR_DELIVERY') {
+  if (targetStatus === 'ON_TRUCK') {
+    // Loading onto the truck is done by dispatch/driver OR the ORIGIN warehouse
+    // (คลังต้นทางเป็นคนโหลดของขึ้นรถเอง) — warehouse_th for TH→LA, warehouse_la for LA→TH.
+    return MANAGEMENT_ROLES.has(role)
+      || role === 'dispatcher'
+      || role === 'driver_support'
+      || role === expectedWarehouseRole(order.direction, 'origin');
+  }
+  if (targetStatus === 'OUT_FOR_DELIVERY') {
     return MANAGEMENT_ROLES.has(role) || role === 'dispatcher' || role === 'driver_support';
   }
   if (targetStatus === 'BRANCH_RECEIVED') {
