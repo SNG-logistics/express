@@ -1,21 +1,12 @@
 import pool from '../config/db.js';
 
+// Customer WhatsApp notifications are intentionally limited to TWO touch-points
+// so customers are not spammed at every status change:
+//   ON_TRUCK   — parcel is loaded and crossing the border to the customer
+//   AT_DEST_WH — parcel arrived at the destination point (branch OR main office)
 export const CUSTOMER_NOTIFICATION_STATUSES = new Set([
-  'RECEIVED_WH_TH',
-  'RECEIVED_WH_LA',
   'ON_TRUCK',
-  'CROSSING_BORDER',
-  'ARRIVED_BORDER_WH',
   'AT_DEST_WH',
-  'BRANCH_TRANSFER',
-  'BRANCH_RECEIVED',
-  'RIDER_ASSIGNED',
-  'OUT_FOR_DELIVERY',
-  'DELIVERED',
-  'DELIVERY_FAILED',
-  'RETURN_TO_SENDER',
-  'SCREENING_CUSTOMS_REQUIRED',
-  'SCREENING_REJECTED',
 ]);
 
 let workerTimer = null;

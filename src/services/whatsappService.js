@@ -348,7 +348,7 @@ export async function sendOrderUpdate(orderId, newStatus) {
                 message = `📦 *SNG EXPRESS*\nรับพัสดุ ${jobNo} เข้าคลังเรียบร้อยแล้ว สามารถติดตามสถานะได้จากระบบ SNG`;
                 break;
             case 'ON_TRUCK':
-                message = `🚚 *SNG EXPRESS*\nพัสดุ ${jobNo} ขึ้นรถขนส่งและกำลังเดินทางไปยังจุดหมายถัดไป`;
+                message = `🚚 *SNG EXPRESS*\nพัสดุ ${jobNo} ພັດສະດຸຂອງທ່ານໄດ້ນຳຂຶ້ນລົດແລ້ວ \nແລ້ວສິຮອດຈຸດຕໍ່ໄປໄວໆນີ້`;
                 break;
             case 'CROSSING_BORDER':
                 message = `🛂 *SNG EXPRESS*\nพัสดุ ${jobNo} กำลังผ่านขั้นตอนข้ามแดน`;

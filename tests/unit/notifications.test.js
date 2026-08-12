@@ -6,13 +6,21 @@ import {
   requeueFailedNotifications,
 } from '../../src/services/notificationService.js';
 
-test('scanner-facing statuses are configured for customer notifications', () => {
-  for (const status of [
-    'RECEIVED_WH_TH', 'ON_TRUCK', 'CROSSING_BORDER', 'AT_DEST_WH',
-    'OUT_FOR_DELIVERY', 'DELIVERED', 'SCREENING_CUSTOMS_REQUIRED', 'SCREENING_REJECTED',
-  ]) {
+test('customers are notified at exactly two touch-points (on-truck + arrived)', () => {
+  // Only these two statuses notify the customer — no per-step spam.
+  for (const status of ['ON_TRUCK', 'AT_DEST_WH']) {
     assert.equal(CUSTOMER_NOTIFICATION_STATUSES.has(status), true, status);
   }
+  // Everything else must stay silent for the customer.
+  for (const status of [
+    'RECEIVED_WH_TH', 'RECEIVED_WH_LA', 'CROSSING_BORDER', 'ARRIVED_BORDER_WH',
+    'BRANCH_TRANSFER', 'BRANCH_RECEIVED', 'RIDER_ASSIGNED', 'OUT_FOR_DELIVERY',
+    'DELIVERED', 'DELIVERY_FAILED', 'RETURN_TO_SENDER',
+    'SCREENING_CUSTOMS_REQUIRED', 'SCREENING_REJECTED',
+  ]) {
+    assert.equal(CUSTOMER_NOTIFICATION_STATUSES.has(status), false, status);
+  }
+  assert.equal(CUSTOMER_NOTIFICATION_STATUSES.size, 2);
 });
 
 test('enqueue uses an idempotent event key and persists source metadata', async () => {
