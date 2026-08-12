@@ -163,6 +163,34 @@ export async function detail(req, res) {
     }
 }
 
+// ─── PRINT QUOTE ─────────────────────────────────────────────────────────────
+export async function printQuote(req, res) {
+    const { id } = req.params;
+    try {
+        const [[quote]] = await pool.query(
+            `SELECT pq.*, b.name AS branch_name, u.username AS creator
+             FROM partner_quotations pq
+             LEFT JOIN branches b ON b.id = pq.branch_id
+             LEFT JOIN users u ON u.id = pq.created_by
+             WHERE pq.id = ?`, [id]
+        );
+        if (!quote) return res.status(404).send('ไม่พบใบเสนอราคา');
+
+        const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
+        const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+
+        res.render('partner/quotes/print', {
+            layout: false,
+            title: `ใบเสนอราคา ${quote.quote_no}`,
+            quote,
+            company
+        });
+    } catch (err) {
+        console.error('[PartnerController] printQuote:', err);
+        res.status(500).send('Error: ' + err.message);
+    }
+}
+
 // ─── UPDATE STATUS ────────────────────────────────────────────────────────────
 export async function updateStatus(req, res) {
     const { id } = req.params;

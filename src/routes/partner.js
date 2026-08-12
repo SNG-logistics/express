@@ -13,6 +13,7 @@ router.get('/partner/quotes',         requireLogin, staff, partner.list);
 router.get('/partner/quotes/new',     requireLogin, staff, partner.newForm);
 router.post('/partner/quotes',        requireLogin, staff, partner.create);
 router.get('/partner/quotes/:id',     requireLogin, staff, partner.detail);
+router.get('/partner/quotes/:id/print', requireLogin, staff, partner.printQuote);
 router.post('/partner/quotes/:id/status', requireLogin, staff, partner.updateStatus);
 
 // ─── API (AJAX Calculator) ────────────────────────────────────────────────────

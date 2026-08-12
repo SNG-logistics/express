@@ -1,0 +1,294 @@
+<%# views/partner/quotes/print.ejs — ใบเสนอราคา Partner (พิมพ์ได้ A4 / PDF) %>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>ใบเสนอราคา <%= quote.quote_no %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', sans-serif; background: #f1f5f9; color: #0f172a; line-height: 1.5; }
+    .page { max-width: 820px; margin: 24px auto; background: white; padding: 40px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 12px; border: 1px solid #e2e8f0; }
+    
+    @media print {
+      @page { size: A4 portrait; margin: 12mm 15mm; }
+      body { background: white; font-size: 13px; }
+      .page { margin: 0; box-shadow: none; border-radius: 0; border: none; padding: 0; max-width: 100%; }
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
+    }
+
+    /* Action bar */
+    .print-bar { max-width: 820px; margin: 20px auto 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .btn-action { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: #d97706; color: white; }
+    .btn-primary:hover { background: #b45309; }
+    .btn-secondary { background: #475569; color: white; }
+    .btn-secondary:hover { background: #334155; }
+
+    /* Header */
+    .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px double #cbd5e1; margin-bottom: 24px; }
+    .logo-brand { display: flex; align-items: center; gap: 14px; }
+    .logo-img { width: 52px; height: 52px; object-fit: contain; }
+    .company-title { font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+    .company-sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+    
+    .doc-badge { text-align: right; }
+    .doc-title { font-size: 1.6rem; font-weight: 800; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.1; }
+    .doc-sub { font-size: 0.85rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; }
+    .doc-no { font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-top: 6px; font-family: monospace; }
+    .doc-date { font-size: 0.82rem; color: #64748b; margin-top: 2px; }
+
+    /* Info Grid */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
+    .info-box.highlight { border-color: #fde68a; background: #fffbeb; }
+    .box-title { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+    .info-box.highlight .box-title { color: #d97706; }
+    .party-name { font-size: 1rem; font-weight: 700; color: #0f172a; }
+    .party-detail { font-size: 0.84rem; color: #475569; margin-top: 4px; line-height: 1.5; }
+
+    /* Status Pill */
+    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .status-draft { background: #e2e8f0; color: #475569; }
+    .status-sent { background: #dbeafe; color: #1d4ed8; }
+    .status-accepted { background: #d1fae5; color: #047857; }
+    .status-ordered { background: #fef3c7; color: #b45309; }
+    .status-cancelled { background: #fee2e2; color: #b91c1c; }
+
+    /* Product Section */
+    .product-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; }
+    .product-title { font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+    .product-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; font-size: 0.83rem; color: #64748b; }
+    .product-meta span strong { color: #1e293b; }
+
+    /* Table */
+    .calc-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    .calc-table th { background: #0f172a; color: white; padding: 10px 14px; text-align: left; font-size: 0.8rem; font-weight: 700; }
+    .calc-table th.num, .calc-table td.num { text-align: right; }
+    .calc-table td { padding: 10px 14px; font-size: 0.88rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
+    .calc-table tr.subtotal-row td { background: #f8fafc; font-weight: 600; }
+    .calc-table tr.highlight-row td { background: #fef3c7; font-weight: 700; color: #92400e; }
+
+    /* Totals Summary */
+    .summary-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 28px; }
+    .terms-box { flex: 1; font-size: 0.8rem; color: #64748b; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .terms-box h4 { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px; }
+    .grand-box { width: 320px; background: #0f172a; color: white; border-radius: 10px; padding: 16px 20px; text-align: right; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); }
+    .grand-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #fbbf24; }
+    .grand-amount { font-size: 2.1rem; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1.1; margin: 4px 0; }
+    .grand-currency { font-size: 0.9rem; font-weight: 700; color: #fbbf24; }
+
+    /* Signatures */
+    .sig-section { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+    .sig-box { text-align: center; }
+    .sig-line { border-bottom: 1px dotted #94a3b8; width: 80%; margin: 45px auto 8px auto; }
+    .sig-role { font-size: 0.8rem; font-weight: 700; color: #334155; }
+    .sig-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<%
+  const productThb  = Number(quote.product_price_thb) || 0;
+  const shippingThb = Number(quote.shipping_th_thb) || 0;
+  const subtotalThb = productThb + shippingThb;
+  const rate        = Number(quote.exchange_rate) || 200;
+  const spread      = Number(quote.fx_spread_pct) || 0;
+  const effectiveRate = rate * (1 + spread / 100);
+  const productLak  = Math.ceil(subtotalThb * effectiveRate);
+  const sngLak      = Number(quote.sng_shipping_lak) || 0;
+  const serviceLak  = Number(quote.service_fee_lak) || 0;
+  const totalLak    = Number(quote.total_lak) || 0;
+
+  function fmtThb(n) { return '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtLak(n) { return Number(n || 0).toLocaleString('th-TH') + ' ₭'; }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  const statusLabels = { draft: 'ร่างเอกสาร (Draft)', sent: 'ส่งเสนอราคาแล้ว', accepted: 'ลูกค้ายืนยันแล้ว', ordered: 'สร้างออเดอร์แล้ว', cancelled: 'ยกเลิก' };
+  const statusClasses = { draft: 'status-draft', sent: 'status-sent', accepted: 'status-accepted', ordered: 'status-ordered', cancelled: 'status-cancelled' };
+%>
+
+<div class="no-print print-bar">
+  <div style="font-weight: 700; color: #334155;">
+    📄 ตัวอย่างใบเสนอราคาพาร์ทเนอร์ (<%= quote.quote_no %>)
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn-action btn-primary" onclick="window.print()">
+      🖨️ พิมพ์เอกสาร / พิมพ์เป็น PDF
+    </button>
+    <button class="btn-action btn-secondary" onclick="window.close()">
+      ✕ ปิดหน้าต่าง
+    </button>
+  </div>
+</div>
+
+<div class="page">
+  <%# Header Section %>
+  <div class="doc-header">
+    <div class="logo-brand">
+      <img src="/images/snglogo.png" alt="SNG Logo" class="logo-img" onerror="this.style.display='none'">
+      <div>
+        <div class="company-title"><%= company.company_name_la || company.company_name || 'SNG COMPREHENSIVE SERVICE CO., LTD' %></div>
+        <div class="company-sub">บริษัท ขนส่งและโลจิสติกส์ ไทย-ลาว ครบวงจร</div>
+        <div class="company-sub">โทร: <%= company.company_phone_la || '020 8889 8888' %> | เลขผู้เสียภาษี: <%= company.company_tax_id_la || '804052456000' %></div>
+      </div>
+    </div>
+    <div class="doc-badge">
+      <div class="doc-title">ใบเสนอราคา</div>
+      <div class="doc-sub">QUOTATION</div>
+      <div class="doc-no">เลขที่: <%= quote.quote_no %></div>
+      <div class="doc-date">วันที่ออก: <%= fmtDate(quote.created_at) %></div>
+    </div>
+  </div>
+
+  <%# Parties Grid %>
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="box-title">
+        <span>ผู้เสนอราคา (Seller / Partner)</span>
+        <span class="status-tag <%= statusClasses[quote.status] || 'status-draft' %>">
+          <%= statusLabels[quote.status] || quote.status %>
+        </span>
+      </div>
+      <div class="party-name"><%= quote.branch_name || 'SNG Express Headquarters' %></div>
+      <div class="party-detail">
+        ผู้ออกเอกสาร: <%= quote.creator || 'Admin' %><br>
+        บริการสั่งซื้อและนำเข้าสินค้า ไทย - ลาว
+      </div>
+    </div>
+
+    <div class="info-box highlight">
+      <div class="box-title">เสนอให้แก่ (Customer / Bill To)</div>
+      <div class="party-name"><%= quote.customer_name || 'ลูกค้าทั่วไป / ไม่ระบุชื่อ' %></div>
+      <div class="party-detail">
+        <% if (quote.customer_phone) { %>เบอร์โทร: <strong><%= quote.customer_phone %></strong><br><% } %>
+        <% if (quote.customer_address) { %>ที่อยู่จัดส่ง: <%= quote.customer_address %><% } %>
+        <% if (!quote.customer_name && !quote.customer_phone && !quote.customer_address) { %>
+          <span style="color:#94a3b8;">ยังไม่มีข้อมูลที่อยู่ลูกค้า</span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <%# Product Summary Card %>
+  <div class="product-card">
+    <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #d97706; letter-spacing: 0.05em; margin-bottom: 2px;">รายละเอียดรายการสินค้า</div>
+    <div class="product-title"><%= quote.product_name %></div>
+    <div class="product-meta">
+      <span>ราคาสินค้าในไทย: <strong><%= fmtThb(productThb) %></strong></span>
+      <span>ค่าจัดส่งในไทย: <strong><%= fmtThb(shippingThb) %></strong></span>
+      <span>น้ำหนักประมาณ: <strong><%= Number(quote.weight_kg).toFixed(2) %> kg</strong></span>
+    </div>
+    <% if (quote.product_url) { %>
+      <div style="margin-top: 6px; font-size: 0.78rem; color: #2563eb; word-break: break-all;">
+        🔗 ลิงก์สินค้า: <%= quote.product_url %>
+      </div>
+    <% } %>
+  </div>
+
+  <%# Cost Breakdown Table %>
+  <table class="calc-table">
+    <thead>
+      <tr>
+        <th style="width: 40px;">#</th>
+        <th>รายละเอียดค่าใช้จ่าย (Cost Items)</th>
+        <th class="num" style="width: 140px;">จำนวนเงิน (THB)</th>
+        <th class="num" style="width: 180px;">อัตราแลกเปลี่ยน / ยอด (LAK)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>
+          <strong>ค่าสินค้าในไทย + ค่าขนส่งภายในประเทศ</strong>
+          <div style="font-size:0.78rem; color:#64748b;">(฿<%= productThb.toLocaleString('th-TH') %> + ฿<%= shippingThb.toLocaleString('th-TH') %>)</div>
+        </td>
+        <td class="num"><%= fmtThb(subtotalThb) %></td>
+        <td class="num" style="color:#64748b;">—</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>
+          <strong>อัตราแลกเปลี่ยนคำนวณ (Exchange Rate)</strong>
+          <div style="font-size:0.78rem; color:#64748b;">
+            Base Rate: <%= rate.toLocaleString('th-TH') %> LAK/THB
+            <% if (spread > 0) { %> | Spread (+<%= spread %>%): <%= effectiveRate.toFixed(2) %> LAK/THB<% } %>
+          </div>
+        </td>
+        <td class="num" style="color:#64748b;">—</td>
+        <td class="num"><strong><%= effectiveRate.toFixed(2) %> LAK/THB</strong></td>
+      </tr>
+      <tr class="subtotal-row">
+        <td>3</td>
+        <td><strong>ยอดแปลงค่าสินค้าและค่าส่งในไทย (LAK)</strong></td>
+        <td class="num" style="color:#94a3b8;">—</td>
+        <td class="num"><strong><%= fmtLak(productLak) %></strong></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>
+          <strong>ค่าขนส่งระหว่างประเทศ SNG (ไทย → ลาว)</strong>
+          <div style="font-size:0.78rem; color:#64748b;">คำนวณตามน้ำหนัก/ขนาดสินค้า (<%= Number(quote.weight_kg).toFixed(2) %> kg)</div>
+        </td>
+        <td class="num" style="color:#94a3b8;">—</td>
+        <td class="num">+ <%= fmtLak(sngLak) %></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>
+          <strong>ค่าบริการจัดซื้อ / ดำเนินการ (Partner Service Fee)</strong>
+        </td>
+        <td class="num" style="color:#94a3b8;">—</td>
+        <td class="num">+ <%= fmtLak(serviceLak) %></td>
+      </tr>
+      <tr class="highlight-row">
+        <td colspan="2" style="font-size: 0.95rem;"><strong>ยอดรวมทั้งสิ้นที่ลูกค้าชำระ (Grand Total)</strong></td>
+        <td class="num" style="font-size: 0.95rem; color:#92400e;"><%= fmtThb(subtotalThb) %></td>
+        <td class="num" style="font-size: 1.1rem; color:#92400e;"><strong><%= fmtLak(totalLak) %></strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <%# Summary Container %>
+  <div class="summary-container">
+    <div class="terms-box">
+      <h4>เงื่อนไขและหมายเหตุ (Terms & Conditions)</h4>
+      <% if (quote.note) { %>
+        <div style="color:#1e293b; font-weight:600; margin-bottom:4px;">หมายเหตุ: <%= quote.note %></div>
+      <% } %>
+      1. ใบเสนอราคานี้กำหนดตามอัตราแลกเปลี่ยน ณ วันที่ออกเอกสาร<br>
+      2. ระยะเวลาจัดส่งสินค้าประมาณ 3-5 วันทำการหลังจากสินค้าถึงโกดังไทย<br>
+      3. เอกสารนี้ใช้สำหรับเสนอราคาพาร์ทเนอร์และลูกค้าปลายทางเท่านั้น
+    </div>
+
+    <div class="grand-box">
+      <div class="grand-label">ยอดที่ต้องชำระทั้งสิ้น</div>
+      <div class="grand-amount"><%= Math.ceil(totalLak).toLocaleString('th-TH') %></div>
+      <div class="grand-currency">₭ (ກີບ / กีบ)</div>
+    </div>
+  </div>
+
+  <%# Signatures Section %>
+  <div class="sig-section">
+    <div class="sig-box">
+      <div class="sig-role">ผู้เสนอราคา / Authorized Partner</div>
+      <div class="sig-line"></div>
+      <div class="sig-sub">( <%= quote.creator || 'ผู้มีอำนาจลงนาม' %> )</div>
+      <div class="sig-sub">วันที่ ........ / ........ / ................</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-role">ผู้อนุมัติ / Customer Acceptance</div>
+      <div class="sig-line"></div>
+      <div class="sig-sub">( <%= quote.customer_name || 'ลูกค้าผู้สั่งซื้อ' %> )</div>
+      <div class="sig-sub">วันที่ ........ / ........ / ................</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
