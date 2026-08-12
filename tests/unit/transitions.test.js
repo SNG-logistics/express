@@ -26,8 +26,12 @@ test('canonical transport workflow cannot skip operational checkpoints', () => {
   for (const [from, to] of allowed) assert.equal(canTransitionOrder(from, to), true, `${from} -> ${to}`);
 
   assert.equal(canTransitionOrder('NEW', 'DELIVERED'), false);
-  assert.equal(canTransitionOrder('AT_DEST_WH', 'DELIVERED'), false);
   assert.equal(canTransitionOrder('RIDER_ASSIGNED', 'DELIVERED'), false);
+  // AT_DEST_WH -> DELIVERED is a legitimate completion at the office
+  // (customer self-pickup OR forwarded to a 3rd-party courier), not a skip.
+  assert.equal(canTransitionOrder('AT_DEST_WH', 'DELIVERED'), true);
+  assert.equal(canTransitionOrder('AT_DEST_WH', 'BRANCH_TRANSFER'), true);
+  assert.equal(canTransitionOrder('AT_DEST_WH', 'OUT_FOR_DELIVERY'), true);
 });
 
 test('legacy statuses resolve to canonical values', () => {

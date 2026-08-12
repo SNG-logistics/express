@@ -82,6 +82,19 @@ router.post('/orders/:id/arrived-dest',
   requireLogin, requireRole(['admin','manager','dispatcher','warehouse_la']),
   orders.arriveDestinationWh);
 
+// Destination-office completion options (order arrived at Lao warehouse):
+//   ลงสาขา / ลูกค้ามารับที่สำนักงาน / ส่งต่อขนส่งเจ้าอื่น
+const ROLES_DEST_OFFICE = ['admin', 'manager', 'dispatcher', 'warehouse_la', 'branch_operator'];
+router.post('/orders/:id/to-branch',
+  requireLogin, requireRole(ROLES_DEST_OFFICE),
+  orders.sendToBranch);
+router.post('/orders/:id/pickup-at-office',
+  requireLogin, requireRole(ROLES_DEST_OFFICE),
+  orders.pickupAtOffice);
+router.post('/orders/:id/forward',
+  requireLogin, requireRole(ROLES_DEST_OFFICE),
+  orders.forwardThirdParty);
+
 // Start delivery + mark delivered (dispatcher + driver support)
 router.post('/orders/:id/delivery',
   requireLogin, requireRole(ROLES_DELIVERY_WRITE),

@@ -4,7 +4,7 @@ import { canTransitionOrder } from '../constants/transitions.js';
 import { transitionOrder, withTransaction } from '../services/orderWorkflowService.js';
 import { parseDimensionSum, resolveShippingRate } from '../services/pricingService.js';
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
-import { assignBranchToOrder } from './branchesController.js';
+import { assignBranchToOrder, assignOrderToBranch } from './branchesController.js';
 
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
@@ -482,6 +482,13 @@ export async function detail(req, res) {
 
   };
 
+  // Active branches — used by the "ลงสาขา" action at the destination office
+  let branches = [];
+  try {
+    const [b] = await pool.query("SELECT id, branch_code, name FROM branches WHERE status='active' ORDER BY name");
+    branches = b;
+  } catch (_) {}
+
   res.render('orders/detail', {
     order,
     logs,
@@ -490,12 +497,173 @@ export async function detail(req, res) {
     codSettlement,
     customsHoldLog,
     orderFlags,
+    branches,
     flash,
     can,
     user: req.session.user,
     title: `Order ${order.job_no}`,
     error: null
   });
+}
+
+// ── Shared: complete an order at the destination office (self-pickup / forward) ──
+// Transitions AT_DEST_WH → DELIVERED and, if the order has COD, records the
+// collected amount and moves it to COD_COLLECTED — all inside the given conn.
+async function completeOrderAtOffice(conn, order, { recipientName, codCollected, note, userId }) {
+  await transitionOrder({
+    orderId: order.id,
+    toStatus: 'DELIVERED',
+    userId,
+    note,
+    source: 'ORDER_OFFICE_COMPLETE',
+    updates: {
+      recipient_name: recipientName || null,
+      delivered_by: userId || null,
+      cod_collected_amount: codCollected || 0,
+    },
+    connection: conn,
+  });
+  if (Number(order.cod_amount) > 0) {
+    await conn.query(
+      `INSERT INTO cod_settlements (order_id, cod_amount, status, collected_at)
+       VALUES (?, ?, 'COLLECTED', NOW())
+       ON DUPLICATE KEY UPDATE status='COLLECTED', collected_at=NOW(), cod_amount=VALUES(cod_amount)`,
+      [order.id, order.cod_amount]
+    );
+    await transitionOrder({
+      orderId: order.id,
+      toStatus: 'COD_COLLECTED',
+      userId,
+      note: 'COD collected at office',
+      source: 'ORDER_OFFICE_COD',
+      connection: conn,
+      notify: false,
+    });
+  }
+}
+
+// ── POST /orders/:id/to-branch — ลงสาขา (hand to a sub-branch) ─────────────────
+export async function sendToBranch(req, res) {
+  const { id } = req.params;
+  const branchId = Number(req.body.branch_id);
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) {
+    req.session.flash = { type: 'error', message: 'ไม่พบออเดอร์' };
+    return res.redirect('/orders');
+  }
+  if (order.status !== 'AT_DEST_WH') {
+    req.session.flash = { type: 'error', message: 'ออเดอร์ยังไม่พร้อมลงสาขา (ต้องอยู่สถานะ "ถึงคลังปลายทาง")' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (!Number.isInteger(branchId) || branchId <= 0) {
+    req.session.flash = { type: 'error', message: 'กรุณาเลือกสาขาปลายทาง' };
+    return res.redirect(`/orders/${id}`);
+  }
+  try {
+    await withTransaction(async (conn) => {
+      await assignOrderToBranch(id, branchId, conn);
+      await transitionOrder({
+        orderId: id, toStatus: 'BRANCH_TRANSFER', userId: req.session.user?.id,
+        note: 'ส่งต่อไปสาขา', source: 'ORDER_TO_BRANCH', connection: conn,
+      });
+    });
+    kickNotificationWorker(id);
+    req.session.flash = { type: 'success', message: 'ส่งต่อไปสาขาแล้ว' };
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+  }
+  res.redirect(`/orders/${id}`);
+}
+
+// ── POST /orders/:id/pickup-at-office — ลูกค้ามารับที่สำนักงาน ──────────────────
+export async function pickupAtOffice(req, res) {
+  const { id } = req.params;
+  const recipientName = String(req.body.recipient_name || '').trim();
+  const codCollected = Number(req.body.cod_collected || 0);
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) {
+    req.session.flash = { type: 'error', message: 'ไม่พบออเดอร์' };
+    return res.redirect('/orders');
+  }
+  if (order.status !== 'AT_DEST_WH') {
+    req.session.flash = { type: 'error', message: 'ออเดอร์ยังไม่พร้อมรับที่สำนักงาน' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (!recipientName) {
+    req.session.flash = { type: 'error', message: 'กรุณาระบุชื่อผู้มารับ' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (Number(order.cod_amount) > 0 && Math.abs(codCollected - Number(order.cod_amount)) > 0.01) {
+    req.session.flash = { type: 'error', message: `ยอด COD ต้องเท่ากับ ${Number(order.cod_amount)}` };
+    return res.redirect(`/orders/${id}`);
+  }
+  try {
+    await withTransaction(async (conn) => {
+      await completeOrderAtOffice(conn, order, {
+        recipientName, codCollected,
+        note: `ลูกค้ามารับที่สำนักงาน (${recipientName})`,
+        userId: req.session.user?.id,
+      });
+    });
+    kickNotificationWorker(id);
+    req.session.flash = { type: 'success', message: 'บันทึกลูกค้ามารับที่สำนักงานแล้ว' };
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+  }
+  res.redirect(`/orders/${id}`);
+}
+
+// ── POST /orders/:id/forward — ส่งต่อขนส่งเจ้าอื่น (ต่างแขวง) + ค่าบริการ ─────────
+export async function forwardThirdParty(req, res) {
+  const { id } = req.params;
+  const courier = String(req.body.courier_name || '').trim();
+  const province = String(req.body.province || '').trim();
+  const feeAmount = Number(req.body.fee_amount || 0);
+  const recipientName = String(req.body.recipient_name || '').trim() || courier;
+  const codCollected = Number(req.body.cod_collected || 0);
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) {
+    req.session.flash = { type: 'error', message: 'ไม่พบออเดอร์' };
+    return res.redirect('/orders');
+  }
+  if (order.status !== 'AT_DEST_WH') {
+    req.session.flash = { type: 'error', message: 'ออเดอร์ยังไม่พร้อมส่งต่อ' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (!courier) {
+    req.session.flash = { type: 'error', message: 'กรุณาระบุชื่อขนส่งเจ้าอื่น' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (!Number.isFinite(feeAmount) || feeAmount < 0) {
+    req.session.flash = { type: 'error', message: 'ค่าบริการไม่ถูกต้อง' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (Number(order.cod_amount) > 0 && Math.abs(codCollected - Number(order.cod_amount)) > 0.01) {
+    req.session.flash = { type: 'error', message: `ยอด COD ต้องเท่ากับ ${Number(order.cod_amount)}` };
+    return res.redirect(`/orders/${id}`);
+  }
+  try {
+    await withTransaction(async (conn) => {
+      const note = `ส่งต่อขนส่ง ${courier}${province ? ' ไปแขวง ' + province : ''}` +
+        (feeAmount > 0 ? ` (ค่าบริการ ${feeAmount})` : '');
+      await completeOrderAtOffice(conn, order, {
+        recipientName, codCollected, note, userId: req.session.user?.id,
+      });
+      if (feeAmount > 0) {
+        const ref = `ค่าส่งต่อขนส่ง ${courier}${province ? ' (' + province + ')' : ''}`.slice(0, 120);
+        await conn.query(
+          `INSERT INTO payments (order_id, type, method, amount, currency, status, paid_at, ref_no)
+           VALUES (?, 'fee', 'cash', ?, 'THB', 'PAID', NOW(), ?)`,
+          [id, feeAmount, ref]
+        );
+      }
+    });
+    kickNotificationWorker(id);
+    req.session.flash = { type: 'success', message: 'บันทึกส่งต่อขนส่งเจ้าอื่นแล้ว' };
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+  }
+  res.redirect(`/orders/${id}`);
 }
 
 
