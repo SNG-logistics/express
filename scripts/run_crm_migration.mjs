@@ -100,33 +100,39 @@ try {
   console.log('\n🗄️  SNG Logistics — CRM Migration Runner');
   console.log(`   DB: ${process.env.DB_USER}@${process.env.DB_HOST}/${process.env.DB_NAME}\n`);
 
+  // Check what already exists FIRST — this runs on every deploy, so we must not
+  // re-run the table migration (which redeclares users.role and other columns)
+  // when everything is already in place.
+  const before = await checkTables();
+
   if (CHECK_ONLY) {
-    const { missing } = await checkTables();
-    if (missing.length === 0) {
+    if (before.missing.length === 0) {
       console.log('\n✅ All CRM tables exist — migration not needed');
     } else {
-      console.log(`\n⚠️  Missing ${missing.length} tables — run without --check to migrate`);
+      console.log(`\n⚠️  Missing ${before.missing.length} tables — run without --check to migrate`);
     }
     process.exit(0);
   }
 
-  // Run migrations
-  await runMigration('migrate_crm_001.sql', 'CRM Core Tables (14 tables)');
-  await runMigration('migrate_017_security_compat.sql', 'Security Tables');
-  // migrate_crm_001.sql redeclares users.role with an older list that drops
-  // owner/accounting — re-assert the canonical enum right after so those roles
-  // survive every `npm run migrate-crm` (which runs on every deploy).
+  // Only run the (partly destructive) table migration when something is missing —
+  // fresh install or partial DB. On a healthy DB this is skipped (idempotent).
+  if (before.missing.length > 0) {
+    await runMigration('migrate_crm_001.sql', 'CRM Core Tables (14 tables)');
+    await runMigration('migrate_017_security_compat.sql', 'Security Tables');
+  } else {
+    console.log('\nℹ️  CRM tables already present — skipping table migration (idempotent)');
+  }
+
+  // Always re-assert the canonical role enum — cheap, idempotent, and guarantees
+  // owner/accounting survive even if migrate_crm_001 ran above and reverted them.
   await runMigration('migrate_021_role_enum_canonical.sql', 'Canonical role enum (owner/accounting)');
 
-  // Check result
-  const { missing } = await checkTables();
+  // Re-check only if we actually ran the table migration
+  const { missing } = before.missing.length > 0 ? await checkTables() : before;
 
   // Insert default data
   if (missing.length === 0) {
     await insertDefaultData();
-  }
-
-  if (missing.length === 0) {
     console.log('\n✅ CRM Migration complete — all tables ready!');
   } else {
     console.log(`\n⚠️  Still missing: ${missing.join(', ')}`);
