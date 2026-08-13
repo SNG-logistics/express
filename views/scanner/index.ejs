@@ -5,9 +5,9 @@
 %>
 <%
   const role = user?.role || '';
-  const isTH = ['admin','manager','dispatcher','warehouse_th'].includes(role);
-  const isLA = ['admin','manager','dispatcher','warehouse_la'].includes(role);
-  const isDispatcher = ['admin','manager','dispatcher'].includes(role);
+  const isTH = ['owner','admin','manager','dispatcher','warehouse_th'].includes(role);
+  const isLA = ['owner','admin','manager','dispatcher','warehouse_la'].includes(role);
+  const isDispatcher = ['owner','admin','manager','dispatcher'].includes(role);
 
   function fmtTime(d) {
     if (!d) return '–';

@@ -279,7 +279,7 @@ export async function destroy(req, res) {
     const { id } = req.params;
     
     // Admins and Managers can delete
-    if (!['admin', 'manager'].includes(req.session.user.role)) {
+    if (!['owner', 'admin', 'manager'].includes(req.session.user.role)) {
        req.session.flash = { type: 'error', message: 'ไม่มีสิทธิ์ลบรายการ' };
        return res.redirect('/expenses');
     }

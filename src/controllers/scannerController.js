@@ -203,7 +203,7 @@ export async function receiveParcel(req, res) {
       return res.status(400).json({ success: false, message: `รับเข้าคลังไปแล้ว (${order.status})` });
     }
 
-    const isMgr = ['admin','manager'].includes(userRole);
+    const isMgr = ['owner','admin','manager'].includes(userRole);
     let toStatus = null;
     if (order.direction === 'TH_TO_LA') {
       if (isMgr || ['dispatcher','warehouse_th'].includes(userRole)) toStatus = 'RECEIVED_WH_TH';

@@ -350,7 +350,7 @@
 
 <%
   const role = user?.role || '';
-  const isAdmin = ['admin','manager'].includes(role);
+  const isAdmin = ['owner','admin','manager'].includes(role);
   const canWH_TH = isAdmin || role === 'warehouse_th';
   const canWH_LA = isAdmin || role === 'warehouse_la';
   const canTruck  = isAdmin || ['dispatcher','driver_support'].includes(role);

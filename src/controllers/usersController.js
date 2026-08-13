@@ -148,7 +148,7 @@ export async function resetPassword(req, res) {
       req.session.flash = { type: 'error', message: 'ไม่พบผู้ใช้งาน' };
       return res.redirect('/users');
     }
-    if (target.role === 'admin' && req.session.user.role !== 'admin') {
+    if (target.role === 'admin' && !['owner', 'admin'].includes(req.session.user.role)) {
       req.session.flash = { type: 'error', message: 'ไม่มีสิทธิ์รีเซ็ตรหัสผ่าน Admin' };
       return res.redirect('/users');
     }

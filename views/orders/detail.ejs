@@ -102,12 +102,12 @@
 
   // Role gating (can is also passed from controller, but keep local for quick template use)
   const role = user?.role || '';
-  const isAdmin    = ['admin','manager'].includes(role);
-  const isFinance  = ['admin','manager','finance'].includes(role);
-  const isTH_WH    = ['admin','manager','warehouse_th','thai_warehouse'].includes(role);
-  const isLA_WH    = ['admin','manager','warehouse_la','lao_warehouse'].includes(role);
+  const isAdmin    = ['owner','admin','manager'].includes(role);
+  const isFinance  = ['owner','admin','manager','finance'].includes(role);
+  const isTH_WH    = ['owner','admin','manager','warehouse_th','thai_warehouse'].includes(role);
+  const isLA_WH    = ['owner','admin','manager','warehouse_la','lao_warehouse'].includes(role);
 
-  const isDispatch = ['admin','manager','dispatcher'].includes(role);
+  const isDispatch = ['owner','admin','manager','dispatcher'].includes(role);
 
   const canEdit    = !isLocked && ['NEW','RECEIVED_WH_TH','RECEIVED_WH_LA'].includes(order.status) && isAdmin;
   const canReceive = !isLocked && order.status === 'NEW' &&

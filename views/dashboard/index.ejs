@@ -44,7 +44,7 @@
   // ─── Role defaults ───────────────────────────────────────────
   const role = currentUser?.role || '';
   const OPS_ROLES  = ['dispatcher','warehouse_th','warehouse_la','branch_operator','staff'];
-  const EXEC_ROLES = ['admin','manager','finance'];
+  const EXEC_ROLES = ['owner','admin','manager','finance'];
   const defaultView = OPS_ROLES.includes(role) ? 'ops' : 'exec';
 
   // ─── Alert urgency ───────────────────────────────────────────
