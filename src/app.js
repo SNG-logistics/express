@@ -28,6 +28,7 @@ import partnerRoutes from './routes/partner.js';
 import expensesRoutes from './routes/expenses.js';
 import spaceBookingRoutes from './routes/spaceBooking.js';
 import riderRoutes from './routes/rider.js';
+import riderAdminRoutes from './routes/riders.js';
 import crmRoutes from './routes/crm.js';           // ─ Omnichannel CRM
 import webhookRoutes from './routes/webhooks.js';   // ─ FB + LINE webhooks (public)
 import webhookSimRoutes from './routes/webhookSim.js'; // ─ Dev simulator (blocked in prod)
@@ -381,6 +382,7 @@ app.use(partnerRoutes);  // ─ Partner Quotation System
 app.use('/expenses', expensesRoutes);
 app.use(spaceBookingRoutes); // ─ ร้านฝากส่ง (Space Booking)
 app.use(riderRoutes);        // ─ Rider Mode (last-mile delivery)
+app.use(riderAdminRoutes);   // ─ HQ (main-warehouse) rider management
 // webhookRoutes already mounted above (before body-parser) — do NOT re-mount
 // app.use(webhookRoutes);
 app.use(webhookSimRoutes);   // ─ Dev webhook simulator (prod-blocked)

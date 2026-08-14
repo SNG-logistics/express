@@ -1,0 +1,80 @@
+<div class="min-h-screen bg-slate-900 text-white pb-24" style="font-family:'Noto Sans Thai',sans-serif;">
+
+  <%# ── TOP BAR ── %>
+  <div style="background:linear-gradient(135deg,#fbbf24,#f59e0b); padding:16px 20px 20px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/rider" style="background:rgba(0,0,0,.15);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#1c1917;text-decoration:none;flex-shrink:0;">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <div>
+        <div style="font-size:18px;font-weight:900;color:#1c1917;line-height:1;">โปรไฟล์</div>
+        <div style="font-size:12px;color:#78350f;font-weight:600;margin-top:4px;"><%= user.username %> · ไรเดอร์</div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── FORM ── %>
+  <form method="POST" action="/rider/profile" style="padding:20px 16px;display:flex;flex-direction:column;gap:16px;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <div>
+      <label style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ชื่อ</label>
+      <input type="text" name="name" value="<%= rider.name %>" required
+        style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 14px;color:#f1f5f9;font-size:15px;">
+    </div>
+
+    <div>
+      <label style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">เบอร์โทร</label>
+      <input type="text" name="phone" value="<%= rider.phone %>" required
+        style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 14px;color:#f1f5f9;font-size:15px;">
+    </div>
+
+    <div>
+      <label style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ยานพาหนะ</label>
+      <select name="vehicle_type"
+        style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 14px;color:#f1f5f9;font-size:15px;">
+        <option value="motorcycle" <%= rider.vehicle_type === 'motorcycle' ? 'selected' : '' %>>มอเตอร์ไซค์</option>
+        <option value="car" <%= rider.vehicle_type === 'car' ? 'selected' : '' %>>รถยนต์</option>
+        <option value="tuk_tuk" <%= rider.vehicle_type === 'tuk_tuk' ? 'selected' : '' %>>ตุ๊กตุ๊ก</option>
+        <option value="bicycle" <%= rider.vehicle_type === 'bicycle' ? 'selected' : '' %>>จักรยาน</option>
+      </select>
+    </div>
+
+    <div>
+      <label style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ทะเบียนรถ</label>
+      <input type="text" name="vehicle_no" value="<%= rider.vehicle_no || '' %>" placeholder="เช่น กก-1234 เวียงจันทน์"
+        style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 14px;color:#f1f5f9;font-size:15px;">
+    </div>
+
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 14px;font-size:12px;color:#64748b;">
+      <i class="fa-solid fa-circle-info" style="margin-right:6px;"></i>
+      สาขา/คลังที่สังกัดแก้ไขเองไม่ได้ — ติดต่อแอดมินหรือหัวหน้าสาขาถ้าต้องการย้าย
+    </div>
+
+    <button type="submit"
+      style="width:100%;border:0;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1c1917;font-weight:900;font-size:15px;padding:14px;border-radius:12px;cursor:pointer;margin-top:8px;">
+      <i class="fa-solid fa-check"></i> บันทึก
+    </button>
+  </form>
+
+  <%# ── BOTTOM NAV ── %>
+  <div style="position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid #334155;display:flex;z-index:100;">
+    <a href="/rider" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-list-check" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">งานของฉัน</span>
+    </a>
+    <a href="/rider/history" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-clock-rotate-left" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ประวัติ</span>
+    </a>
+    <a href="/rider/profile" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;border-top:2px solid #fbbf24;">
+      <i class="fa-solid fa-user-gear" style="font-size:18px;color:#fbbf24;"></i>
+      <span style="font-size:9px;color:#fbbf24;font-weight:700;margin-top:3px;text-transform:uppercase;">โปรไฟล์</span>
+    </a>
+    <a href="/logout" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-right-from-bracket" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ออกจากระบบ</span>
+    </a>
+  </div>
+
+</div>

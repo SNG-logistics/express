@@ -16,7 +16,14 @@ const STATUS_LABEL = {
         <div style="font-size:18px;font-weight:900;color:#1c1917;line-height:1;">SNG Rider</div>
         <div style="font-size:12px;color:#78350f;font-weight:600;"><%= user.username %> · ไรเดอร์</div>
       </div>
-      <a href="/logout" style="background:rgba(0,0,0,.15);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#1c1917;text-decoration:none;">
+      <button id="status-toggle" data-status="<%= riderStatus %>"
+        style="display:flex;align-items:center;gap:6px;border:0;border-radius:99px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;
+          background:<%= riderStatus === 'active' ? 'rgba(34,197,94,.25)' : 'rgba(0,0,0,.15)' %>;
+          color:<%= riderStatus === 'active' ? '#14532d' : '#1c1917' %>;">
+        <span id="status-dot" style="width:8px;height:8px;border-radius:50%;background:<%= riderStatus === 'active' ? '#22c55e' : '#78716c' %>;"></span>
+        <span id="status-label"><%= riderStatus === 'active' ? 'ออนไลน์' : 'ออฟไลน์' %></span>
+      </button>
+      <a href="/logout" style="background:rgba(0,0,0,.15);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#1c1917;text-decoration:none;flex-shrink:0;">
         <i class="fa-solid fa-right-from-bracket"></i>
       </a>
     </div>
@@ -119,6 +126,10 @@ const STATUS_LABEL = {
       <i class="fa-solid fa-clock-rotate-left" style="font-size:18px;color:#64748b;"></i>
       <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ประวัติ</span>
     </a>
+    <a href="/rider/profile" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
+      <i class="fa-solid fa-user-gear" style="font-size:18px;color:#64748b;"></i>
+      <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">โปรไฟล์</span>
+    </a>
     <a href="/logout" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;text-decoration:none;">
       <i class="fa-solid fa-right-from-bracket" style="font-size:18px;color:#64748b;"></i>
       <span style="font-size:9px;color:#64748b;font-weight:700;margin-top:3px;text-transform:uppercase;">ออกจากระบบ</span>
@@ -202,5 +213,28 @@ const STATUS_LABEL = {
 
   render(initialOffers);
   setInterval(refresh, 15000);
+
+  const toggleBtn = document.getElementById('status-toggle');
+  toggleBtn?.addEventListener('click', async () => {
+    toggleBtn.disabled = true;
+    try {
+      const res = await fetch('/rider/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      });
+      const data = await res.json();
+      if (!data.success) { alert(data.message || 'เปลี่ยนสถานะไม่สำเร็จ'); return; }
+      const isActive = data.status === 'active';
+      toggleBtn.dataset.status = data.status;
+      toggleBtn.style.background = isActive ? 'rgba(34,197,94,.25)' : 'rgba(0,0,0,.15)';
+      toggleBtn.style.color = isActive ? '#14532d' : '#1c1917';
+      document.getElementById('status-dot').style.background = isActive ? '#22c55e' : '#78716c';
+      document.getElementById('status-label').textContent = isActive ? 'ออนไลน์' : 'ออฟไลน์';
+    } catch (err) {
+      alert('เครือข่ายมีปัญหา ลองใหม่อีกครั้ง');
+    } finally {
+      toggleBtn.disabled = false;
+    }
+  });
 })();
 </script>

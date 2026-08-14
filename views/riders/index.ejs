@@ -1,0 +1,116 @@
+<%# views/riders/index.ejs — Admin: HQ (main-warehouse) rider management %>
+
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-white">
+        ไรเดอร์<span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">คลังใหญ่</span>
+      </h2>
+      <p class="text-slate-400 text-sm mt-0.5">ไรเดอร์ที่ไม่ได้ผูกกับสาขา — รับงานออเดอร์ที่ถึงคลังใหญ่โดยตรง (ไม่ผ่านสาขา)</p>
+    </div>
+  </div>
+
+  <!-- Riders table -->
+  <div class="glass-panel-dark p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-motorcycle text-cyan-400/60"></i> ไรเดอร์คลังใหญ่ (<%= riders.length %>)
+      </h3>
+    </div>
+
+    <% if (riders.length > 0) { %>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-slate-500 text-xs uppercase tracking-wider border-b border-white/5">
+            <th class="px-3 py-2 text-left">ชื่อ</th>
+            <th class="px-3 py-2 text-left">โทร</th>
+            <th class="px-3 py-2 text-left">ยานพาหนะ</th>
+            <th class="px-3 py-2 text-center">สถานะ</th>
+            <th class="px-3 py-2 text-center">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% riders.forEach(r => { %>
+          <tr class="border-b border-white/3 hover:bg-white/2 transition-colors">
+            <td class="px-3 py-2.5 text-white font-medium"><%= r.name %></td>
+            <td class="px-3 py-2.5 text-slate-400 font-mono"><%= r.phone %></td>
+            <td class="px-3 py-2.5 text-slate-400"><%= r.vehicle_type %> <span class="text-slate-600"><%= r.vehicle_no || '' %></span></td>
+            <td class="px-3 py-2.5 text-center">
+              <span class="px-2 py-0.5 rounded-full text-xs
+                <%= r.status === 'active' ? 'bg-emerald-500/15 text-emerald-400'
+                 : r.status === 'busy'   ? 'bg-amber-500/15 text-amber-400'
+                 : 'bg-slate-500/15 text-slate-400' %>">
+                <%= r.status %>
+              </span>
+            </td>
+            <td class="px-3 py-2.5 text-center">
+              <% if (r.status !== 'busy') { %>
+              <form action="/riders/<%= r.id %>/status" method="POST" class="inline">
+                <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                <input type="hidden" name="status" value="<%= r.status === 'active' ? 'inactive' : 'active' %>">
+                <button type="submit"
+                  class="px-2.5 py-1 rounded-lg text-xs border transition-all
+                    <%= r.status === 'active'
+                      ? 'border-slate-500/30 text-slate-400 hover:bg-slate-500/10'
+                      : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10' %>">
+                  <%= r.status === 'active' ? 'ปิดใช้งาน' : 'เปิดใช้งาน' %>
+                </button>
+              </form>
+              <% } else { %>
+              <span class="text-slate-600 text-xs">กำลังส่งงานอยู่</span>
+              <% } %>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } else { %>
+    <p class="text-slate-500 text-sm text-center py-6">ยังไม่มีไรเดอร์คลังใหญ่</p>
+    <% } %>
+
+    <!-- Add Rider Quick Form -->
+    <form action="/riders" method="POST"
+      class="mt-4 pt-4 border-t border-white/5 flex flex-wrap gap-3 items-end">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">ชื่อ</label>
+        <input type="text" name="name" required
+          class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm w-40"
+          placeholder="ชื่อไรเดอร์">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">เบอร์โทร</label>
+        <input type="text" name="phone" required
+          class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm w-36"
+          placeholder="020-XXXX-XXXX">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Username</label>
+        <input type="text" name="username" required autocomplete="off"
+          class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm w-36">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Password</label>
+        <input type="password" name="password" required minlength="8" autocomplete="new-password"
+          class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm w-36">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">ยานพาหนะ</label>
+        <select name="vehicle_type"
+          class="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm">
+          <option value="motorcycle">มอเตอร์ไซค์</option>
+          <option value="car">รถยนต์</option>
+          <option value="tuk_tuk">ตุ๊กตุ๊ก</option>
+          <option value="bicycle">จักรยาน</option>
+        </select>
+      </div>
+      <button type="submit"
+        class="px-4 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-sm hover:bg-emerald-500/30 transition-all">
+        <i class="fa-solid fa-plus mr-1"></i> เพิ่มไรเดอร์คลังใหญ่
+      </button>
+    </form>
+  </div>
+</div>

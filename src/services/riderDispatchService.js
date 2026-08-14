@@ -30,7 +30,9 @@ function genClaimCode(len = 4) {
 
 // ── Broadcast ─────────────────────────────────────────────────────────────────
 /**
- * Open a job to every active rider in the order's destination branch.
+ * Open a job to every active rider scoped to the order's destination:
+ * riders of that exact branch when `dest_branch_id` is set, or HQ riders
+ * (`riders.branch_id IS NULL`) when the order never left the main warehouse.
  * Idempotent: if an OPEN offer already exists for the order, returns it.
  * @returns {Promise<{ok:boolean, offerId?:number, claimCode?:string, riderCount?:number, reason?:string, already?:boolean}>}
  */
@@ -47,7 +49,7 @@ export async function broadcastOffer(orderId, { createdBy = null, expiresMin = D
       [orderId]
     );
     if (!order) throw new WorkflowError('Order not found', 404);
-    if (!order.dest_branch_id) return { ok: false, reason: 'NO_BRANCH' };
+    const isHq = !order.dest_branch_id;
 
     const [[existing]] = await conn.query(
       "SELECT id, claim_code FROM delivery_offers WHERE order_id=? AND status='OPEN' LIMIT 1",
@@ -58,8 +60,9 @@ export async function broadcastOffer(orderId, { createdBy = null, expiresMin = D
     const [riders] = await conn.query(
       `SELECT r.user_id, r.phone, u.name
        FROM riders r JOIN users u ON u.id = r.user_id
-       WHERE r.branch_id=? AND r.status='active' AND u.status='active' AND r.user_id IS NOT NULL`,
-      [order.dest_branch_id]
+       WHERE ${isHq ? 'r.branch_id IS NULL' : 'r.branch_id=?'}
+         AND r.status='active' AND u.status='active' AND r.user_id IS NOT NULL`,
+      isHq ? [] : [order.dest_branch_id]
     );
     if (!riders.length) return { ok: false, reason: 'NO_RIDERS', branchId: order.dest_branch_id };
 
@@ -68,7 +71,7 @@ export async function broadcastOffer(orderId, { createdBy = null, expiresMin = D
     const [ins] = await conn.query(
       `INSERT INTO delivery_offers (order_id, branch_id, status, claim_code, expires_at, created_by)
        VALUES (?, ?, 'OPEN', ?, ?, ?)`,
-      [orderId, order.dest_branch_id, claimCode, expiresAt, createdBy]
+      [orderId, order.dest_branch_id || null, claimCode, expiresAt, createdBy]
     );
     const offerId = ins.insertId;
 
@@ -92,7 +95,7 @@ export async function broadcastOffer(orderId, { createdBy = null, expiresMin = D
             address: order.receiver_address,
             codAmount: order.cod_amount,
             fee: order.last_mile_fee,
-            branchName: order.branch_name,
+            branchName: order.branch_name || 'คลังใหญ่',
           },
         });
       }
@@ -112,6 +115,27 @@ export async function autoBroadcastOnBranchReceived(orderId) {
     else console.log(`[RiderDispatch] auto-broadcast order=${orderId} → offer=${r.offerId} riders=${r.riderCount ?? '(existing)'}`);
   } catch (e) {
     console.error(`[RiderDispatch] auto-broadcast order=${orderId} failed:`, e.message);
+  }
+}
+
+/**
+ * Fire-and-forget auto-broadcast used when an order reaches AT_DEST_WH.
+ * Only relevant when the order was never routed to a branch (dest_branch_id
+ * still NULL after assignBranchToOrder ran) — those orders sit at the main
+ * warehouse, so this broadcasts to HQ riders (riders.branch_id IS NULL)
+ * instead of leaving last-mile dispatch entirely to a staff member's memory.
+ * A branch-bound order reaching AT_DEST_WH is a no-op here — it gets its
+ * own broadcast later, at BRANCH_RECEIVED, once it actually reaches the branch.
+ */
+export async function autoBroadcastOnMainWarehouseArrival(orderId) {
+  try {
+    const [[order]] = await pool.query('SELECT dest_branch_id FROM orders WHERE id=?', [orderId]);
+    if (!order || order.dest_branch_id) return; // branch-bound — handled by the BRANCH_RECEIVED hook instead
+    const r = await broadcastOffer(orderId, { createdBy: null });
+    if (!r.ok) console.log(`[RiderDispatch] HQ auto-broadcast order=${orderId} skipped: ${r.reason}`);
+    else console.log(`[RiderDispatch] HQ auto-broadcast order=${orderId} → offer=${r.offerId} riders=${r.riderCount ?? '(existing)'}`);
+  } catch (e) {
+    console.error(`[RiderDispatch] HQ auto-broadcast order=${orderId} failed:`, e.message);
   }
 }
 

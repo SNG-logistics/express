@@ -41,6 +41,7 @@ const SQL_FILES = [
   'migrate_019_roles_owner_accounting.sql',
   'migrate_020_rider_job_offers.sql',
   'migrate_022_billing_statements.sql',
+  'migrate_023_hq_riders.sql',
   // Keep LAST: canonical role enum re-asserted after any migration (incl. CRM)
   // that redeclares users.role, so owner/accounting are never dropped.
   'migrate_021_role_enum_canonical.sql',

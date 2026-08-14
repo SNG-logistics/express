@@ -9,6 +9,9 @@
  *   POST /rider/job/:orderId/deliver   — deliverJob (GPS + photo + name)
  *   POST /rider/job/:orderId/fail      — failJob
  *   GET  /rider/history                — history
+ *   GET  /rider/profile                — showProfile
+ *   POST /rider/profile                — updateProfile
+ *   POST /rider/status                 — toggleStatus (online/offline)
  */
 import pool from '../config/db.js';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
@@ -61,6 +64,8 @@ export async function myJobs(req, res) {
   try {
     const riderId = req.session.user.id;
 
+    const [[riderRow]] = await pool.query('SELECT status FROM riders WHERE user_id=?', [riderId]);
+
     const [jobs] = await pool.query(`
       SELECT o.*,
         s.name  AS sender_name_r,  s.phone  AS sender_phone,
@@ -93,6 +98,7 @@ export async function myJobs(req, res) {
       pending:        jobs.length,
       todayDelivered: stat?.cnt      || 0,
       todayCOD:       stat?.cod_total || 0,
+      riderStatus:    riderRow?.status || 'active',
       user:           req.session.user,
       layout:         'layouts/main',
     });
@@ -404,5 +410,72 @@ export async function history(req, res) {
   } catch (e) {
     console.error('[Rider] history:', e);
     res.status(500).send('เกิดข้อผิดพลาด');
+  }
+}
+
+// ── GET /rider/profile — โปรไฟล์/ข้อมูลรถของตัวเอง ──────────────────────────────
+export async function showProfile(req, res) {
+  try {
+    const [[rider]] = await pool.query(
+      'SELECT id, name, phone, vehicle_type, vehicle_no, status FROM riders WHERE user_id=?',
+      [req.session.user.id]
+    );
+    if (!rider) return res.status(404).send('ไม่พบบัญชีไรเดอร์');
+    res.render('rider/profile', {
+      title:  'โปรไฟล์ | SNG Rider',
+      rider,
+      user:   req.session.user,
+      layout: 'layouts/main',
+    });
+  } catch (e) {
+    console.error('[Rider] showProfile:', e);
+    res.status(500).send('เกิดข้อผิดพลาด');
+  }
+}
+
+// ── POST /rider/profile — แก้ชื่อ/เบอร์/ยานพาหนะของตัวเอง (ไม่รวมสาขา) ──────────────
+export async function updateProfile(req, res) {
+  try {
+    const { name, phone, vehicle_type, vehicle_no } = req.body;
+    if (!name?.trim() || !phone?.trim()) {
+      req.session.flash = { type: 'error', message: 'ต้องระบุชื่อและเบอร์โทร' };
+      return res.redirect('/rider/profile');
+    }
+    if (!['motorcycle', 'bicycle', 'car', 'tuk_tuk'].includes(vehicle_type)) {
+      req.session.flash = { type: 'error', message: 'ประเภทยานพาหนะไม่ถูกต้อง' };
+      return res.redirect('/rider/profile');
+    }
+    await pool.query(
+      'UPDATE riders SET name=?, phone=?, vehicle_type=?, vehicle_no=? WHERE user_id=?',
+      [name.trim(), phone.trim(), vehicle_type, vehicle_no?.trim() || null, req.session.user.id]
+    );
+    // Keep users.name in sync — it's what shows in headers/session everywhere else.
+    await pool.query('UPDATE users SET name=? WHERE id=?', [name.trim(), req.session.user.id]);
+    req.session.user.name = name.trim();
+    req.session.flash = { type: 'success', message: 'บันทึกโปรไฟล์แล้ว' };
+    res.redirect('/rider/profile');
+  } catch (e) {
+    console.error('[Rider] updateProfile:', e);
+    req.session.flash = { type: 'error', message: e.message };
+    res.redirect('/rider/profile');
+  }
+}
+
+// ── POST /rider/status — สลับออนไลน์/ออฟไลน์ (พักงาน) ────────────────────────────
+export async function toggleStatus(req, res) {
+  try {
+    const [[rider]] = await pool.query(
+      'SELECT id, status FROM riders WHERE user_id=?', [req.session.user.id]
+    );
+    if (!rider) return res.status(404).json({ success: false, message: 'ไม่พบบัญชีไรเดอร์' });
+    if (rider.status === 'busy') {
+      return res.status(409).json({ success: false, message: 'กำลังส่งงานอยู่ ปิดออนไลน์ไม่ได้ตอนนี้' });
+    }
+    const next = rider.status === 'active' ? 'inactive' : 'active';
+    await pool.query('UPDATE riders SET status=? WHERE id=?', [next, rider.id]);
+    res.json({ success: true, status: next });
+  } catch (e) {
+    console.error('[Rider] toggleStatus:', e);
+    res.status(500).json({ success: false, message: e.message });
   }
 }

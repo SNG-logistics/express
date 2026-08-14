@@ -118,6 +118,15 @@ export async function transitionOrder({
         .then(m => m.autoBroadcastOnBranchReceived(orderId))
         .catch(err => console.error('[Workflow] auto-broadcast failed:', err.message));
     }
+    // Same idea for orders that reach the main warehouse without ever being
+    // routed to a branch — broadcasts to HQ riders instead. No-ops internally
+    // if assignBranchToOrder (run inside afterTransition, above) did find a
+    // branch for this order after all.
+    if (ownsTransaction && normalizedTo === 'AT_DEST_WH') {
+      import('./riderDispatchService.js')
+        .then(m => m.autoBroadcastOnMainWarehouseArrival(orderId))
+        .catch(err => console.error('[Workflow] HQ auto-broadcast failed:', err.message));
+    }
     return { order, fromStatus, toStatus: normalizedTo, changed: true, logId: logResult.insertId };
   } catch (error) {
     if (ownsTransaction) await conn.rollback();

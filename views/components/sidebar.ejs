@@ -206,6 +206,11 @@
       <i class="fa-solid fa-store"></i>
       <span><%= t('nav.branches') %></span>
     </a>
+    <a href="/riders"
+       class="sidebar-link <%= currentPath.startsWith('/riders') ? 'active' : '' %>">
+      <i class="fa-solid fa-motorcycle"></i>
+      <span><%= t('nav.hqRiders') %></span>
+    </a>
     <% } %>
 
     <% if (can.branchPortal && !can.manageBranches) { %>

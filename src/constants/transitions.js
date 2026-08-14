@@ -20,6 +20,7 @@ const ORDER_TRANSITIONS = {
     ORDER_STATUS.OUT_FOR_DELIVERY,
     ORDER_STATUS.BRANCH_TRANSFER,   // last-mile via branch hub
     ORDER_STATUS.DELIVERED,         // customer self-pickup OR forwarded to a 3rd-party courier
+    ORDER_STATUS.RIDER_ASSIGNED,    // HQ rider claims directly — no branch hop, order never leaves the main warehouse
   ],
   [ORDER_STATUS.BRANCH_TRANSFER]:   [ORDER_STATUS.BRANCH_RECEIVED],
   [ORDER_STATUS.BRANCH_RECEIVED]:   [ORDER_STATUS.RIDER_ASSIGNED],

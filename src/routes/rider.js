@@ -13,6 +13,9 @@ const router = Router();
 router.get('/rider',                        requireLogin, requireRole(ROLES_RIDER), rider.myJobs);
 router.get('/rider/history',                requireLogin, requireRole(ROLES_RIDER), rider.history);
 router.get('/rider/job/:orderId',           requireLogin, requireRole(ROLES_RIDER), rider.jobDetail);
+router.get('/rider/profile',                requireLogin, requireRole(ROLES_RIDER), rider.showProfile);
+router.post('/rider/profile',               requireLogin, requireRole(ROLES_RIDER), rider.updateProfile);
+router.post('/rider/status',                requireLogin, requireRole(ROLES_RIDER), rider.toggleStatus);
 
 // ── Job offers (broadcast & claim) ──────────────────────────────────────────────
 router.get('/rider/offers',                 requireLogin, requireRole(ROLES_RIDER), rider.availableOffersApi);
