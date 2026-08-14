@@ -285,6 +285,7 @@ app.use((req, res, next) => {
     createTrip:        has('admin','manager','dispatcher'),
     closeTrip:         has('admin','manager'),
     cancelTrip:        has('admin'),  // ยกเลิกรอบรถ — admin สูงสุดเท่านั้น
+    retroAttachOrder:  has('admin','manager'),  // เพิ่มออเดอร์เข้ารอบรถย้อนหลัง (ติดรถมาไม่ได้สแกน) — ห้าม dispatcher
     // COD — accounting sees the page read-only (write buttons below stay off)
     viewCod:           has('admin','manager','finance','dispatcher','accounting'),
     collectCod:        has('admin','manager','finance','dispatcher','driver_support'),

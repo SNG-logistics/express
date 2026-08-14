@@ -6,6 +6,7 @@ import {
   ROLES_FINANCE,
   ROLES_ADMIN_ONLY,
   ROLES_READ,
+  ROLES_MANAGE,
 } from '../middleware/auth.js';
 
 const ROLES_DISPATCHER = ['admin', 'manager', 'dispatcher'];
@@ -20,6 +21,9 @@ router.post('/trips/:id/settle',        requireLogin, requireRole(ROLES_FINANCE)
 // Specific routes BEFORE generic :id route
 router.post('/trips/:id/update-status', requireLogin, requireRole(ROLES_DISPATCHER),   trips.updateStatus);
 router.post('/trips/:id/orders',        requireLogin, requireRole(ROLES_DISPATCHER),   trips.attachOrders);
+// Retroactive attach — parcel physically rode along unscanned. Deliberately
+// tighter than the normal attach above: admin/manager only, not dispatcher.
+router.post('/trips/:id/orders/retroactive', requireLogin, requireRole(ROLES_MANAGE), trips.retroactiveAttachOrders);
 router.get('/trips/:id/manifest',       requireLogin, requireRole(ROLES_READ),          trips.printManifest);
 router.get('/trips/:id/expenses/print', requireLogin, requireRole(ROLES_FINANCE),       trips.printExpenses);
 

@@ -14,6 +14,7 @@
 import pool from '../config/db.js';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 import { kickNotificationWorker } from '../services/notificationService.js';
+import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
 
 // ─── Allowed trip status transitions ─────────────────────────────────────────
 const TRIP_TRANSITIONS = {
@@ -408,6 +409,90 @@ export async function attachOrders(req, res) {
     });
 
     req.session.flash = { type: 'success', message: `เพิ่ม ${numericIds.length} ออเดอร์สำเร็จ` };
+    res.redirect(`/trips/${id}`);
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+    res.redirect(`/trips/${id}`);
+  }
+}
+
+// ─── RETROACTIVE ATTACH (admin/manager only) ───────────────────────────────────
+// For a parcel that physically rode along on the truck without ever being
+// scanned, so the DB never reflects reality. Unlike attachOrders() above, this
+// works on a trip that has already departed — it force-jumps the order
+// straight to whatever order status matches the trip's CURRENT stage. Capped
+// at ARRIVED_BORDER_WH even for ARRIVED/UNLOADING trips (never auto-jumps to
+// AT_DEST_WH) so the destination warehouse still has to physically scan this
+// parcel in, same as every other one — see the ARRIVED/UNLOADING note above
+// TRIP_TO_ORDER_STATUS.
+const RETRO_TARGET_STATUS = {
+  DEPARTED:  'ON_TRUCK',
+  AT_BORDER: 'CROSSING_BORDER',
+  CROSSED:   'ARRIVED_BORDER_WH',
+  ARRIVED:   'ARRIVED_BORDER_WH',
+  UNLOADING: 'ARRIVED_BORDER_WH',
+};
+
+export async function retroactiveAttachOrders(req, res) {
+  const { id } = req.params;
+  const { order_ids = [], reason } = req.body;
+
+  const [[trip]] = await pool.query('SELECT * FROM trips WHERE id = ?', [id]);
+  if (!trip) return res.redirect('/trips');
+
+  const targetStatus = RETRO_TARGET_STATUS[trip.status];
+  if (!targetStatus) {
+    req.session.flash = { type: 'error', message: 'รอบรถนี้ไม่อยู่ในสถานะที่เพิ่มออเดอร์ย้อนหลังได้' };
+    return res.redirect(`/trips/${id}`);
+  }
+  if (!reason?.trim()) {
+    req.session.flash = { type: 'error', message: 'ต้องระบุเหตุผล (เช่น ติดรถมาโดยไม่ได้สแกน)' };
+    return res.redirect(`/trips/${id}`);
+  }
+
+  const ordersArray = (Array.isArray(order_ids) ? order_ids : [order_ids]).filter(Boolean);
+  const numericIds = ordersArray.map(Number).filter(n => !isNaN(n));
+  if (!numericIds.length) return res.redirect(`/trips/${id}`);
+
+  try {
+    await withTransaction(async (conn) => {
+      const placeholders = numericIds.map(() => '?').join(',');
+      const [orders] = await conn.query(
+        `SELECT id, job_no, direction, status, screening_status FROM orders WHERE id IN (${placeholders}) FOR UPDATE`,
+        numericIds
+      );
+      if (orders.length !== numericIds.length) throw new WorkflowError('One or more orders do not exist', 404);
+      const expectedStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
+      for (const order of orders) {
+        if (order.direction !== trip.direction || order.status !== expectedStatus || order.screening_status === 'REJECTED') {
+          throw new WorkflowError(`Order ${order.job_no} is not eligible for this trip`, 409);
+        }
+      }
+
+      const vals = numericIds.map(() => '(?,?)').join(',');
+      await conn.query(
+        `INSERT INTO trip_orders (trip_id, order_id) VALUES ${vals}`,
+        numericIds.flatMap(orderId => [id, orderId])
+      );
+
+      for (const order of orders) {
+        await transitionOrder({
+          orderId: order.id,
+          toStatus: targetStatus,
+          userId: req.session.user?.id,
+          note: `ย้อนหลัง: ติดรถ ${trip.trip_no} มาโดยไม่ได้สแกน — ${reason.trim()}`,
+          source: 'TRIP_RETRO_ATTACH',
+          updates: { trip_id: id },
+          connection: conn,
+          force: true,
+        });
+      }
+    });
+
+    req.session.flash = {
+      type: 'success',
+      message: `เพิ่มออเดอร์ย้อนหลัง ${numericIds.length} รายการแล้ว (สถานะ: ${ORDER_STATUS_LABELS[targetStatus] || targetStatus})`,
+    };
     res.redirect(`/trips/${id}`);
   } catch (err) {
     req.session.flash = { type: 'error', message: err.message };

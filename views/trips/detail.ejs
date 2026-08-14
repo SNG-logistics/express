@@ -60,7 +60,7 @@
 %>
 
 
-<div class="max-w-7xl mx-auto space-y-5" x-data="{ addingOrders: false, editingTrip: false, cancelingTrip: false }">
+<div class="max-w-7xl mx-auto space-y-5" x-data="{ addingOrders: false, editingTrip: false, cancelingTrip: false, retroAttaching: false }">
 
   <!-- ─── Exception Banner ──────────────────────────────────────────────────── -->
   <% if (totals.customs > 0 && !['COMPLETED','CANCELLED'].includes(trip.status)) { %>
@@ -124,6 +124,14 @@
       <button type="button" @click="addingOrders = !addingOrders"
         class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-sm flex items-center gap-2 transition-all">
         <i class="fa-solid fa-plus"></i> เพิ่มออเดอร์
+      </button>
+      <% } %>
+
+      <!-- Retroactive attach — admin/manager only, parcel rode along unscanned -->
+      <% if (can.retroAttachOrder && ['DEPARTED','AT_BORDER','CROSSED','ARRIVED','UNLOADING'].includes(trip.status) && availableOrders.length > 0) { %>
+      <button type="button" @click="retroAttaching = !retroAttaching"
+        class="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 text-sm flex items-center gap-2 transition-all font-semibold">
+        <i class="fa-solid fa-clock-rotate-left"></i> เพิ่มออเดอร์ย้อนหลัง
       </button>
       <% } %>
 
@@ -322,6 +330,69 @@
       <div class="px-4 pb-4">
         <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:shadow-indigo-500/25 hover:shadow-lg transition-all">
           <i class="fa-solid fa-paperclip"></i> บันทึกรายการที่เลือก
+        </button>
+      </div>
+    </form>
+    <% } else { %>
+    <div class="p-8 text-center text-slate-600">
+      <i class="fa-solid fa-box-open text-3xl mb-2 opacity-20"></i>
+      <div class="text-sm">ไม่มีออเดอร์ที่รอผูกรอบรถ (ทิศทาง <%= trip.direction %>)</div>
+    </div>
+    <% } %>
+  </div>
+  <% } %>
+
+  <!-- ─── Retroactive Attach Panel (admin/manager only) ────────────────
+       For a parcel that physically rode along on this trip without ever
+       being scanned — force-jumps it straight to whatever order status
+       matches where this trip currently is. Deliberately separate from
+       the normal "เพิ่มออเดอร์" panel above: amber/warning styling, a
+       required reason field for the audit trail, and gated tighter
+       (admin/manager only, not dispatcher). -->
+  <% if (can.retroAttachOrder && ['DEPARTED','AT_BORDER','CROSSED','ARRIVED','UNLOADING'].includes(trip.status)) { %>
+  <div x-show="retroAttaching" x-cloak class="rounded-2xl overflow-hidden border border-amber-500/25 bg-amber-500/5">
+    <div class="px-5 py-3 border-b border-amber-500/15 flex items-center justify-between">
+      <div class="text-sm font-bold text-amber-300 flex items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        เพิ่มออเดอร์ย้อนหลัง — ติดรถมาโดยไม่ได้สแกน
+        <span class="px-2 py-0.5 rounded-full bg-white/10 text-xs text-slate-400"><%= availableOrders.length %> รายการ</span>
+      </div>
+      <button type="button" @click="retroAttaching = false" class="text-slate-500 hover:text-white transition-colors">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <% if (availableOrders.length > 0) { %>
+    <form method="POST" action="/trips/<%= trip.id %>/orders/retroactive">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="px-4 pt-4 text-xs text-amber-200/80">
+        รอบรถนี้อยู่ที่สถานะ <b><%= STATUS_LABELS[trip.status] || trip.status %></b> — ออเดอร์ที่เลือกจะถูกดันสถานะตามไปด้วยทันที (ไม่ต้องสแกนย้อนตามลำดับ) ใช้เฉพาะกรณีที่ยืนยันแล้วว่าของอยู่บนรถจริง
+      </div>
+      <div class="p-4 grid md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+        <% availableOrders.forEach(o => { %>
+        <label class="flex items-start gap-2.5 p-3 rounded-xl border border-amber-500/15 bg-white/3 hover:bg-white/6 cursor-pointer transition-all group">
+          <input type="checkbox" name="order_ids" value="<%= o.id %>"
+            class="mt-0.5 w-4 h-4 rounded border-slate-600 text-amber-500 bg-slate-800 flex-shrink-0">
+          <div class="min-w-0">
+            <div class="font-mono font-bold text-sm text-white group-hover:text-amber-300 transition-colors"><%= o.job_no %></div>
+            <div class="text-[11px] text-slate-500 truncate"><%= o.sender_name %> → <%= o.receiver_name %></div>
+            <div class="flex gap-2 mt-0.5">
+              <% if (o.declared_weight) { %>
+              <span class="text-[10px] text-slate-400"><%= o.declared_weight %> กก.</span>
+              <% } %>
+              <% if (o.cod_amount > 0) { %>
+              <span class="text-[10px] text-amber-400">COD ฿<%= Number(o.cod_amount).toLocaleString() %></span>
+              <% } %>
+            </div>
+          </div>
+        </label>
+        <% }) %>
+      </div>
+      <div class="px-4 pb-4 space-y-2">
+        <label class="block text-xs font-semibold text-amber-200/80">เหตุผล (บันทึกในประวัติออเดอร์) <span class="text-red-400">*</span></label>
+        <input type="text" name="reason" required maxlength="255" placeholder="เช่น เจอของตกค้างตอนขนลง ยืนยันว่าติดรถ TR-... มาจริง"
+          class="w-full px-3 py-2 rounded-lg border border-amber-500/20 bg-slate-900/60 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500/50">
+        <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:shadow-amber-500/25 hover:shadow-lg transition-all">
+          <i class="fa-solid fa-clock-rotate-left"></i> ยืนยันเพิ่มย้อนหลัง
         </button>
       </div>
     </form>
