@@ -17,6 +17,7 @@
  * │ Close order (irreversible)      │ admin, manager only                       │
  * │ Add payment/expense             │ admin, manager, finance, dispatcher       │
  * │ Delete payment (destructive)    │ admin, manager, finance only              │
+ * │ Delete order (permanent)        │ owner only — test-data cleanup            │
  * └─────────────────────────────────┴───────────────────────────────────────────┘
  */
 import { Router } from 'express';
@@ -120,6 +121,11 @@ router.post('/orders/:id/return',
 router.post('/orders/:id/close',
   requireLogin, requireRole(ROLES_CLOSE_ORDER),
   orders.closeOrder);
+
+// Delete order — OWNER ONLY, permanent (test-data cleanup; not for production use)
+router.post('/orders/:id/delete',
+  requireLogin, requireRole(['owner']),
+  orders.deleteOrder);
 
 // ─── Phase 2: Warehouse Screening ─────────────────────────────────────────────
 

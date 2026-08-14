@@ -999,6 +999,51 @@ export async function closeOrder(req, res) {
   }
 }
 
+// ─── Delete order — OWNER ONLY, permanent (test-data cleanup, not for production use) ─
+export async function deleteOrder(req, res) {
+  const { id } = req.params;
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) {
+    req.session.flash = { type: 'error', message: 'ไม่พบออเดอร์นี้' };
+    return res.redirect('/orders');
+  }
+
+  try {
+    await withTransaction(async (conn) => {
+      // Tables below have no ON DELETE CASCADE from orders (verified against
+      // information_schema.REFERENTIAL_CONSTRAINTS — most are NO ACTION, and
+      // delivery_events has no FK at all despite what the migration file says),
+      // so they must be cleared explicitly before the order row can be removed.
+      // Only delivery_offers/delivery_offer_recipients (ON DELETE CASCADE) and
+      // crm_cases.related_order_id (ON DELETE SET NULL) are handled by the DB.
+      await conn.query('DELETE FROM delivery_events WHERE order_id = ?', [id]);
+      await conn.query(
+        `DELETE br FROM branch_revenue br
+         JOIN branch_deliveries bd ON bd.id = br.delivery_id
+         WHERE bd.order_id = ?`, [id]
+      );
+      await conn.query('DELETE FROM branch_deliveries WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM order_status_logs WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM trip_orders WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM payments WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM cod_settlements WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM order_flags WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM dispatch_assignments WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM customer_notification_outbox WHERE order_id = ?', [id]);
+      await conn.query('UPDATE partner_quotations SET order_id = NULL WHERE order_id = ?', [id]);
+      await conn.query('DELETE FROM orders WHERE id = ?', [id]);
+    });
+
+    console.warn(`[deleteOrder] ${order.job_no} (id=${id}) permanently deleted by ${req.session.user?.username || 'unknown'}`);
+    req.session.flash = { type: 'success', message: `ลบออเดอร์ ${order.job_no} เรียบร้อยแล้ว` };
+    return res.redirect('/orders');
+  } catch (err) {
+    console.error('[deleteOrder] failed:', err);
+    req.session.flash = { type: 'error', message: 'ลบออเดอร์ไม่สำเร็จ: ' + err.message };
+    return res.redirect(`/orders/${id}`);
+  }
+}
+
 export async function printWaybill(req, res) {
   const { id } = req.params;
   // Get order with sender/receiver details

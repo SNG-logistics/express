@@ -102,6 +102,7 @@
 
   // Role gating (can is also passed from controller, but keep local for quick template use)
   const role = user?.role || '';
+  const isOwner    = role === 'owner';
   const isAdmin    = ['owner','admin','manager'].includes(role);
   const isFinance  = ['owner','admin','manager','finance'].includes(role);
   const isTH_WH    = ['owner','admin','manager','warehouse_th','thai_warehouse'].includes(role);
@@ -199,6 +200,15 @@
         <a href="/orders" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 text-xs hover:bg-white/10 transition-all">
           <i class="fa-solid fa-arrow-left text-xs"></i> รายการ
         </a>
+        <% if (isOwner) { %>
+        <form action="/orders/<%= order.id %>/delete" method="post" class="border-l border-white/10 pl-2 ml-1"
+          onsubmit="return confirm('⚠️ ลบออเดอร์ <%= order.job_no %> ถาวร?\n\nข้อมูลที่เกี่ยวข้องทั้งหมด (การชำระเงิน, ประวัติสถานะ, COD ฯลฯ) จะถูกลบไปด้วยกัน กู้คืนไม่ได้\n\nใช้สำหรับลบข้อมูลทดสอบเท่านั้น — กดตกลงเพื่อยืนยัน')">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-xs font-bold hover:bg-red-500/20 transition-all">
+            <i class="fa-solid fa-trash-can text-xs"></i> ลบออเดอร์
+          </button>
+        </form>
+        <% } %>
       </div>
     </div>
 
