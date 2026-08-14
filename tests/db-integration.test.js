@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import pool from '../src/config/db.js';
 import { transitionOrder } from '../src/services/orderWorkflowService.js';
 import { CRM_ROLES, OPERATIONAL_ROLES } from '../src/middleware/auth.js';
+import { CUSTOMER_NOTIFICATION_STATUSES } from '../src/services/notificationService.js';
 
 test('database accepts every application role', async () => {
   const conn = await pool.getConnection();
@@ -75,7 +76,10 @@ test('scanner transition and notification outbox commit atomically', async () =>
       `SELECT COUNT(*) count FROM customer_notification_outbox WHERE order_id=?`,
       [created.insertId]
     );
-    assert.equal(Number(queued.count), chain.length);
+    // Customer WhatsApp is intentionally limited to two touch-points (see
+    // notificationService.js), not one notification per status in the chain.
+    const expectedNotifications = chain.filter(([status]) => CUSTOMER_NOTIFICATION_STATUSES.has(status)).length;
+    assert.equal(Number(queued.count), expectedNotifications);
   } finally {
     await conn.rollback();
     conn.release();
