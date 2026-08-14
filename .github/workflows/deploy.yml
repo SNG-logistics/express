@@ -4,8 +4,8 @@
 # `npm run deploy` (scripts/deploy.js ทำ git pull + npm install + migrate DB
 # + restart Passenger ให้เองอยู่แล้ว จึงไม่ต้องสั่ง git pull ซ้ำที่นี่)
 #
-# ต้องตั้งค่า GitHub Secrets 4 ตัวก่อน ที่:
-#   Repo → Settings → Secrets and variables → Actions → New repository secret
+# ต้องตั้งค่า GitHub Secrets 4 ตัวก่อน (ตอนนี้เก็บไว้ใต้ Environment ชื่อ
+# "SSH_HOST" — ดูบรรทัด `environment:` ด้านล่าง ต้องตรงกับชื่อนั้นเป๊ะ):
 #     SSH_HOST      = IP หรือโดเมนของเซิร์ฟเวอร์
 #     SSH_PORT      = พอร์ต SSH (เช่น 22)
 #     SSH_USERNAME  = username จากหน้า Plesk "System user's credentials"
@@ -27,6 +27,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: SSH_HOST   # secrets ถูกเก็บไว้ใต้ environment นี้ ต้องระบุตรงนี้ถึงจะอ่านค่าได้
     steps:
       - name: SSH เข้าเซิร์ฟเวอร์แล้วรัน npm run deploy
         uses: appleboy/ssh-action@v1
