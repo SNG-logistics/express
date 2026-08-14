@@ -486,7 +486,10 @@ export async function quickReplyCreate(req, res) {
     return res.redirect('/crm/quick-replies');
   } catch (err) {
     console.error('[CRM] quickReplyCreate:', err);
-    req.session.flash = { type: 'error', message: 'บันทึกล้มเหลว: ' + err.message };
+    const message = err.code === 'ER_DUP_ENTRY'
+      ? `Shortcut "${req.body.shortcut_key}" มีคนใช้ไปแล้ว — ตั้งชื่ออื่น`
+      : 'บันทึกล้มเหลว: ' + err.message;
+    req.session.flash = { type: 'error', message };
     return res.redirect('/crm/quick-replies');
   }
 }
@@ -499,7 +502,10 @@ export async function quickReplyUpdate(req, res) {
     return res.json({ ok: true });
   } catch (err) {
     console.error('[CRM] quickReplyUpdate:', err);
-    return res.status(500).json({ ok: false, error: err.message });
+    const error = err.code === 'ER_DUP_ENTRY'
+      ? `Shortcut "${req.body.shortcut_key}" มีคนใช้ไปแล้ว — ตั้งชื่ออื่น`
+      : err.message;
+    return res.status(500).json({ ok: false, error });
   }
 }
 
