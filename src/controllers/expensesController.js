@@ -152,53 +152,94 @@ export async function exportExcel(req, res) {
       ORDER BY e.expense_date DESC, e.created_at DESC
     `, params);
 
-    // Build CSV with UTF-8 BOM
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=expenses_report.csv');
-    
-    // Write UTF-8 BOM
-    res.write('\ufeff');
+    // Currency-split summary (same shape as the index page)
+    const [[s]] = await pool.query(`
+      SELECT
+        SUM(CASE WHEN e.category='CAPITAL' AND (e.currency='THB' OR e.currency IS NULL) THEN e.amount ELSE 0 END) AS cap_thb,
+        SUM(CASE WHEN e.category='CAPITAL' AND e.currency='LAK' THEN e.amount ELSE 0 END) AS cap_lak,
+        SUM(CASE WHEN e.category='CAPITAL' AND e.currency='USD' THEN e.amount ELSE 0 END) AS cap_usd,
+        SUM(CASE WHEN e.category='TRIP' AND (e.currency='THB' OR e.currency IS NULL) THEN e.amount ELSE 0 END) AS trip_thb,
+        SUM(CASE WHEN e.category='TRIP' AND e.currency='LAK' THEN e.amount ELSE 0 END) AS trip_lak,
+        SUM(CASE WHEN e.category='TRIP' AND e.currency='USD' THEN e.amount ELSE 0 END) AS trip_usd,
+        SUM(CASE WHEN e.category='ADMIN' AND (e.currency='THB' OR e.currency IS NULL) THEN e.amount ELSE 0 END) AS adm_thb,
+        SUM(CASE WHEN e.category='ADMIN' AND e.currency='LAK' THEN e.amount ELSE 0 END) AS adm_lak,
+        SUM(CASE WHEN e.category='ADMIN' AND e.currency='USD' THEN e.amount ELSE 0 END) AS adm_usd,
+        SUM(CASE WHEN e.currency='THB' OR e.currency IS NULL THEN e.amount ELSE 0 END) AS all_thb,
+        SUM(CASE WHEN e.currency='LAK' THEN e.amount ELSE 0 END) AS all_lak,
+        SUM(CASE WHEN e.currency='USD' THEN e.amount ELSE 0 END) AS all_usd,
+        COUNT(*) AS cnt
+      FROM expenses e ${whereStr}
+    `, params);
 
-    // Headers
-    const headers = ['วันที่', 'หมวดหมู่', 'ประเภทรายจ่าย', 'รายละเอียด', 'ยอดเงิน', 'สกุลเงิน', 'ผู้จ่าย/นักลงทุน', 'รอบรถ', 'ผู้บันทึก', 'วันที่บันทึก'];
-    res.write(headers.map(escapeCSV).join(',') + '\r\n');
+    const [[rTHB_LAK]] = await pool.query("SELECT rate FROM exchange_rates WHERE pair='THB_LAK' ORDER BY created_at DESC LIMIT 1");
+    const [[rUSD_THB]] = await pool.query("SELECT rate FROM exchange_rates WHERE pair='USD_THB' ORDER BY created_at DESC LIMIT 1");
+    const thbLak = Number(rTHB_LAK?.rate) || 580;   // LAK per 1 THB
+    const usdThb = Number(rUSD_THB?.rate) || 36;    // THB per 1 USD
+    const thbEquiv = Number(s.all_thb) + (Number(s.all_lak) / thbLak) + (Number(s.all_usd) * usdThb);
 
-    for (const exp of expenses) {
-      const categoryLabel = CATEGORY_MAP[exp.category] || exp.category;
-      const formattedDate = exp.expense_date ? new Date(exp.expense_date).toISOString().split('T')[0] : '';
-      const formattedCreatedAt = exp.created_at ? new Date(exp.created_at).toLocaleString('th-TH') : '';
-      
-      const row = [
-        formattedDate,
-        categoryLabel,
-        exp.type,
-        exp.description || '',
-        exp.amount,
-        exp.currency,
-        exp.paid_by || '',
-        exp.trip_no || '',
-        exp.created_by_name || '',
-        formattedCreatedAt
-      ];
-      
-      res.write(row.map(escapeCSV).join(',') + '\r\n');
-    }
-    
-    res.end();
+    const htmlEsc = (val) => (val === null || val === undefined) ? ''
+      : String(val).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    const fmtNum = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const today = new Date().toLocaleString('th-TH');
+    const rangeTxt = (start_date || end_date) ? `${start_date || '…'} ถึง ${end_date || '…'}` : 'ทั้งหมด';
+
+    const sumRow = (label, thb, lak, usd, bold = false) =>
+      `<tr${bold ? ' style="font-weight:bold;background:#fff3cd"' : ''}>` +
+      `<td>${htmlEsc(label)}</td>` +
+      `<td style="text-align:right">${fmtNum(thb)}</td>` +
+      `<td style="text-align:right">${fmtNum(lak)}</td>` +
+      `<td style="text-align:right">${fmtNum(usd)}</td></tr>`;
+
+    const detailRows = expenses.map(exp => {
+      const d = exp.expense_date ? new Date(exp.expense_date).toISOString().split('T')[0] : '';
+      return `<tr><td>${htmlEsc(d)}</td>` +
+        `<td>${htmlEsc(CATEGORY_MAP[exp.category] || exp.category)}</td>` +
+        `<td>${htmlEsc(exp.type)}</td>` +
+        `<td>${htmlEsc(exp.description || '')}</td>` +
+        `<td style="text-align:right">${fmtNum(exp.amount)}</td>` +
+        `<td style="text-align:center">${htmlEsc(exp.currency || 'THB')}</td>` +
+        `<td>${htmlEsc(exp.paid_by || '')}</td>` +
+        `<td>${htmlEsc(exp.trip_no || '')}</td>` +
+        `<td>${htmlEsc(exp.created_by_name || '')}</td></tr>`;
+    }).join('');
+
+    const html = `<html><head><meta charset="utf-8">
+      <style>
+        body{font-family:'Tahoma','Noto Sans Thai',sans-serif;font-size:13px}
+        h2{margin:0 0 4px} h3{margin:14px 0 4px}
+        table{border-collapse:collapse;margin:6px 0}
+        th,td{border:1px solid #999;padding:5px 9px}
+        th{background:#1f2937;color:#fff}
+        .meta{color:#555;margin-bottom:8px}
+        .big{font-size:16px;font-weight:bold;color:#b45309;margin:6px 0}
+      </style></head><body>
+      <h2>รายงานรายจ่าย — SNG Logistics</h2>
+      <div class="meta">ช่วงวันที่: <b>${htmlEsc(rangeTxt)}</b> · จำนวน ${Number(s.cnt) || 0} รายการ · ออกรายงาน: ${htmlEsc(today)}</div>
+      <table>
+        <tr><th>หมวดหมู่</th><th>THB (฿)</th><th>LAK (₭)</th><th>USD ($)</th></tr>
+        ${sumRow('เงินลงทุน/ก่อตั้ง (CAPEX)', s.cap_thb, s.cap_lak, s.cap_usd)}
+        ${sumRow('รายจ่ายรอบรถ (OPEX)', s.trip_thb, s.trip_lak, s.trip_usd)}
+        ${sumRow('รายจ่ายบริหาร (Admin)', s.adm_thb, s.adm_lak, s.adm_usd)}
+        ${sumRow('รวมทั้งหมด', s.all_thb, s.all_lak, s.all_usd, true)}
+      </table>
+      <div class="big">รวมเทียบเท่า THB: ฿${fmtNum(thbEquiv)}</div>
+      <div class="meta">อัตราแลกเปลี่ยนที่ใช้: 1 THB = ${fmtNum(thbLak)} LAK · 1 USD = ${fmtNum(usdThb)} THB</div>
+      <h3>รายละเอียดรายจ่าย</h3>
+      <table>
+        <tr><th>วันที่</th><th>หมวดหมู่</th><th>ประเภท</th><th>รายละเอียด</th><th>ยอดเงิน</th><th>สกุล</th><th>ผู้จ่าย/นักลงทุน</th><th>รอบรถ</th><th>ผู้บันทึก</th></tr>
+        ${detailRows || '<tr><td colspan="9" style="text-align:center">ไม่มีรายการ</td></tr>'}
+      </table>
+      </body></html>`;
+
+    const stamp = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=expenses_report_${stamp}.xls`);
+    res.send('﻿' + html);
   } catch (err) {
     console.error('[Expenses.exportExcel]', err);
     res.status(500).send('Error exporting expenses');
   }
-}
-
-function escapeCSV(val) {
-  if (val === null || val === undefined) return '';
-  let str = String(val);
-  str = str.replace(/"/g, '""');
-  if (str.includes(',') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
-    return `"${str}"`;
-  }
-  return str;
 }
 
 export async function newExpense(req, res) {
