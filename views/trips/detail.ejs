@@ -239,6 +239,89 @@
   </div>
   <% } %>
 
+  <!-- ─── Trip P&L (revenue incl. ร้านฝากส่ง, minus expenses) ─────────── -->
+  <% if (can.viewFinancials) { %>
+  <%
+    const expenseThb = Number(expensesSummary.THB || 0)
+      + Number(expensesSummary.LAK || 0) / rates.thb_lak
+      + Number(expensesSummary.USD || 0) * rates.usd_thb;
+    const revenueThb = totals.freight + totals.partnerRevenue;
+    const netThb = revenueThb - expenseThb;
+  %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/8 text-sm font-bold text-white flex items-center gap-2">
+      <i class="fa-solid fa-scale-balanced text-indigo-400"></i>
+      กำไร-ขาดทุนรอบรถนี้ (คำนวณเป็นบาท)
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/8">
+      <div class="p-4">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">ค่าขนส่งออเดอร์</div>
+        <div class="text-lg font-black text-emerald-400 mt-1 font-mono">฿<%= totals.freight.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      </div>
+      <div class="p-4">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">รายได้ร้านฝากส่ง</div>
+        <div class="text-lg font-black text-cyan-400 mt-1 font-mono">฿<%= totals.partnerRevenue.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+        <div class="text-[10px] text-slate-500 mt-0.5">เก็บแล้ว ฿<%= totals.partnerCollected.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      </div>
+      <div class="p-4">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">รายจ่ายรอบรถ</div>
+        <div class="text-lg font-black text-red-400 mt-1 font-mono">฿<%= expenseThb.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+        <% if (expensesSummary.LAK > 0 || expensesSummary.USD > 0) { %>
+        <div class="text-[10px] text-slate-500 mt-0.5">แปลงจาก LAK/USD ตามเรทล่าสุด</div>
+        <% } %>
+      </div>
+      <div class="p-4 <%= netThb >= 0 ? 'bg-emerald-500/5' : 'bg-red-500/5' %>">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">กำไรสุทธิ</div>
+        <div class="text-lg font-black <%= netThb >= 0 ? 'text-emerald-400' : 'text-red-400' %> mt-1 font-mono">
+          <%= netThb >= 0 ? '฿' : '-฿' %><%= Math.abs(netThb).toLocaleString(undefined,{maximumFractionDigits:0}) %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- ─── Partner cargo on this trip (ร้านฝากส่ง) ──────────────────────── -->
+  <% if (partnerBookings.length > 0) { %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/8 text-sm font-bold text-white flex items-center gap-2">
+      <i class="fa-solid fa-boxes-packing text-cyan-400"></i>
+      สินค้าร้านฝากส่งในรอบรถนี้
+      <span class="px-2 py-0.5 rounded-full bg-white/10 text-xs text-slate-400"><%= partnerBookings.length %> รายการ</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="text-[10px] text-slate-500 uppercase bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-5 py-2">เลขจอง</th>
+            <th class="px-5 py-2">พาร์ทเนอร์</th>
+            <th class="px-5 py-2 text-right">น้ำหนัก</th>
+            <th class="px-5 py-2 text-right">ยอดรวม</th>
+            <th class="px-5 py-2 text-center">ชำระ</th>
+            <th class="px-5 py-2 text-center">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <% partnerBookings.forEach(b => { %>
+          <tr class="hover:bg-white/3 transition-colors">
+            <td class="px-5 py-2.5"><a href="/freight/<%= b.id %>" class="font-mono text-cyan-300 hover:underline"><%= b.booking_no %></a></td>
+            <td class="px-5 py-2.5 text-slate-300"><%= b.partner_name %></td>
+            <td class="px-5 py-2.5 text-right font-mono text-white"><%= Number(b.total_weight_kg||0).toFixed(1) %> กก.</td>
+            <td class="px-5 py-2.5 text-right font-mono text-emerald-400">฿<%= Number(b.grand_total_thb).toLocaleString() %></td>
+            <td class="px-5 py-2.5 text-center">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold
+                <%= b.payment_status==='PAID' ? 'bg-emerald-500/15 text-emerald-400' : b.payment_status==='PARTIAL' ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-500/15 text-slate-400' %>">
+                <%= b.payment_status %>
+              </span>
+            </td>
+            <td class="px-5 py-2.5 text-center text-xs text-slate-400"><%= b.status %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
   <!-- ─── Quick Edit Panel (collapsible) ───────────────────────────── -->
   <% if (!isLocked && can.createTrip) { %>
   <div x-show="editingTrip" x-cloak class="glass-panel-dark rounded-2xl overflow-hidden">

@@ -3,7 +3,7 @@
  */
 import { Router } from 'express';
 import * as sb from '../controllers/spaceBookingController.js';
-import { requireLogin, requireRole } from '../middleware/auth.js';
+import { requireLogin, requireRole, ROLES_FINANCE } from '../middleware/auth.js';
 
 const ROLES_FREIGHT = ['admin', 'manager', 'dispatcher', 'finance', 'staff'];
 
@@ -20,7 +20,10 @@ router.get('/freight/new',             requireLogin, requireRole(ROLES_FREIGHT),
 router.post('/freight',                requireLogin, requireRole(ROLES_FREIGHT), sb.createBooking);
 router.get('/freight/:id(\\d+)',       requireLogin, requireRole(ROLES_FREIGHT), sb.bookingDetail);
 router.post('/freight/:id/status',     requireLogin, requireRole(ROLES_FREIGHT), sb.updateStatus);
-router.post('/freight/:id/payment',    requireLogin, requireRole(ROLES_FREIGHT), sb.recordPayment);
+// Payment collection is deliberately tighter than the rest of the freight
+// module — dispatcher/staff can manage bookings, but only finance-capable
+// roles record money received, matching how COD remit is gated on orders.
+router.post('/freight/:id/payment',    requireLogin, requireRole(ROLES_FINANCE), sb.recordPayment);
 
 // ─── Print documents ─────────────────────────────────────────────────────────
 router.get('/freight/:id/quote',       requireLogin, requireRole(ROLES_FREIGHT), sb.printQuote);

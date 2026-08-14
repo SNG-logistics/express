@@ -364,7 +364,31 @@
         </div>
       </div>
 
-      <!-- ④ EXPENSES TABLE -->
+      <!-- ④ REVENUE SUMMARY -->
+      <div class="section-title">
+        <span>💰 รายได้ของรอบรถนี้ (Revenue)</span>
+        <span style="font-size: 7.5pt; font-weight: normal; color: #475569;">ข้อมูลประกอบ ไม่ใช่รายการขออนุมัติ</span>
+      </div>
+      <div class="info-grid" style="border-bottom: 2px solid #111;">
+        <div class="info-panel">
+          <div class="info-row">
+            <span class="info-key">ค่าขนส่งออเดอร์ (<%= cargoCount %> รายการ):</span>
+            <span class="info-val font-mono">฿<%= revenueFreight.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">รายได้ร้านฝากส่ง (<%= partnerBookings.length %> รายการ):</span>
+            <span class="info-val font-mono">฿<%= revenuePartner.toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
+        </div>
+        <div class="info-panel">
+          <div class="info-row">
+            <span class="info-key">รวมรายได้ทั้งหมด:</span>
+            <span class="info-val font-mono" style="font-size: 10.5pt; color: #047857;">฿<%= (revenueFreight + revenuePartner).toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑤ EXPENSES TABLE -->
       <div class="expenses-section">
         <div class="section-title">
           <span>📋 รายงานแจกแจงค่าใช้จ่ายจริงในรอบรถ (Actual Expenses)</span>
@@ -459,6 +483,11 @@
           <% } else { %>
             <div class="total-item" style="color:#94a3b8;">— ไม่มีรายจ่าย —</div>
           <% } %>
+          <% const netThb = (revenueFreight + revenuePartner) - totalInThb; %>
+          <div class="total-item" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1; color: <%= netThb >= 0 ? '#047857' : '#b91c1c' %>;">
+            กำไร-ขาดทุนสุทธิรอบรถ (รายได้ - รายจ่าย):
+            <span><%= netThb >= 0 ? '฿' : '-฿' %><%= Math.abs(netThb).toLocaleString('th-TH', {minimumFractionDigits:2}) %></span>
+          </div>
         </div>
       </div>
 

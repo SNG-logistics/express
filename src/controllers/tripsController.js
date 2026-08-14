@@ -271,9 +271,29 @@ export async function detail(req, res) {
     count:    acc.count    + 1,
   }), { freight: 0, cod: 0, weight: 0, customs: 0, count: 0 });
 
-  // Capacity % (if max_weight set)
+  // Partner cargo riding this trip (ร้านฝากส่ง) — separate revenue stream from
+  // totals.freight (regular customer orders), so it's never folded into that
+  // field; kept distinct all the way to the view.
+  const [partnerBookings] = await pool.query(`
+    SELECT sb.id, sb.booking_no, sb.status, sb.total_weight_kg,
+           sb.grand_total_thb, sb.paid_amount_thb, sb.payment_status,
+           fp.company_name AS partner_name
+    FROM space_bookings sb
+    JOIN freight_partners fp ON fp.id = sb.partner_id
+    WHERE sb.trip_id = ?
+    ORDER BY sb.created_at ASC
+  `, [id]);
+
+  totals.partnerRevenue   = partnerBookings.reduce((s, b) => s + (b.status === 'CANCELLED' ? 0 : Number(b.grand_total_thb || 0)), 0);
+  totals.partnerCollected = partnerBookings.reduce((s, b) => s + (b.status === 'CANCELLED' ? 0 : Number(b.paid_amount_thb || 0)), 0);
+  totals.partnerWeight    = partnerBookings.reduce((s, b) => s + (b.status === 'CANCELLED' ? 0 : Number(b.total_weight_kg || 0)), 0);
+
+  // Capacity % (if max_weight set) — counts partner cargo too, same as the
+  // capacity check in attachOrders()/space booking attach, so this number
+  // never understates how full the truck actually is.
+  const loadedWeight = totals.weight + totals.partnerWeight;
   totals.capacityPct = trip.max_weight > 0
-    ? Math.min(100, Math.round(totals.weight / trip.max_weight * 100))
+    ? Math.min(100, Math.round(loadedWeight / trip.max_weight * 100))
     : null;
 
   // Available orders (same direction, not yet in any active trip)
@@ -343,6 +363,7 @@ export async function detail(req, res) {
     tripOrders,
     totals,
     availableOrders,
+    partnerBookings,
     tripLogs,
     tripExpenses,
     expensesSummary,
@@ -393,8 +414,17 @@ export async function attachOrders(req, res) {
          FROM trip_orders t JOIN orders o ON o.id=t.order_id WHERE t.trip_id=?`,
         [id]
       );
+      // Partner cargo (ร้านฝากส่ง) rides the same truck — count it too, or a
+      // trip could look like it has room when it's already full of freight
+      // bookings.
+      const [[currentBookings]] = await conn.query(
+        `SELECT COALESCE(SUM(total_weight_kg),0) total FROM space_bookings
+         WHERE trip_id=? AND status <> 'CANCELLED'`,
+        [id]
+      );
       const added = orders.reduce((sum, order) => sum + Number(order.load_weight || 0), 0);
-      if (trip.max_weight && Number(current.total) + added > Number(trip.max_weight)) {
+      const loaded = Number(current.total) + Number(currentBookings.total);
+      if (trip.max_weight && loaded + added > Number(trip.max_weight)) {
         throw new WorkflowError('Trip capacity would be exceeded', 409);
       }
       const vals = numericIds.map(() => '(?,?)').join(',');
@@ -742,7 +772,7 @@ export async function printExpenses(req, res) {
     `, [id]);
 
     const [tripExpenses] = await pool.query(`
-      SELECT e.*, u.name as created_by_name 
+      SELECT e.*, u.name as created_by_name
       FROM expenses e
       LEFT JOIN users u ON e.created_by = u.id
       WHERE e.trip_id = ?
@@ -755,6 +785,16 @@ export async function printExpenses(req, res) {
       acc[cur] = (acc[cur] || 0) + amt;
       return acc;
     }, { THB: 0, LAK: 0, USD: 0 });
+
+    // Revenue side — order freight + partner cargo (ร้านฝากส่ง) riding this
+    // trip, so the printed memo shows the full picture, not just the outflow.
+    const revenueFreight = tripOrders.reduce((s, o) => s + Number(o.price_amount || 0), 0);
+    const [partnerBookings] = await pool.query(`
+      SELECT sb.booking_no, sb.status, sb.grand_total_thb, sb.paid_amount_thb, fp.company_name AS partner_name
+      FROM space_bookings sb JOIN freight_partners fp ON fp.id = sb.partner_id
+      WHERE sb.trip_id = ? ORDER BY sb.created_at ASC
+    `, [id]);
+    const revenuePartner = partnerBookings.reduce((s, b) => s + (b.status === 'CANCELLED' ? 0 : Number(b.grand_total_thb || 0)), 0);
 
     const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
     const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
@@ -777,6 +817,9 @@ export async function printExpenses(req, res) {
       tripOrders,
       tripExpenses,
       expensesSummary,
+      partnerBookings,
+      revenueFreight,
+      revenuePartner,
       rates,
       company,
       user: req.session.user

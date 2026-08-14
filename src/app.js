@@ -314,7 +314,8 @@ app.use((req, res, next) => {
     // Branch portal
     branchPortal:      has('admin','manager','branch_operator'),
     // ร้านฝากส่ง
-    manageFreight:     has('admin','manager','dispatcher','finance','staff'),
+    manageFreight:         has('admin','manager','dispatcher','finance','staff'),
+    collectFreightPayment: has('admin','manager','finance'),  // รับชำระเงิน — เข้มกว่า manageFreight
     // Expenses — accounting is read-only (view/export only, no add/delete)
     addExpense:        has('admin','manager','finance','dispatcher','driver_support'),
     deleteExpense:     has('admin','manager'),

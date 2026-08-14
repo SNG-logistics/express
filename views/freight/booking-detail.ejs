@@ -250,8 +250,8 @@
           <% } %>
         </div>
 
-        <%# Record payment %>
-        <% if (booking.payment_status !== 'PAID' && booking.status !== 'CANCELLED') { %>
+        <%# Record payment — finance-capable roles only %>
+        <% if (can.collectFreightPayment && booking.payment_status !== 'PAID' && booking.status !== 'CANCELLED') { %>
         <form action="/freight/<%= booking.id %>/payment" method="POST" class="mt-4 space-y-2 pt-4 border-t border-white/8">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">บันทึกรับชำระ</div>

@@ -50,6 +50,41 @@ function calcTotals({ unit_price, quantity, discount, vat_pct }) {
   return { subtotal, total, vat_amount, grand_total };
 }
 
+/**
+ * Checks whether attaching `addedWeightKg` more cargo to `tripId` would blow
+ * past the truck's max_weight — counting BOTH regular orders already on the
+ * trip (trip_orders) AND other space_bookings already on it, since both
+ * physically ride the same truck. `excludeBookingId` lets an already-attached
+ * booking re-check itself (e.g. weight edited) without double-counting.
+ * No-ops (always OK) if the trip has no max_weight set.
+ * @returns {Promise<{ok:boolean, message?:string}>}
+ */
+async function checkTripCapacity(tripId, addedWeightKg, excludeBookingId = null) {
+  const [[trip]] = await pool.query('SELECT max_weight FROM trips WHERE id = ?', [tripId]);
+  if (!trip || !trip.max_weight) return { ok: true };
+
+  const [[orderLoad]] = await pool.query(
+    `SELECT COALESCE(SUM(COALESCE(o.actual_weight,o.declared_weight,o.weight_kg,0)),0) total
+     FROM trip_orders t JOIN orders o ON o.id = t.order_id WHERE t.trip_id = ?`,
+    [tripId]
+  );
+  const [[bookingLoad]] = await pool.query(
+    `SELECT COALESCE(SUM(total_weight_kg),0) total FROM space_bookings
+     WHERE trip_id = ? AND status <> 'CANCELLED' AND id <> ?`,
+    [tripId, excludeBookingId || 0]
+  );
+
+  const current = Number(orderLoad.total) + Number(bookingLoad.total);
+  const added = Number(addedWeightKg) || 0;
+  if (current + added > Number(trip.max_weight)) {
+    return {
+      ok: false,
+      message: `น้ำหนักเกินความจุรถ (รถรับได้ ${trip.max_weight} กก. ตอนนี้มีของแล้ว ${current.toFixed(1)} กก. + ที่จะเพิ่ม ${added.toFixed(1)} กก.)`,
+    };
+  }
+  return { ok: true };
+}
+
 // ─── GET /freight/partners — รายการพาร์ทเนอร์ ─────────────────────────────────
 export async function listPartners(req, res) {
   try {
@@ -256,6 +291,14 @@ export async function createBooking(req, res) {
       return res.redirect('/freight/new');
     }
 
+    if (trip_id) {
+      const capacity = await checkTripCapacity(Number(trip_id), total_weight_kg);
+      if (!capacity.ok) {
+        req.session.flash = { type: 'error', message: capacity.message };
+        return res.redirect('/freight/new');
+      }
+    }
+
     const totals = calcTotals({
       unit_price: unit_price_thb,
       quantity,
@@ -384,7 +427,7 @@ export async function updateStatus(req, res) {
       return res.redirect(`/freight/${id}`);
     }
 
-    const [[booking]] = await pool.query('SELECT id, status, booking_no FROM space_bookings WHERE id = ?', [id]);
+    const [[booking]] = await pool.query('SELECT id, status, booking_no, trip_id, total_weight_kg FROM space_bookings WHERE id = ?', [id]);
     if (!booking) {
       req.session.flash = { type: 'error', message: 'ไม่พบรายการจอง' };
       return res.redirect('/freight');
@@ -392,6 +435,15 @@ export async function updateStatus(req, res) {
     if (!(BOOKING_TRANSITIONS[booking.status] || []).includes(new_status)) {
       req.session.flash = { type: 'error', message: `ไม่สามารถเปลี่ยน ${booking.status} → ${new_status}` };
       return res.redirect(`/freight/${id}`);
+    }
+
+    // Attaching (or re-attaching) to a different trip — re-check capacity.
+    if (trip_id && Number(trip_id) !== booking.trip_id) {
+      const capacity = await checkTripCapacity(Number(trip_id), booking.total_weight_kg, booking.id);
+      if (!capacity.ok) {
+        req.session.flash = { type: 'error', message: capacity.message };
+        return res.redirect(`/freight/${id}`);
+      }
     }
 
     const updates = { status: new_status };
