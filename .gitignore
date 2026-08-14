@@ -45,3 +45,7 @@ tmp/android-cmdline-*/
 # Keep directory structure but ignore actual uploaded files
 public/uploads/*
 !public/uploads/.gitkeep
+
+# scripts/deploy.js state — records which GitHub commit is live on this host
+.deployed_commit
+.deploy_download.tar.gz
