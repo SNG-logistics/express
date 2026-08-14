@@ -36,8 +36,15 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
-          script_stop: true
           command_timeout: 20m
+          debug: true
           script: |
-            cd ~/httpdocs
+            echo "PWD: $(pwd)"
+            echo "WHOAMI: $(whoami)"
+            echo "PATH: $PATH"
+            command -v node && node -v || echo "!! node not found in PATH"
+            command -v npm  && npm -v  || echo "!! npm not found in PATH"
+            cd ~/httpdocs || { echo "!! cd ~/httpdocs failed"; exit 1; }
+            echo "IN: $(pwd)"
+            ls -la | head -20
             npm run deploy
