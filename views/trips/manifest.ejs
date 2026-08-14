@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Noto+Sans+Lao:wght@300;400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
   <style>
     /* ── Reset ── */
@@ -188,14 +189,15 @@
     }
     .cargo-table td:last-child { border-right: none; }
     .td-no    { width: 22px; text-align: center; font-weight: 700; }
-    .td-job   { width: 98px; font-family: 'Courier New', monospace; font-size: 7.5pt; font-weight: 800; text-align: center; }
-    .td-desc  { min-width: 90px; }
+    .td-job   { width: 150px; font-family: 'Courier New', monospace; font-size: 7.5pt; font-weight: 800; text-align: center; }
+    .td-desc  { min-width: 70px; }
     .td-names { }
-    .td-wt    { width: 42px; text-align: center; }
-    .td-qty   { width: 28px; text-align: center; }
-    .td-val   { width: 55px; text-align: right; }
-    .td-cust  { width: 24px; text-align: center; }
-    .td-note  { width: 55px; }
+    .td-wt    { width: 38px; text-align: center; }
+    .td-qty   { width: 26px; text-align: center; }
+    .td-val   { width: 48px; text-align: right; }
+    .td-cust  { width: 22px; text-align: center; }
+    .td-note  { width: 42px; }
+    .td-job .mini-barcode { display: block; max-width: 100%; height: auto; margin: 2px auto 0; }
     .name-sender   { font-size: 8pt; font-weight: 700; color: #111; }
     .name-receiver { font-size: 7pt; color: #555; margin-top: 1px; }
     .customs-flag  { color: #dc2626; font-weight: 900; font-size: 9pt; }
@@ -448,7 +450,10 @@
           <% tripOrders.forEach((o, i) => { %>
           <tr>
             <td class="td-no"><%= i + 1 %></td>
-            <td class="td-job"><%= o.job_no %></td>
+            <td class="td-job">
+              <%= o.job_no %>
+              <svg class="mini-barcode" data-jobno="<%= o.job_no %>"></svg>
+            </td>
             <td class="td-names">
               <div class="name-sender"><%= o.sender_name || '—' %></div>
               <div class="name-receiver" style="font-size:6.5pt;color:#888;"><%= o.sender_phone || '' %></div>
@@ -616,6 +621,25 @@
       correctLevel: QRCode.CorrectLevel.M
     });
   } catch(e) {}
+</script>
+
+<!-- Per-parcel barcodes — lets admin/manager re-scan each row against the
+     physical parcel's own sticker (same CODE128 encoding of job_no), so the
+     signed manifest doubles as a loss-prevention record, not just a list. -->
+<script>
+  document.querySelectorAll('.mini-barcode').forEach(el => {
+    try {
+      JsBarcode(el, el.dataset.jobno, {
+        format: 'CODE128',
+        width: 1,
+        height: 20,
+        displayValue: false,
+        margin: 0,
+        background: '#ffffff',
+        lineColor: '#000000',
+      });
+    } catch (e) {}
+  });
 </script>
 </body>
 </html>
