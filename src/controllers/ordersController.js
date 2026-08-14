@@ -109,7 +109,7 @@ export async function list(req, res) {
 
 
 export async function showCreate(req, res) {
-  const [customers] = await pool.query("SELECT id, name, type, phone, country FROM customers WHERE active = 1 ORDER BY name ASC");
+  const [customers] = await pool.query("SELECT id, name, type, phone, country, is_credit FROM customers WHERE active = 1 ORDER BY name ASC");
   const [shippingRates] = await pool.query("SELECT * FROM shipping_rates WHERE active = 1 ORDER BY price ASC");
 
   // Restore form draft if existed (after validation error redirect)
@@ -242,6 +242,8 @@ export async function create(req, res) {
   if (payload.cod_amount > 0 && payload.declared_value > 0 &&
       payload.cod_amount > payload.declared_value * 3)
     errors.cod_amount = `COD (${payload.cod_amount.toLocaleString()}) สูงกว่ามูลค่าสินค้า 3x — ตรวจสอบอีกครั้ง`;
+  if (!['ORIGIN', 'DESTINATION', 'MONTHLY_BILL'].includes(payload.payment_method))
+    errors.payment_method = 'วิธีชำระค่าขนส่งไม่ถูกต้อง';
 
   if (Object.keys(errors).length > 0) {
     console.log('[DEBUG ORDER CREATE] Validation FAILED:', errors);
@@ -252,7 +254,7 @@ export async function create(req, res) {
 
   try {
     // 3. Verify customers exist
-    const [[sender]]   = await pool.query('SELECT id,name FROM customers WHERE id=? AND active=1', [payload.sender_id]);
+    const [[sender]]   = await pool.query('SELECT id,name,is_credit FROM customers WHERE id=? AND active=1', [payload.sender_id]);
     const [[receiver]] = await pool.query('SELECT id,name FROM customers WHERE id=? AND active=1', [payload.receiver_id]);
     if (!sender) {
       req.session.formDraft = req.body;
@@ -262,6 +264,11 @@ export async function create(req, res) {
     if (!receiver) {
       req.session.formDraft = req.body;
       req.session.flash = { type: 'error', message: 'ไม่พบผู้รับ กรุณาเลือกใหม่' };
+      return res.redirect('/orders/new');
+    }
+    if (payload.payment_method === 'MONTHLY_BILL' && !sender.is_credit) {
+      req.session.formDraft = req.body;
+      req.session.flash = { type: 'error', message: `ผู้ส่ง "${sender.name}" ยังไม่ได้เปิดสิทธิ์วางบิล (is_credit)` };
       return res.redirect('/orders/new');
     }
 
@@ -1227,7 +1234,7 @@ export async function showEdit(req, res) {
     return res.redirect(`/orders/${id}`);
   }
 
-  const [customers] = await pool.query("SELECT id, name, type FROM customers WHERE active = 1 ORDER BY name ASC");
+  const [customers] = await pool.query("SELECT id, name, type, is_credit FROM customers WHERE active = 1 ORDER BY name ASC");
   const [shippingRates] = await pool.query(
     'SELECT * FROM shipping_rates WHERE active=1 ORDER BY price ASC, max_weight ASC'
   );
@@ -1279,7 +1286,7 @@ export async function update(req, res) {
     }
     if (!Number.isFinite(weight) || weight < 0) throw new Error('Invalid weight');
     if (!Number.isFinite(payload.cod_amount) || payload.cod_amount < 0) throw new Error('Invalid COD amount');
-    if (!['ORIGIN', 'DESTINATION'].includes(payload.payment_method)) throw new Error('Invalid payment method');
+    if (!['ORIGIN', 'DESTINATION', 'MONTHLY_BILL'].includes(payload.payment_method)) throw new Error('Invalid payment method');
     if (payload.declared_value !== null && (!Number.isFinite(payload.declared_value) || payload.declared_value < 0)) {
       throw new Error('Invalid declared value');
     }
@@ -1291,10 +1298,14 @@ export async function update(req, res) {
         throw new Error('Order details can only be edited before loading onto a trip');
       }
       const [customers] = await conn.query(
-        'SELECT id FROM customers WHERE active=1 AND id IN (?,?)',
+        'SELECT id, is_credit FROM customers WHERE active=1 AND id IN (?,?)',
         [payload.sender_id, payload.receiver_id]
       );
       if (customers.length !== 2) throw new Error('Sender or receiver is inactive');
+      if (payload.payment_method === 'MONTHLY_BILL') {
+        const senderRow = customers.find(c => c.id === payload.sender_id);
+        if (!senderRow?.is_credit) throw new Error('Sender is not credit-approved (is_credit=0)');
+      }
 
       const chargeableKg = Math.max(weight, volumetricWeight);
       const { rate, price } = await resolveShippingRate(conn, {

@@ -1,0 +1,138 @@
+<%
+  function fmtBaht(amount) {
+    return '฿' + Number(amount || 0).toLocaleString('th-TH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  function fmtDate(date) {
+    return date ? new Date(date).toLocaleDateString('th-TH', {
+      day: '2-digit', month: 'long', year: 'numeric',
+    }) : '–';
+  }
+  const netAmount = Number(statement.net_amount || 0);
+  const isOpen = statement.status === 'OPEN';
+  const canManageBilling = ['owner', 'admin', 'manager', 'finance'].includes(userRole);
+  const netDirection = netAmount > 0
+    ? `SNG ต้องคืนให้ ${statement.customer_name}`
+    : netAmount < 0
+      ? `${statement.customer_name} ต้องเป็นคนโอนเงินให้ SNG`
+      : 'ยอด COD และค่าขนส่งหักลบกันพอดี';
+%>
+
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+    <div class="flex items-start gap-3">
+      <a href="/billing" class="mt-1 w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all" title="กลับรายการใบวางบิล"><i class="fa-solid fa-arrow-left"></i></a>
+      <div>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-3xl font-black text-white">ใบวางบิล #<%= statement.id %></h1>
+          <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border <%= isOpen ? 'bg-amber-500/10 border-amber-500/25 text-amber-400' : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' %>">
+            <i class="fa-solid <%= isOpen ? 'fa-clock' : 'fa-circle-check' %> mr-1.5"></i><%= isOpen ? 'เปิดอยู่' : 'ปิดบิลแล้ว' %>
+          </span>
+        </div>
+        <p class="text-slate-400 mt-1 text-sm">รอบบิล <%= fmtDate(statement.period_start) %> – <%= fmtDate(statement.period_end) %></p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <a href="/billing/<%= statement.id %>/print" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-slate-200 hover:text-white hover:bg-white/10 text-sm font-semibold transition-all"><i class="fa-solid fa-print"></i>พิมพ์ใบวางบิล</a>
+      <% if (isOpen && canManageBilling) { %>
+        <%- include('../components/confirm-dialog', {
+          dialogId: 'settle-billing-' + statement.id,
+          triggerLabel: 'ปิดบิล (Mark as Settled)',
+          triggerClass: 'px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm shadow-lg shadow-red-900/20 transition-all',
+          triggerIcon: 'fa-solid fa-lock',
+          title: 'ยืนยันการปิดบิล?',
+          body: 'การดำเนินการนี้จะปิดออเดอร์ทั้งหมด <strong>' + statement.items.length + '</strong> รายการในใบวางบิล และไม่สามารถย้อนกลับได้',
+          formAction: '/billing/' + statement.id + '/settle',
+          confirmLabel: 'ยืนยันปิดบิล',
+          confirmIcon: 'fa-solid fa-lock',
+        }) %>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (error) { %>
+  <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-center gap-3">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <%= error %>
+  </div>
+  <% } %>
+
+  <section class="glass-panel-dark rounded-2xl border border-white/8 p-5 md:p-6">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-building-user text-xl"></i></div>
+      <div class="min-w-0">
+        <h2 class="text-xl font-bold text-white"><%= statement.customer_name %></h2>
+        <div class="mt-2 flex flex-col sm:flex-row sm:items-center gap-x-5 gap-y-1 text-sm text-slate-400">
+          <% if (statement.customer_phone) { %><span><i class="fa-solid fa-phone text-slate-500 mr-1.5"></i><%= statement.customer_phone %></span><% } %>
+          <% if (statement.customer_address) { %><span><i class="fa-solid fa-location-dot text-slate-500 mr-1.5"></i><%= statement.customer_address %></span><% } %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="glass-panel-dark rounded-2xl border border-emerald-500/20 p-5">
+      <div class="text-xs font-bold uppercase tracking-wider text-emerald-400/80">COD ที่ SNG เก็บได้</div>
+      <div class="mt-2 text-2xl font-black font-mono text-emerald-400"><%= fmtBaht(statement.total_cod) %></div>
+      <p class="text-xs text-slate-500 mt-2">ยอดที่ SNG ต้องคืนให้ลูกค้าก่อนหักค่าขนส่ง</p>
+    </div>
+    <div class="glass-panel-dark rounded-2xl border border-amber-500/20 p-5">
+      <div class="text-xs font-bold uppercase tracking-wider text-amber-400/80">ค่าขนส่งรวม</div>
+      <div class="mt-2 text-2xl font-black font-mono text-amber-300"><%= fmtBaht(statement.total_shipping) %></div>
+      <p class="text-xs text-slate-500 mt-2">ยอดที่ลูกค้าต้องชำระให้ SNG</p>
+    </div>
+    <div class="rounded-2xl border p-5 <%= netAmount > 0 ? 'bg-emerald-500/10 border-emerald-500/30' : netAmount < 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-500/10 border-slate-500/30' %>">
+      <div class="text-xs font-bold uppercase tracking-wider <%= netAmount > 0 ? 'text-emerald-400/80' : netAmount < 0 ? 'text-amber-400/80' : 'text-slate-300' %>">ยอดสุทธิ (COD − ค่าขนส่ง)</div>
+      <div class="mt-2 text-2xl font-black font-mono <%= netAmount > 0 ? 'text-emerald-400' : netAmount < 0 ? 'text-amber-400' : 'text-slate-200' %>"><%= fmtBaht(statement.net_amount) %></div>
+      <p class="text-xs text-slate-300 mt-2"><%= netDirection %></p>
+    </div>
+  </section>
+
+  <section class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <div class="px-5 md:px-6 py-4 border-b border-white/8 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-white">รายการออเดอร์ในใบวางบิล</h2>
+        <p class="text-xs text-slate-500 mt-0.5"><%= statement.items.length %> รายการ</p>
+      </div>
+    </div>
+    <% if (!statement.items.length) { %>
+      <%- include('../components/empty-state', { icon: 'fa-box-open', title: 'ไม่มีออเดอร์ในใบวางบิล' }) %>
+    <% } else { %>
+    <div class="overflow-x-auto">
+      <table class="table-premium w-full">
+        <thead>
+          <tr>
+            <th class="pl-6">Job No</th>
+            <th>วันที่สร้างออเดอร์</th>
+            <th class="text-right">ค่าขนส่ง</th>
+            <th class="text-right pr-6">COD</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% statement.items.forEach(item => { %>
+          <tr class="hover:bg-white/3 transition-colors">
+            <td class="pl-6"><a href="/orders/<%= item.order_id %>" class="font-mono font-bold text-white hover:text-cyan-400 transition-colors"><%= item.job_no %></a></td>
+            <td class="text-sm text-slate-400"><%= fmtDate(item.order_created_at) %></td>
+            <td class="text-right font-mono text-amber-300"><%= fmtBaht(item.shipping_fee) %></td>
+            <td class="text-right pr-6 font-mono text-emerald-400"><%= fmtBaht(item.cod_amount) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+        <tfoot class="border-t border-white/10 bg-white/[0.02]">
+          <tr>
+            <td colspan="2" class="pl-6 py-4 text-right text-sm font-bold text-slate-300">รวม</td>
+            <td class="py-4 text-right font-mono font-bold text-amber-300"><%= fmtBaht(statement.total_shipping) %></td>
+            <td class="py-4 pr-6 text-right font-mono font-bold text-emerald-400"><%= fmtBaht(statement.total_cod) %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <% } %>
+  </section>
+
+  <% if (!isOpen && statement.settled_at) { %>
+  <p class="text-center text-xs text-slate-500"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>ปิดบิลเมื่อ <%= fmtDate(statement.settled_at) %></p>
+  <% } %>
+</div>

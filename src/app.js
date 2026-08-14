@@ -17,6 +17,7 @@ import scannerRoutes from './routes/scanner.js';
 import tripRoutes from './routes/trips.js';
 import customsRoutes from './routes/customs.js';
 import codRoutes from './routes/cod.js';
+import billingRoutes from './routes/billing.js';
 import customersRoutes from './routes/customers.js';
 import usersRoutes from './routes/users.js';
 import branchRoutes from './routes/branches.js';
@@ -370,6 +371,7 @@ app.use(scannerRoutes);
 app.use(tripRoutes);
 app.use(customsRoutes);
 app.use(codRoutes);
+app.use(billingRoutes);
 app.use(usersRoutes);
 app.use(whatsappRoutes); // Enabled WhatsApp
 app.use(settingsRoutes);

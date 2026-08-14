@@ -1,0 +1,155 @@
+<%
+  function fmtBaht(amount) {
+    return '฿' + Number(amount || 0).toLocaleString('th-TH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  function fmtDate(date) {
+    return date ? new Date(date).toLocaleDateString('th-TH', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    }) : '–';
+  }
+  function netStatus(amount) {
+    const net = Number(amount || 0);
+    if (net > 0) return { className: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400', label: 'SNG ต้องคืนให้ลูกค้า' };
+    if (net < 0) return { className: 'bg-amber-500/10 border-amber-500/30 text-amber-400', label: 'ลูกค้าต้องชำระให้ SNG' };
+    return { className: 'bg-slate-500/10 border-slate-500/30 text-slate-300', label: 'หักลบพอดี' };
+  }
+  const canManageBilling = ['owner', 'admin', 'manager', 'finance'].includes(userRole);
+%>
+
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-black text-white flex items-center gap-3">
+        <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i>
+        วางบิลรายเดือน
+      </h1>
+      <p class="text-slate-400 mt-1 text-sm">สรุปยอด COD และค่าขนส่งของลูกค้าเครดิตแบบหักลบกลบหนี้</p>
+    </div>
+    <div class="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm flex items-center gap-2">
+      <i class="fa-solid fa-circle-info"></i>
+      <span>สร้างบิลได้เฉพาะลูกค้าที่อนุมัติเครดิตแล้ว</span>
+    </div>
+  </div>
+
+  <% if (error) { %>
+  <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-center gap-3">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <%= error %>
+  </div>
+  <% } %>
+
+  <% if (canManageBilling) { %>
+  <section class="glass-panel-dark rounded-2xl border border-amber-500/20 p-5 md:p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+        <i class="fa-solid fa-plus text-amber-400"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-white">สร้างใบวางบิล</h2>
+        <p class="text-xs text-slate-400">ระบบจะคำนวณยอดจากออเดอร์ที่พร้อมปิดบิลในช่วงวันที่เลือก</p>
+      </div>
+    </div>
+    <form method="POST" action="/billing/statements" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_180px_180px_auto] gap-4 items-end">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div>
+        <label for="billing-customer" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ลูกค้าเครดิต</label>
+        <select id="billing-customer" name="customer_id" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+          <option value="">-- เลือกลูกค้า --</option>
+          <% creditCustomers.forEach(customer => { %>
+          <option value="<%= customer.id %>"><%= customer.name %><%= customer.phone ? ' · ' + customer.phone : '' %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="period-start" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ตั้งแต่วันที่</label>
+        <input id="period-start" type="date" name="period_start" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+      </div>
+      <div>
+        <label for="period-end" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ถึงวันที่</label>
+        <input id="period-end" type="date" name="period_end" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-all text-sm">
+      </div>
+      <button type="submit" class="inline-flex justify-center items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-sm shadow-lg shadow-amber-900/20 transition-all">
+        <i class="fa-solid fa-file-circle-plus"></i>
+        สร้างใบวางบิล
+      </button>
+    </form>
+  </section>
+  <% } %>
+
+  <section class="glass-panel-dark rounded-2xl overflow-hidden border border-white/8">
+    <div class="p-5 md:px-6 border-b border-white/8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-bold text-white">รายการใบวางบิล</h2>
+        <p class="text-xs text-slate-500 mt-0.5"><%= statements.length %> ใบ</p>
+      </div>
+      <form method="GET" action="/billing" class="flex items-center gap-2">
+        <label for="filter-customer" class="sr-only">กรองตามลูกค้า</label>
+        <select id="filter-customer" name="customer_id" onchange="this.form.submit()" class="min-w-[210px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+          <option value="">ลูกค้าทั้งหมด</option>
+          <% creditCustomers.forEach(customer => { %>
+          <option value="<%= customer.id %>" <%= String(filterCustomerId || '') === String(customer.id) ? 'selected' : '' %>><%= customer.name %></option>
+          <% }) %>
+        </select>
+        <% if (filterCustomerId) { %>
+        <a href="/billing" class="px-3 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm transition-all" title="ล้างตัวกรอง">
+          <i class="fa-solid fa-xmark"></i>
+        </a>
+        <% } %>
+      </form>
+    </div>
+
+    <% if (!statements.length) { %>
+      <%- include('../components/empty-state', {
+        icon: 'fa-file-circle-xmark',
+        title: 'ยังไม่มีใบวางบิล',
+        subtitle: canManageBilling ? 'เลือกลูกค้าเครดิตและช่วงวันที่เพื่อสร้างใบวางบิลแรก' : 'รายการใบวางบิลจะปรากฏที่นี่',
+      }) %>
+    <% } else { %>
+    <div class="overflow-x-auto">
+      <table class="table-premium w-full">
+        <thead>
+          <tr>
+            <th class="pl-6">ใบวางบิล</th>
+            <th>ลูกค้า</th>
+            <th>รอบบิล</th>
+            <th class="text-right">COD รวม</th>
+            <th class="text-right">ค่าขนส่งรวม</th>
+            <th>ยอดสุทธิ</th>
+            <th>สถานะ</th>
+            <th class="text-right pr-6">เปิดดู</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% statements.forEach(statement => { const net = netStatus(statement.net_amount); %>
+          <tr class="hover:bg-white/3 transition-colors">
+            <td class="pl-6">
+              <a href="/billing/<%= statement.id %>" class="group inline-flex items-center gap-3">
+                <span class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-file-invoice text-amber-400 text-sm"></i></span>
+                <span class="font-mono font-bold text-white group-hover:text-amber-400 transition-colors">#<%= statement.id %></span>
+              </a>
+            </td>
+            <td><span class="font-semibold text-slate-200"><%= statement.customer_name %></span></td>
+            <td class="text-sm text-slate-400 whitespace-nowrap"><%= fmtDate(statement.period_start) %> – <%= fmtDate(statement.period_end) %></td>
+            <td class="text-right font-mono text-emerald-400"><%= fmtBaht(statement.total_cod) %></td>
+            <td class="text-right font-mono text-amber-300"><%= fmtBaht(statement.total_shipping) %></td>
+            <td>
+              <div class="font-mono font-bold <%= Number(statement.net_amount) > 0 ? 'text-emerald-400' : Number(statement.net_amount) < 0 ? 'text-amber-400' : 'text-slate-300' %>"><%= fmtBaht(statement.net_amount) %></div>
+              <span class="inline-flex mt-1 px-2 py-0.5 rounded-md border text-[10px] font-semibold <%= net.className %>"><%= net.label %></span>
+            </td>
+            <td>
+              <span class="inline-flex px-2.5 py-1 rounded-lg text-xs font-bold border <%= statement.status === 'SETTLED' ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-amber-500/10 border-amber-500/25 text-amber-400' %>">
+                <i class="fa-solid <%= statement.status === 'SETTLED' ? 'fa-circle-check' : 'fa-clock' %> mr-1.5"></i><%= statement.status === 'SETTLED' ? 'ปิดบิลแล้ว' : 'เปิดอยู่' %>
+              </span>
+            </td>
+            <td class="text-right pr-6"><a href="/billing/<%= statement.id %>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 text-sm transition-all">รายละเอียด <i class="fa-solid fa-arrow-right text-xs"></i></a></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </section>
+</div>

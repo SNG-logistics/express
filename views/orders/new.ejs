@@ -586,6 +586,10 @@
                 <input type="radio" name="payment_method" value="DESTINATION" x-model="paymentMethod" class="w-4 h-4 text-cyan-500 bg-white/5 border-white/10 focus:ring-cyan-500 focus:ring-2">
                 <span class="text-sm text-slate-300">จ่ายปลายทาง (ผู้รับจ่าย)</span>
               </label>
+              <label class="flex items-center gap-2 cursor-pointer" x-show="isCreditSender" x-cloak>
+                <input type="radio" name="payment_method" value="MONTHLY_BILL" x-model="paymentMethod" class="w-4 h-4 text-cyan-500 bg-white/5 border-white/10 focus:ring-cyan-500 focus:ring-2">
+                <span class="text-sm text-slate-300">วางบิล (Monthly Bill)</span>
+              </label>
             </div>
           </div>
           <div class="relative">
@@ -713,7 +717,7 @@
               <span class="text-white" x-text="serviceLabel"></span>
             </div>
             <div class="flex justify-between text-sm border-t border-white/8 pt-2 mt-2">
-              <span class="text-slate-400">ค่าขนส่ง <span class="text-xs ml-1" :class="paymentMethod === 'ORIGIN' ? 'text-cyan-400' : 'text-purple-400'" x-text="paymentMethod === 'ORIGIN' ? '(จ่ายต้นทาง)' : '(จ่ายปลายทาง)'"></span></span>
+              <span class="text-slate-400">ค่าขนส่ง <span class="text-xs ml-1" :class="paymentMethod === 'ORIGIN' ? 'text-cyan-400' : paymentMethod === 'DESTINATION' ? 'text-purple-400' : 'text-amber-400'" x-text="paymentMethod === 'ORIGIN' ? '(จ่ายต้นทาง)' : paymentMethod === 'DESTINATION' ? '(จ่ายปลายทาง)' : '(วางบิล)'"></span></span>
               <span class="text-emerald-400 font-bold text-lg font-mono">฿<span x-text="Number(freightPrice).toLocaleString()"></span></span>
             </div>
             <div class="flex justify-between text-sm" x-show="codAmount > 0">
@@ -778,6 +782,10 @@
     requiresCustoms: locals.draft?.requires_customs ? true : false,
     isFragile: locals.draft?.is_fragile ? true : false,
     shippingRates: locals.shippingRates || [],
+    customers: (locals.customers || []).map(({ id, is_credit }) => ({
+      id,
+      is_credit: Boolean(Number(is_credit))
+    })),
     sourceType: locals.draft?.source_type || "WALKIN",
     itemCount: locals.draft?.item_count || 1,
     notes: locals.draft?.notes || (typeof quoteData !== 'undefined' && quoteData ? `อ้างอิงใบเสนอราคา: ${quoteData.quote_no}\nสินค้า: ${quoteData.product_name}\nลิงก์: ${quoteData.product_url || '-'}` : '')
@@ -917,6 +925,7 @@ function orderWizard() {
     volWeight: 0,
     chargeableWeight: 0,
     paymentMethod: initData.paymentMethod || 'ORIGIN',
+    customers: initData.customers || [],
 
     freightPrice: initData.freightPrice || 0,
     codAmount: initData.codAmount || 0,
@@ -945,11 +954,23 @@ function orderWizard() {
       }
       // Recalc vol weight if dims restored
       this.calcVol();
+      if (!this.isCreditSender && this.paymentMethod === 'MONTHLY_BILL') {
+        this.paymentMethod = 'ORIGIN';
+      }
     },
 
     setParty(role, id, name) {
-      if (role === 'sender')   { this.senderId   = id; }
+      if (role === 'sender') {
+        this.senderId = id;
+        if (!this.isCreditSender && this.paymentMethod === 'MONTHLY_BILL') {
+          this.paymentMethod = 'ORIGIN';
+        }
+      }
       if (role === 'receiver') { this.receiverId = id; }
+    },
+
+    get isCreditSender() {
+      return Boolean(this.customers.find(c => String(c.id) === String(this.senderId))?.is_credit);
     },
 
     get senderSameAsReceiver() {

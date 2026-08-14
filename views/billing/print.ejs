@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบวางบิล #<%= statement.id %> - SNG Logistics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Prompt:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: 'Sarabun', 'Prompt', sans-serif;
+            background: #e2e8f0;
+            color: #0f172a;
+            margin: 0;
+            padding: 24px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* ── A4 page (same sizing pattern as order print views) ── */
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 14mm 16mm;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #dc2626;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 58px;
+            height: 58px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #fecaca;
+            flex-shrink: 0;
+            background: #fff;
+        }
+
+        .brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .brand-name {
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+            font-weight: 800;
+            font-size: 19px;
+            color: #dc2626;
+            letter-spacing: 0.3px;
+            line-height: 1.2;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .brand-contact {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 1px;
+        }
+
+        .doc-title-box {
+            text-align: right;
+        }
+
+        .doc-title {
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+            font-weight: 900;
+            font-size: 22px;
+            color: #0f172a;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .doc-title-th {
+            font-size: 14px;
+            font-weight: 700;
+            color: #dc2626;
+            margin-top: 1px;
+        }
+
+        /* ── Meta grid ──────────────────────────────────────── */
+        .meta-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .meta-box {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            background: #f8fafc;
+        }
+
+        .meta-box.customer {
+            flex: 1 1 auto;
+        }
+
+        .meta-box.details {
+            flex: 0 0 auto;
+            min-width: 215px;
+            background: #fff7ed;
+            border-color: #fdba74;
+        }
+
+        .meta-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 2px;
+        }
+
+        .meta-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            font-size: 12.5px;
+        }
+
+        .meta-row .k {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .meta-row .v {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* ── Status badge ───────────────────────────────────── */
+        .status-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 10px;
+            border-radius: 999px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .status-badge.open {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .status-badge.settled {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        /* ── Section heading ────────────────────────────────── */
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin: 4px 0 8px;
+            padding: 8px 12px;
+            background: #1e293b;
+            color: #fff;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .section-head .sh-title {
+            font-size: 12.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-head .sh-count {
+            font-size: 11px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        /* ── Item tables ────────────────────────────────────── */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #cbd5e1;
+            margin-bottom: 10px;
+        }
+
+        .items-table thead th {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 6px 9px;
+            text-align: center;
+            border-bottom: 1.5px solid #cbd5e1;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .items-table thead th:last-child {
+            border-right: none;
+        }
+
+        .items-table tbody td {
+            padding: 6px 9px;
+            font-size: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .items-table tbody td:last-child {
+            border-right: none;
+        }
+
+        .items-table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .items-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        .job-no {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 12.5px;
+            letter-spacing: 0.3px;
+        }
+
+        .col-amount {
+            text-align: right !important;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .col-amount.cod {
+            color: #dc2626;
+        }
+
+        .items-table tfoot td {
+            background: #f1f5f9;
+            font-weight: 800;
+            font-size: 12.5px;
+            padding: 7px 9px;
+            border-top: 2px solid #94a3b8;
+            text-align: right;
+        }
+
+        .tfoot-label {
+            text-align: left !important;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .empty-row td {
+            text-align: center !important;
+            color: #94a3b8;
+            padding: 14px !important;
+        }
+
+        /* ── Net total box ──────────────────────────────────── */
+        .net-box {
+            border: 2px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .net-head {
+            background: #1e293b;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 7px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .net-body {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .net-col {
+            flex: 1;
+            padding: 12px 16px;
+            text-align: center;
+        }
+
+        .net-col + .net-col {
+            border-left: 1.5px solid #e2e8f0;
+        }
+
+        .net-col .nc-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .net-col .nc-value {
+            font-size: 20px;
+            font-weight: 900;
+            color: #0f172a;
+            margin-top: 2px;
+        }
+
+        .net-col.shipping .nc-value {
+            color: #2563eb; /* ลูกค้าเป็นหนี้บริษัท (ค่าขนส่ง) */
+        }
+
+        .net-col.cod .nc-value {
+            color: #dc2626; /* บริษัทเป็นหนี้ลูกค้า (COD ที่เก็บแทน) */
+        }
+
+        .net-col.net-result .nc-value {
+            font-size: 26px;
+        }
+
+        .net-col.net-result.owe-customer .nc-value {
+            color: #dc2626; /* SNG ต้องโอนคืนลูกค้า */
+        }
+
+        .net-col.net-result.owe-sng .nc-value {
+            color: #2563eb; /* ลูกค้าต้องโอนให้ SNG */
+        }
+
+        .net-col.net-result.net-zero .nc-value {
+            color: #16a34a;
+        }
+
+        .net-note {
+            font-size: 10.5px;
+            font-weight: 700;
+            margin-top: 3px;
+            line-height: 1.4;
+        }
+
+        .net-note.owe-customer {
+            color: #dc2626;
+        }
+
+        .net-note.owe-sng {
+            color: #2563eb;
+        }
+
+        .net-note.net-zero {
+            color: #16a34a;
+        }
+
+        .net-note small {
+            display: block;
+            font-weight: 600;
+            font-size: 9.5px;
+            color: #64748b;
+            margin-top: 1px;
+        }
+
+        /* ── Notes ──────────────────────────────────────────── */
+        .notes {
+            background: #fffbeb;
+            border: 1.5px solid #fcd34d;
+            border-left: 5px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+        }
+
+        .notes-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: #92400e;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 4px;
+        }
+
+        .notes ul {
+            padding-left: 18px;
+            font-size: 11.5px;
+            color: #78350f;
+            line-height: 1.7;
+        }
+
+        /* ── Signatures ─────────────────────────────────────── */
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 12px;
+        }
+
+        .sig-box {
+            text-align: center;
+        }
+
+        .sig-line {
+            border-bottom: 1.5px solid #94a3b8;
+            height: 40px;
+            margin-bottom: 6px;
+        }
+
+        .sig-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .sig-role {
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        /* ── Footer ─────────────────────────────────────────── */
+        .doc-footer {
+            text-align: center;
+            border-top: 2px solid #dc2626;
+            padding-top: 8px;
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        .doc-footer strong {
+            color: #dc2626;
+            font-size: 11px;
+        }
+
+        /* ── Floating toolbar (screen only) ─────────────────── */
+        .print-toolbar {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+            color: #fff;
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+        }
+
+        .btn-print {
+            background: #dc2626;
+        }
+
+        .btn-close {
+            background: #334155;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .a4-page {
+                box-shadow: none;
+                width: 100%;
+                min-height: 100vh;
+                margin: 0;
+                padding: 12mm 14mm;
+            }
+
+            .print-toolbar {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <% const fmt = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); %>
+    <% const fmtDate = (d) => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }); %>
+    <% const net = Number(statement.net_amount); %>
+    <% const netAbs = Math.abs(net).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); %>
+    <% const isOweCustomer = net > 0; %>   <% /* SNG เก็บ COD มาเกินค่าใช้จ่าย → ต้องโอนคืนลูกค้า */ %>
+    <% const isOweSng = net < 0; %>        <% /* ค่าขนส่งมากกว่า COD → ลูกค้าต้องโอนให้ SNG */ %>
+    <% const items = statement.items || []; %>
+    <% const codItems = items.filter((it) => Number(it.cod_amount) > 0); %>
+
+    <!-- Floating toolbar (hidden on print) -->
+    <div class="print-toolbar">
+        <button class="btn btn-print" onclick="window.print()">🖨️ พิมพ์ใบวางบิล</button>
+        <button class="btn btn-close" onclick="window.close()">✕ ปิดหน้าต่าง</button>
+    </div>
+
+    <!-- A4 Sheet -->
+    <div class="a4-page">
+
+        <!-- Header -->
+        <div class="doc-header">
+            <div class="brand">
+                <div class="brand-logo">
+                    <img src="/images/snglogo.png" alt="SNG Logistics">
+                </div>
+                <div>
+                    <div class="brand-name">SNG Logistics</div>
+                    <div class="brand-sub">ขนส่งไทย-ลาว (TH-LA Logistics)</div>
+                    <div class="brand-contact">โทร/Tel: 020 8889 8888 &nbsp;|&nbsp; เลขภาษี/TIN: 804052456000</div>
+                </div>
+            </div>
+            <div class="doc-title-box">
+                <div class="doc-title">Billing Statement</div>
+                <div class="doc-title-th">ใบสรุปยอด / ใบแจ้งหนี้ (หักลบกลบหนี้ COD)</div>
+                <div style="margin-top: 6px;">
+                    <span class="status-badge <%= statement.status === 'SETTLED' ? 'settled' : 'open' %>">
+                        <%= statement.status === 'SETTLED' ? 'ปิดบิลแล้ว (SETTLED)' : 'รอบิล (OPEN)' %>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer + Statement meta -->
+        <div class="meta-grid">
+            <div class="meta-box customer">
+                <div class="meta-label">ลูกค้า / Customer</div>
+                <div class="meta-value"><%= statement.customer_name || '-' %></div>
+                <% if (statement.customer_address) { %>
+                    <div style="font-size: 11.5px; color: #475569; margin-top: 2px; max-width: 260px;">
+                        <%= statement.customer_address %>
+                    </div>
+                <% } %>
+                <% if (statement.customer_phone) { %>
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 1px;">
+                        ☎ <%= statement.customer_phone %>
+                    </div>
+                <% } %>
+            </div>
+            <div class="meta-box details">
+                <div class="meta-row">
+                    <span class="k">เลขที่ใบวางบิล</span>
+                    <span class="v">BS-<%= String(statement.id).padStart(4, '0') %></span>
+                </div>
+                <div class="meta-row">
+                    <span class="k">รอบบิล</span>
+                    <span class="v"><%= fmtDate(statement.period_start) %> – <%= fmtDate(statement.period_end) %></span>
+                </div>
+                <div class="meta-row">
+                    <span class="k">วันที่ออกใบ</span>
+                    <span class="v"><%= fmtDate(statement.created_at) %></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Section 1: Shipping Fees (ลูกค้าเป็นหนี้ SNG) ── -->
+        <div class="section-head">
+            <span class="sh-title">🧾 รายการค่าขนส่ง (Shipping Fees)</span>
+            <span class="sh-count"><%= items.length %> รายการ — ลูกค้าต้องชำระให้บริษัท</span>
+        </div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 34px;">ลำดับ</th>
+                    <th>เลขพัสดุ (Job No.)</th>
+                    <th style="width: 90px;">วันที่ขนส่ง</th>
+                    <th style="width: 115px;">ค่าขนส่ง (THB)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (items.length > 0) { %>
+                    <% items.forEach(function(item, idx) { %>
+                        <tr>
+                            <td style="color: #94a3b8;"><%= idx + 1 %></td>
+                            <td class="job-no"><%= item.job_no || '-' %></td>
+                            <td style="color: #475569;"><%= fmtDate(item.order_created_at) %></td>
+                            <td class="col-amount"><%= fmt(item.shipping_fee) %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr class="empty-row"><td colspan="4">ไม่มีรายการ</td></tr>
+                <% } %>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="tfoot-label">รวมค่าขนส่ง (Subtotal)</td>
+                    <td><%= fmt(statement.total_shipping) %></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- ── Section 2: COD Collected (SNG เป็นหนี้ลูกค้า) ── -->
+        <div class="section-head">
+            <span class="sh-title">💰 รายการเก็บเงินปลายทาง (COD Collected)</span>
+            <span class="sh-count"><%= codItems.length %> รายการ — บริษัทเก็บแทนลูกค้าแล้ว</span>
+        </div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 34px;">ลำดับ</th>
+                    <th>เลขพัสดุ (Job No.)</th>
+                    <th style="width: 90px;">วันที่ขนส่ง</th>
+                    <th style="width: 115px;">ยอด COD (THB)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (codItems.length > 0) { %>
+                    <% codItems.forEach(function(item, idx) { %>
+                        <tr>
+                            <td style="color: #94a3b8;"><%= idx + 1 %></td>
+                            <td class="job-no"><%= item.job_no || '-' %></td>
+                            <td style="color: #475569;"><%= fmtDate(item.order_created_at) %></td>
+                            <td class="col-amount cod"><%= fmt(item.cod_amount) %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr class="empty-row"><td colspan="4">ไม่มีรายการ COD ในรอบบิลนี้</td></tr>
+                <% } %>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="tfoot-label">รวมเก็บเงินปลายทาง (Subtotal)</td>
+                    <td style="color: #dc2626;"><%= fmt(statement.total_cod) %></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- ── Net total (หักลบกลบหนี้) ── -->
+        <div class="net-box">
+            <div class="net-head">
+                <span>หักลบกลบหนี้ (Net-off Summary)</span>
+                <span>สกุลเงิน: บาทไทย (THB)</span>
+            </div>
+            <div class="net-body">
+                <div class="net-col shipping">
+                    <div class="nc-label">ค่าขนส่งรวม</div>
+                    <div class="nc-value"><%= fmt(statement.total_shipping) %></div>
+                    <div class="net-note" style="color:#2563eb;">ลูกค้าเป็นหนี้บริษัท</div>
+                </div>
+                <div class="net-col cod">
+                    <div class="nc-label">รวม COD</div>
+                    <div class="nc-value"><%= fmt(statement.total_cod) %></div>
+                    <div class="net-note" style="color:#dc2626;">บริษัทเป็นหนี้ลูกค้า</div>
+                </div>
+                <div class="net-col net-result <%= isOweCustomer ? 'owe-customer' : (isOweSng ? 'owe-sng' : 'net-zero') %>">
+                    <div class="nc-label">ยอดสุทธิ (COD − ค่าขนส่ง)</div>
+                    <div class="nc-value"><%= isOweSng ? '-' : '' %><%= netAbs %></div>
+                    <% if (isOweCustomer) { %>
+                        <div class="net-note owe-customer">
+                            SNG โอนเงินส่วนต่างคืนให้ลูกค้า <%= fmt(net) %> บาท
+                            <small>เพราะยอด COD ที่เก็บให้ มากกว่า ค่าขนส่ง</small>
+                        </div>
+                    <% } else if (isOweSng) { %>
+                        <div class="net-note owe-sng">
+                            ลูกค้าโอนเงินส่วนต่างชำระให้ SNG <%= netAbs %> บาท
+                            <small>เพราะค่าขนส่ง มากกว่า ยอด COD ที่เก็บได้</small>
+                        </div>
+                    <% } else { %>
+                        <div class="net-note net-zero">
+                            หักลบกลบหนี้พอดี ไม่มีเงินส่วนต่าง
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="notes">
+            <div class="notes-title">📌 หมายเหตุ / เงื่อนไข</div>
+            <ul>
+                <li>เอกสารนี้เป็นการหักลบกลบหนี้ (Net-off) ระหว่าง <strong>ยอดเก็บเงินปลายทาง (COD)</strong> กับ <strong>ค่าขนส่ง</strong> สำหรับลูกค้าที่ใช้บริการวางบิลรายเดือน</li>
+                <% if (isOweSng) { %>
+                    <li>โปรดชำระยอดคงเหลือภายใน <strong>15 วัน</strong> นับจากวันที่ออกใบวางบิล</li>
+                <% } else if (isOweCustomer) { %>
+                    <li>บริษัทจะโอนเงินส่วนเกิน COD คืนภายใน <strong>7 วันทำการ</strong> หลังปิดบิล</li>
+                <% } %>
+                <li>กรุณาตรวจสอบรายละเอียด หากพบข้อผิดพลาดโปรดแจ้งเจ้าหน้าที่การเงินภายใน <strong>7 วัน</strong></li>
+                <li>ออเดอร์ในใบวางบิลนี้จะถูกปิดสถานะเมื่อมีการยืนยันปิดบิล (Mark as Settled) แล้วเท่านั้น</li>
+            </ul>
+        </div>
+
+        <!-- Signatures -->
+        <div class="signatures">
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">ผู้จัดทำ / เจ้าหน้าที่การเงิน</div>
+                <div class="sig-role">(ลงชื่อ พร้อมวันที่)</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">ผู้รับรอง / ผู้จัดการ</div>
+                <div class="sig-role">(ลงชื่อ พร้อมวันที่)</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">ลูกค้า / ผู้รับใบวางบิล</div>
+                <div class="sig-role">(ลงชื่อ พร้อมวันที่)</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="doc-footer">
+            <strong>SNG Logistics</strong> — ขนส่งไทย-ลาว (TH-LA Logistics) &nbsp;|&nbsp; โทร: 020 8889 8888 &nbsp;|&nbsp; www.sng-logistics.com<br>
+            พิมพ์เมื่อ: <%= new Date().toLocaleString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+            &nbsp;|&nbsp; เอกสารนี้พิมพ์จากระบบ SNG Logistics
+        </div>
+
+    </div>
+</body>
+
+</html>

@@ -87,6 +87,14 @@
     </a>
     <% } %>
 
+    <% if (can.viewFinancials) { %>
+    <a href="/billing"
+       class="sidebar-link <%= currentPath.startsWith('/billing') ? 'active' : '' %>">
+      <i class="fa-solid fa-file-invoice-dollar"></i>
+      <span><%= t('nav.billing') %></span>
+    </a>
+    <% } %>
+
     <% if (can.viewCustoms) { %>
     <a href="/customs"
        class="sidebar-link <%= currentPath.startsWith('/customs') ? 'active' : '' %>">
