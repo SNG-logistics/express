@@ -10,7 +10,7 @@ const CATEGORY_MAP = {
 
 export async function index(req, res) {
   try {
-    const { paid_by, trip_id, start_date, end_date } = req.query;
+    const { paid_by, trip_id, start_date, end_date, category } = req.query;
 
     let whereClauses = [];
     let params = [];
@@ -22,6 +22,10 @@ export async function index(req, res) {
     if (trip_id && trip_id.trim() !== '') {
       whereClauses.push("e.trip_id = ?");
       params.push(Number(trip_id));
+    }
+    if (category && category.trim() !== '' && ['CAPITAL','TRIP','ADMIN'].includes(category.trim())) {
+      whereClauses.push("e.category = ?");
+      params.push(category.trim());
     }
     if (start_date && start_date.trim() !== '') {
       whereClauses.push("e.expense_date >= ?");
@@ -104,7 +108,8 @@ export async function index(req, res) {
         paid_by: paid_by || '',
         trip_id: trip_id || '',
         start_date: start_date || '',
-        end_date: end_date || ''
+        end_date: end_date || '',
+        category: category || ''
       },
       flash: req.session.flash,
       error: null
@@ -118,7 +123,7 @@ export async function index(req, res) {
 
 export async function exportExcel(req, res) {
   try {
-    const { paid_by, trip_id, start_date, end_date } = req.query;
+    const { paid_by, trip_id, start_date, end_date, category } = req.query;
 
     let whereClauses = [];
     let params = [];
@@ -130,6 +135,10 @@ export async function exportExcel(req, res) {
     if (trip_id && trip_id.trim() !== '') {
       whereClauses.push("e.trip_id = ?");
       params.push(Number(trip_id));
+    }
+    if (category && category.trim() !== '' && ['CAPITAL','TRIP','ADMIN'].includes(category.trim())) {
+      whereClauses.push("e.category = ?");
+      params.push(category.trim());
     }
     if (start_date && start_date.trim() !== '') {
       whereClauses.push("e.expense_date >= ?");
@@ -183,6 +192,7 @@ export async function exportExcel(req, res) {
 
     const today = new Date().toLocaleString('th-TH');
     const rangeTxt = (start_date || end_date) ? `${start_date || '…'} ถึง ${end_date || '…'}` : 'ทั้งหมด';
+    const categoryLabel = (category && CATEGORY_MAP[category.trim()]) ? CATEGORY_MAP[category.trim()] : null;
 
     const sumRow = (label, thb, lak, usd, bold = false) =>
       `<tr${bold ? ' style="font-weight:bold;background:#fff3cd"' : ''}>` +
@@ -215,7 +225,7 @@ export async function exportExcel(req, res) {
         .big{font-size:16px;font-weight:bold;color:#b45309;margin:6px 0}
       </style></head><body>
       <h2>รายงานรายจ่าย — SNG Logistics</h2>
-      <div class="meta">ช่วงวันที่: <b>${htmlEsc(rangeTxt)}</b> · จำนวน ${Number(s.cnt) || 0} รายการ · ออกรายงาน: ${htmlEsc(today)}</div>
+      <div class="meta">ช่วงวันที่: <b>${htmlEsc(rangeTxt)}</b>${categoryLabel ? ' · หมวดหมู่: <b>' + htmlEsc(categoryLabel) + '</b>' : ''} · จำนวน ${Number(s.cnt) || 0} รายการ · ออกรายงาน: ${htmlEsc(today)}</div>
       <table>
         <tr><th>หมวดหมู่</th><th>THB (฿)</th><th>LAK (₭)</th><th>USD ($)</th></tr>
         ${sumRow('เงินลงทุน/ก่อตั้ง (CAPEX)', s.cap_thb, s.cap_lak, s.cap_usd)}
@@ -353,7 +363,7 @@ export async function destroy(req, res) {
 // ─── PRINT REPORT (A4 SUMMARY) ────────────────────────────────────────────────
 export async function printReport(req, res) {
   try {
-    const { paid_by, trip_id, start_date, end_date } = req.query;
+    const { paid_by, trip_id, start_date, end_date, category } = req.query;
 
     let whereClauses = [];
     let params = [];
@@ -365,6 +375,10 @@ export async function printReport(req, res) {
     if (trip_id && trip_id.trim() !== '') {
       whereClauses.push("e.trip_id = ?");
       params.push(Number(trip_id));
+    }
+    if (category && category.trim() !== '' && ['CAPITAL','TRIP','ADMIN'].includes(category.trim())) {
+      whereClauses.push("e.category = ?");
+      params.push(category.trim());
     }
     if (start_date && start_date.trim() !== '') {
       whereClauses.push("e.expense_date >= ?");
@@ -424,7 +438,8 @@ export async function printReport(req, res) {
         paid_by: paid_by || '',
         trip_id: trip_id || '',
         start_date: start_date || '',
-        end_date: end_date || ''
+        end_date: end_date || '',
+        category: category || ''
       },
       CATEGORY_MAP,
       user: req.session.user

@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto space-y-6" x-data="expensesDashboard()">
+<div class="max-w-7xl mx-auto space-y-6">
 
   <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
     <div>
@@ -27,7 +27,7 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
     <!-- CAPEX -->
-    <div class="glass-panel-dark p-6 rounded-2xl border border-emerald-500/20 relative overflow-hidden group">
+    <div class="glass-panel-dark p-6 rounded-2xl border border-emerald-500/20 relative overflow-hidden group <%= filters.category === 'CAPITAL' ? 'ring-2 ring-emerald-400/60' : '' %>">
       <div class="absolute -right-6 -top-6 text-emerald-500/10 group-hover:text-emerald-500/20 transition-colors">
         <i class="fa-solid fa-building text-8xl"></i>
       </div>
@@ -53,7 +53,7 @@
     </div>
 
     <!-- OPEX -->
-    <div class="glass-panel-dark p-6 rounded-2xl border border-purple-500/20 relative overflow-hidden group">
+    <div class="glass-panel-dark p-6 rounded-2xl border border-purple-500/20 relative overflow-hidden group <%= filters.category === 'TRIP' ? 'ring-2 ring-purple-400/60' : '' %>">
       <div class="absolute -right-6 -top-6 text-purple-500/10 group-hover:text-purple-500/20 transition-colors">
         <i class="fa-solid fa-truck-moving text-8xl"></i>
       </div>
@@ -79,7 +79,7 @@
     </div>
 
     <!-- ADMIN -->
-    <div class="glass-panel-dark p-6 rounded-2xl border border-blue-500/20 relative overflow-hidden group">
+    <div class="glass-panel-dark p-6 rounded-2xl border border-blue-500/20 relative overflow-hidden group <%= filters.category === 'ADMIN' ? 'ring-2 ring-blue-400/60' : '' %>">
       <div class="absolute -right-6 -top-6 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
         <i class="fa-solid fa-file-invoice text-8xl"></i>
       </div>
@@ -132,7 +132,11 @@
     <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
       <div>
         <p class="text-xs font-bold text-amber-400/70 uppercase tracking-widest mb-1 flex items-center gap-2">
-          <i class="fa-solid fa-sigma"></i> ยอดรวมทั้งหมด (Grand Total)
+          <i class="fa-solid fa-sigma"></i>
+          <%= filters.category === 'CAPITAL' ? 'ลงทุนรวม (CAPEX)'
+            : filters.category === 'TRIP'    ? 'วิ่งรถรวม (OPEX)'
+            : filters.category === 'ADMIN'   ? 'เงินบริหารออฟฟิศรวม (Admin)'
+            : 'ยอดรวมทั้งหมด (Grand Total)' %>
         </p>
         <div class="flex items-end gap-3">
           <div class="text-4xl font-black text-white tabular-nums transition-all duration-300" x-text="convertedTotal.symbol + ' ' + convertedTotal.value.toLocaleString('en-US', { minimumFractionDigits: convertedTotal.decimals, maximumFractionDigits: convertedTotal.decimals })"></div>
@@ -185,7 +189,8 @@
   </div>
 
   <!-- Filters Form Panel -->
-  <form method="GET" action="/expenses" class="glass-panel-dark rounded-2xl border border-white/10 p-5 space-y-4">
+  <form method="GET" action="/expenses" id="expensesFilterForm" class="glass-panel-dark rounded-2xl border border-white/10 p-5 space-y-4">
+    <input type="hidden" name="category" value="<%= filters.category %>">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Payer dropdown -->
       <div>
@@ -257,13 +262,25 @@
   }
   </script>
 
-  <!-- Filters -->
+  <!-- Category filter — real search filter (submits the form above, so it also
+       narrows the totals, print report, and Excel export, not just this table) -->
   <div class="flex gap-2 p-1 bg-white/5 rounded-xl w-fit">
-    <button @click="filter = 'ALL'" :class="filter === 'ALL' ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">ทั้งหมด</button>
-    <button @click="filter = 'CAPITAL'" :class="filter === 'CAPITAL' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">เงินลงทุน</button>
-    <button @click="filter = 'TRIP'" :class="filter === 'TRIP' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">รอบรถ</button>
-    <button @click="filter = 'ADMIN'" :class="filter === 'ADMIN' ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">ออฟฟิศ</button>
+    <button type="button" onclick="setExpenseCategory('')"
+      class="px-4 py-2 rounded-lg text-sm font-bold transition-all <%= !filters.category ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-white' %>">ทั้งหมด</button>
+    <button type="button" onclick="setExpenseCategory('CAPITAL')"
+      class="px-4 py-2 rounded-lg text-sm font-bold transition-all <%= filters.category === 'CAPITAL' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-white' %>">เงินลงทุน</button>
+    <button type="button" onclick="setExpenseCategory('TRIP')"
+      class="px-4 py-2 rounded-lg text-sm font-bold transition-all <%= filters.category === 'TRIP' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white' %>">รอบรถ</button>
+    <button type="button" onclick="setExpenseCategory('ADMIN')"
+      class="px-4 py-2 rounded-lg text-sm font-bold transition-all <%= filters.category === 'ADMIN' ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white' %>">ออฟฟิศ</button>
   </div>
+  <script>
+  function setExpenseCategory(cat) {
+    const form = document.getElementById('expensesFilterForm');
+    form.querySelector('[name="category"]').value = cat;
+    form.submit();
+  }
+  </script>
 
   <!-- Expenses Table -->
   <div class="glass-panel-dark rounded-2xl border border-white/5 overflow-hidden">
@@ -286,7 +303,7 @@
             <tr><td colspan="8" class="p-8 text-center text-slate-500">ยังไม่มีประวัติรายจ่าย</td></tr>
           <% } else { %>
             <% expenses.forEach(e => { %>
-              <tr class="hover:bg-white/5 transition-colors group" x-show="filter === 'ALL' || filter === '<%= e.category %>'" x-transition>
+              <tr class="hover:bg-white/5 transition-colors group">
                 <td class="p-4 whitespace-nowrap text-slate-300">
                   <i class="fa-regular fa-calendar-days text-slate-500 mr-2"></i>
                   <%= new Date(e.expense_date).toLocaleDateString('th-TH') %>
@@ -363,11 +380,3 @@
     </div>
   </div>
 </div>
-
-<script>
-function expensesDashboard() {
-  return {
-    filter: 'ALL'
-  }
-}
-</script>
