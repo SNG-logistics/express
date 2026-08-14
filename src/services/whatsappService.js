@@ -12,6 +12,17 @@ let connectionStatus = 'DISCONNECTED';
 let lastError = null;
 let reconnectAttempts = 0;
 
+// Tracks how long the connection has been stuck down, so callers (dashboard
+// alert card) can distinguish a normal few-second reconnect blip from Baileys
+// actually being dead — a snapshot of connectionStatus alone can't tell those
+// apart since DISCONNECTED flashes briefly on every routine reconnect too.
+let disconnectedSince = null;
+setInterval(() => {
+    const isDown = connectionStatus === 'DISCONNECTED' || connectionStatus === 'ERROR';
+    if (isDown && !disconnectedSince) disconnectedSince = Date.now();
+    if (!isDown) disconnectedSince = null;
+}, 60 * 1000);
+
 const logs = [];
 function addLog(msg) {
     const timestamp = new Date().toLocaleTimeString();
@@ -23,6 +34,8 @@ export const getQr = () => qrCodeData;
 export const getStatus = () => connectionStatus;
 export const getLastError = () => lastError;
 export const getLogs = () => logs;
+/** ms since the connection first went down, or null if currently fine. */
+export const getDisconnectedSince = () => disconnectedSince;
 /** Expose active Baileys socket for CRM outbound sending */
 export const getSock = () => (isClientReady ? sock : null);
 
@@ -310,31 +323,14 @@ export async function sendOrderUpdate(orderId, newStatus) {
             return { skipped: true, reason: 'Customer phone number is missing' };
         }
 
-        // Clean phone number (basic)
-        phone = phone.replace(/\D/g, '');
-        // Note: Baileys expects international format without + or 00, e.g. 66812345678
-        // User provided phone might be "081..." or "20..." (Laos). 
-        // Simple logic: If starts with 0, replace with 66? Or handle both TH/LA?
-        // SNG Logistics handles TH and LA.
-        // Laos prefix 20, 30. Thai prefix 08, 09, 06.
-
-        if (phone.startsWith('020') || phone.startsWith('030')) {
-            phone = '856' + phone.substring(1);
-        } else if (phone.startsWith('0')) {
-            phone = '66' + phone.substring(1); // Assume TH if 0 leading
-        } else if ((phone.startsWith('20') || phone.startsWith('30')) && !phone.startsWith('856')) {
-            phone = '856' + phone; // Laos Country Code
-            // Wait, Laos phones usually entered as 20xxxxxxxx? 
-            // If user stores "209999999", we need to check if 856 is needed.
-            // Usually Baileys needs complete country code.
-            // If it starts with 20 and length is 10, it's likely Laos local format without 856?
-            // Let's assume user data might need slight fix differently than Puppeteer version which relied on whatsapp-web.js smarts.
-            // For safety, let's try to send to what we have, but append country code if missing on obvious patterns.
+        // Same TH/LA normalisation used everywhere else (waPhone.js) — keeps
+        // this path consistent with rider offer/reply matching instead of
+        // re-guessing prefixes here.
+        phone = toWaPhone(phone);
+        if (!phone) {
+            console.log(`[WhatsApp] Unusable phone number for Order ${order.job_no}`);
+            return { skipped: true, reason: 'Customer phone number is invalid' };
         }
-
-        // Better approach for now: Use the number directly like whatsapp-web.js did, 
-        // but Baileys is stricter.
-        // Let's rely on the existing logic flow but format for JID.
 
         const jid = phone + '@s.whatsapp.net';
 

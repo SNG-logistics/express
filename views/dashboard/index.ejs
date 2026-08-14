@@ -153,6 +153,7 @@
         { key:'CUSTOMS_STUCK',  label:'ศุลกากร >72ชม.',           href:'/customs',                     icon:'fa-stamp',              color:'amber' },
         { key:'DELIVERY_FAILED',label:'ส่งไม่ได้ >12ชม.',         href:'/orders?status=DELIVERY_FAILED',icon:'fa-circle-xmark',     color:'red' },
         { key:'COD_OVERDUE',    label:'COD ค้างโอน >72ชม.',       href:'/cod?tab=remittance',          icon:'fa-coins',              color:'amber' },
+        { key:'WHATSAPP_DOWN',  label:'WhatsApp หลุด >15นาที',    href:'/whatsapp',                    icon:'fa-triangle-exclamation', color:'red' },
       ]; %>
       <% ALERT_DEFS.forEach(a => { const cnt = alerts?.[a.key] || 0; if (!cnt) return; %>
       <a href="<%= a.href %>" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-<%= a.color %>-500/10 border border-<%= a.color %>-500/20 hover:bg-<%= a.color %>-500/20 transition-all group">

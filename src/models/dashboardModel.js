@@ -9,6 +9,7 @@
  */
 
 import pool from '../config/db.js';
+import { getDisconnectedSince } from '../services/whatsappService.js';
 
 // ─── SLA Thresholds (hours) ───────────────────────────────────────────────────
 export const SLA = {
@@ -18,6 +19,11 @@ export const SLA = {
   DELIVERY_FAILED: 12,  // failed delivery not actioned for > 12h = alert
   COD_OVERDUE:    72,   // COD collected but not remitted for > 72h = alert
 };
+
+// Baileys reconnects on its own within seconds routinely — only alert once
+// it's been stuck down long enough that customer notifications are actually
+// piling up unsent (see whatsappService.getDisconnectedSince).
+const WHATSAPP_DOWN_ALERT_MS = 15 * 60 * 1000; // 15 min
 
 // ─── In-transit statuses ──────────────────────────────────────────────────────
 const IN_TRANSIT = [
@@ -325,6 +331,8 @@ export async function getDashboardData({ includeFinancials = true, includeCod = 
   // Alerts map
   const alertsMap = {};
   for (const row of alertRows[0]) alertsMap[row.type] = Number(row.cnt);
+  const disconnectedSince = getDisconnectedSince();
+  alertsMap.WHATSAPP_DOWN = (disconnectedSince && (Date.now() - disconnectedSince) > WHATSAPP_DOWN_ALERT_MS) ? 1 : 0;
   const alertTotal = Object.values(alertsMap).reduce((a, b) => a + b, 0);
 
   // Chart labels
