@@ -5,6 +5,10 @@
     <span>SNG <b>EXPRESS</b></span>
   </a>
   <div class="portal-top-actions">
+    <a href="?theme=<%= otherTheme %>" title="<%= t('portal.switchTheme') %>">
+      <i class="fa-solid <%= theme === 'light' ? 'fa-moon' : 'fa-sun' %>"></i>
+      <span><%= otherTheme === 'light' ? t('portal.themeLight') : t('portal.themeDark') %></span>
+    </a>
     <a href="?lang=<%= otherLang %>" title="<%= t('lang.switchTo') %>"><%= otherFlag %> <span><%= otherLabel %></span></a>
     <a href="<%= member ? '/member/profile' : '/member/login' %>" title="<%= member ? t('portal.account') : t('portal.login') %>">
       <i class="fa-solid fa-user"></i><span><%= member?.first_name || t('portal.account') %></span>

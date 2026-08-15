@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="<%= lang || 'th' %>">
+<html lang="<%= lang || 'th' %>" data-theme="<%= theme || 'dark' %>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="<%= theme === 'light' ? '#faf9f6' : '#0a0a0a' %>">
   <meta name="description" content="SNG Express logistics between Thailand and Laos">
   <title><%= title || 'SNG Express' %></title>
   <link rel="manifest" href="/manifest.webmanifest">

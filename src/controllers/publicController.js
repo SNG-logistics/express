@@ -43,14 +43,6 @@ export async function calculatePage(req, res, next) {
   }
 }
 
-// Placeholder until Phase 2 (directory_shops) ships — keeps the shortcut
-// tile/nav link from 404ing in the meantime.
-export function shopsComingSoon(req, res) {
-  return publicView(res, 'public/coming-soon', {
-    title: 'ร้านค้าเข้าร่วม | SNG Express',
-  });
-}
-
 export async function shippingQuote(req, res) {
   try {
     const quote = await findBestShippingRate({

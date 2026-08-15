@@ -1,0 +1,128 @@
+<section class="portal-shell">
+  <!-- Back Link -->
+  <div style="margin-bottom: 1rem;">
+    <a href="/shops" style="color: var(--portal-gold); text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+      <i class="fa-solid fa-arrow-left"></i> กลับหน้ารวมร้านค้า
+    </a>
+  </div>
+
+  <% if (flash) { %>
+  <div class="portal-flash <%= flash.type === 'error' ? 'is-error' : 'is-success' %>" style="margin-bottom: 1rem;">
+    <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check' %>" style="margin-right: 6px;"></i><%= flash.message %>
+  </div>
+  <% } %>
+
+  <!-- Shop Header Card -->
+  <div class="card" style="overflow: hidden; margin-bottom: 1.5rem;">
+    <div style="height: 200px; background: var(--portal-surface-2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+      <% if (shop.photo_path) { %>
+        <img src="<%= shop.photo_path %>" alt="<%= shop.name %>" style="width: 100%; height: 100%; object-fit: cover;">
+      <% } else { %>
+        <i class="fa-solid fa-store" style="font-size: 4rem; color: var(--portal-text-faint);"></i>
+      <% } %>
+    </div>
+
+    <div style="padding: 1.25rem;">
+      <div style="font-size: 0.8rem; color: var(--portal-gold); font-weight: 800; text-transform: uppercase;"><%= shop.business_type %></div>
+      <h1 style="font-size: 1.6rem; color: #fff; margin: 0.2rem 0 0.5rem;"><%= shop.name %></h1>
+
+      <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--portal-text-dim); margin-bottom: 1rem;">
+        <span style="color: var(--portal-gold); font-weight: 700;">
+          <i class="fa-solid fa-star"></i> <%= Number(shop.avg_rating || 0).toFixed(1) %> (<%= shop.review_count || 0 %> รีวิว)
+        </span>
+        <% if (shop.city || shop.province) { %>
+        <span><i class="fa-solid fa-location-dot" style="color: var(--portal-gold);"></i> <%= [shop.city, shop.province].filter(Boolean).join(', ') %></span>
+        <% } %>
+      </div>
+
+      <% if (shop.description) { %>
+      <p style="font-size: 0.9rem; color: var(--portal-text-dim); line-height: 1.6; margin-bottom: 1.25rem;">
+        <%= shop.description %>
+      </p>
+      <% } %>
+
+      <% if (shop.phone) { %>
+      <div>
+        <a href="tel:<%= shop.phone %>" class="btn-gold">
+          <i class="fa-solid fa-phone"></i> <%= t('shops.contactShop') %> (<%= shop.phone %>)
+        </a>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Reviews Section -->
+  <div style="margin-top: 2rem;">
+    <h2 style="font-size: 1.25rem; color: #fff; margin-bottom: 1rem;" class="flex items-center gap-2">
+      <i class="fa-solid fa-comments" style="color: var(--portal-gold);"></i> <%= t('shops.reviewsTitle') %>
+    </h2>
+
+    <!-- Review Form for Logged In Customer -->
+    <% if (customer) { %>
+      <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;"><%= t('shops.writeReview') %></h3>
+
+        <% if (myReview && myReview.status === 'pending') { %>
+          <div class="portal-flash is-success" style="margin-bottom: 0;">
+            <i class="fa-solid fa-clock" style="margin-right: 6px;"></i> <%= t('shops.reviewPendingNote') %>
+          </div>
+        <% } else { %>
+          <form action="/shops/<%= shop.id %>/reviews" method="POST" style="display: grid; gap: 0.75rem;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <label>
+              <span><%= t('shops.ratingLabel') %></span>
+              <select class="input-portal" name="rating" required style="width: auto;">
+                <option value="5" <%= myReview?.rating === 5 ? 'selected' : '' %>>⭐⭐⭐⭐⭐ (5/5)</option>
+                <option value="4" <%= myReview?.rating === 4 ? 'selected' : '' %>>⭐⭐⭐⭐ (4/5)</option>
+                <option value="3" <%= myReview?.rating === 3 ? 'selected' : '' %>>⭐⭐⭐ (3/5)</option>
+                <option value="2" <%= myReview?.rating === 2 ? 'selected' : '' %>>⭐⭐ (2/5)</option>
+                <option value="1" <%= myReview?.rating === 1 ? 'selected' : '' %>>⭐ (1/5)</option>
+              </select>
+            </label>
+
+            <label>
+              <span>ความคิดเห็น</span>
+              <textarea class="input-portal" name="comment" rows="3" placeholder="<%= t('shops.commentPlaceholder') %>" required><%= myReview?.comment || '' %></textarea>
+            </label>
+
+            <button class="btn-gold" type="submit" style="justify-self: start;">
+              <i class="fa-solid fa-paper-plane"></i> <%= t('shops.submitReview') %>
+            </button>
+          </form>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="card" style="padding: 1rem; text-align: center; margin-bottom: 1.5rem; color: var(--portal-text-dim); font-size: 0.85rem;">
+        <i class="fa-solid fa-user-lock" style="font-size: 1.5rem; color: var(--portal-gold); margin-bottom: 0.4rem; display: block;"></i>
+        <%= t('shops.loginToReview') %> — <a href="/member/login" style="color: var(--portal-gold); font-weight: 600;"><%= t('portal.login') %></a>
+      </div>
+    <% } %>
+
+    <!-- Reviews List -->
+    <% if (reviews && reviews.length > 0) { %>
+      <div style="display: grid; gap: 0.75rem;">
+        <% reviews.forEach(rev => {
+          const stars = '⭐'.repeat(rev.rating);
+          const dt = new Date(rev.created_at);
+          const fmtDate = dt.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' });
+        %>
+        <div class="card" style="padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <strong style="color: #fff; font-size: 0.9rem;"><%= rev.first_name %></strong>
+            <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= fmtDate %></small>
+          </div>
+          <div style="color: var(--portal-gold); font-size: 0.8rem; margin-bottom: 0.4rem;"><%= stars %></div>
+          <p style="font-size: 0.85rem; color: var(--portal-text-dim); margin: 0; line-height: 1.5;">
+            <%= rev.comment %>
+          </p>
+        </div>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div style="text-align: center; padding: 2rem 0; color: var(--portal-text-faint); font-size: 0.85rem;">
+        ยังไม่มีรีวิวสำหรับร้านค้านี้ เป็นคนแรกที่รีวิว!
+      </div>
+    <% } %>
+  </div>
+</section>

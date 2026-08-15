@@ -40,8 +40,11 @@ import { Server as SocketIO } from 'socket.io';    // ─ Real-time CRM inbox
 import * as tracking from './controllers/trackingController.js';
 import * as publicController from './controllers/publicController.js';
 import publicRoutes from './routes/public.js';
+import memberRoutes from './routes/member.js';
+import shopsDirectoryRoutes from './routes/shopsDirectory.js';
 
 import { i18nMiddleware } from './middleware/i18n.js';
+import { themeMiddleware } from './middleware/theme.js';
 import pool from './config/db.js';
 
 // ─── DB Init (idempotent table guard) ───────────────────────────────────────
@@ -223,6 +226,70 @@ app.use(sessionMiddleware);
 // ─── i18n (Thai/Lao) ────────────────────────────────────────────────────────
 app.use(i18nMiddleware);
 
+// ─── Public portal light/dark theme toggle ───────────────────────────────────
+app.use(themeMiddleware);
+
+// ─── Member subdomain (member.<host>) — the whole customer portal lives here ─
+// Local dev: this browser environment auto-resolves *.localhost, so
+// http://member.localhost:<PORT>/ just works with no hosts-file edit needed.
+// Production: once a real APP_URL is set, point a member.<domain> DNS record
+// + Plesk subdomain at this same app (no separate deploy needed) — everything
+// below is host-based, not a second copy of the app. Goal: customer traffic
+// (home/track/calculate/shops/member) and staff/admin traffic never share a
+// host, so an old bookmark or typo on the wrong side gets bounced, not served.
+const CUSTOMER_DIRECT_PATHS = ['/', '/track', '/calculate', '/shops', '/api/public', '/member'];
+const MEMBER_BARE_PATHS = ['/register', '/verify', '/verify/resend', '/login', '/logout', '/forgot-password', '/reset-password', '/profile', '/orders', '/account'];
+
+function isCustomerDirectPath(path) {
+  return CUSTOMER_DIRECT_PATHS.some(p => path === p || (p !== '/' && path.startsWith(p + '/')));
+}
+
+app.use((req, res, next) => {
+  const host = req.get('host') || '';
+  const isMemberSubdomain = host.startsWith('member.');
+  const mainHost = isMemberSubdomain ? host.slice('member.'.length) : host;
+  const memberHost = isMemberSubdomain ? host : 'member.' + host;
+  res.locals.isMemberSubdomain = isMemberSubdomain;
+  res.locals.mainHost = mainHost;
+
+  if (isMemberSubdomain) {
+    if (MEMBER_BARE_PATHS.includes(req.path)) {
+      // /login, /register, /profile, ... → the real routes live under /member.
+      req.url = '/member' + req.url;
+    } else if (!isCustomerDirectPath(req.path)) {
+      // Not a recognized customer path — a staff URL opened on the customer
+      // subdomain (by mistake or an old bookmark). Bounce to the main host
+      // instead of 404ing, or worse, matching something unintended here.
+      return res.redirect(`//${mainHost}${req.originalUrl}`);
+    }
+    // else: already a direct match (/, /track, /calculate, /shops, /member/*,
+    // /api/public/*) — these routes work unprefixed, no rewrite needed.
+
+    // memberController redirects (and requireCustomerLogin) hardcode
+    // '/member/...' targets — strip that prefix on the way out so the
+    // address bar stays on clean member.<host>/login-style URLs instead of
+    // round-tripping through /member/login and staying there.
+    const originalRedirect = res.redirect.bind(res);
+    res.redirect = (statusOrUrl, maybeUrl) => {
+      const hasStatus = typeof statusOrUrl === 'number';
+      const status = hasStatus ? statusOrUrl : null;
+      let url = hasStatus ? maybeUrl : statusOrUrl;
+      if (typeof url === 'string' && url.startsWith('/member')) {
+        url = url.slice('/member'.length) || '/';
+      }
+      return status ? originalRedirect(status, url) : originalRedirect(url);
+    };
+  } else if (!req.session?.user && isCustomerDirectPath(req.path)) {
+    // Main host: staff keep today's behaviour unchanged. A logged-out visitor
+    // hitting a customer-facing path — including old /track links already
+    // printed on shipping stickers — gets sent to the customer subdomain
+    // instead of served here.
+    return res.redirect(`//${memberHost}${req.originalUrl}`);
+  }
+
+  next();
+});
+
 // ─── Raw POST logger (BEFORE csrf) ─────────────────────────────────────────
 import fs from 'fs';
 app.use((req, res, next) => {
@@ -253,6 +320,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   res.locals.csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : '';
   res.locals.flash = req.session.flash || null;
+  res.locals.portalCurrentUser = req.session.customer || null;
   delete req.session.flash;
   next();
 });
@@ -400,6 +468,8 @@ function routeLoggedOutUser(req, res, next) {
   return next();
 }
 
+app.use(shopsDirectoryRoutes);
+app.use(memberRoutes);
 app.use(publicRoutes);
 app.get('/', routeLoggedOutUser, publicController.home);
 

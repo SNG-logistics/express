@@ -162,6 +162,9 @@
   },
 
   "portal": {
+    "switchTheme": "ສະຫຼັບທີມ",
+    "themeLight": "ໂໝດສະຫວ່າງ",
+    "themeDark": "ໂໝດມືດ",
     "home": "ໜ້າຫຼັກ",
     "heroTitle": "ສົ່ງພັດສະດຸໄທ-ລາວ ງ່າຍ ໄວ ໄວ້ໃຈໄດ້",
     "heroSubtitle": "ຕິດຕາມພັດສະດຸ ຄຳນວນຄ່າສົ່ງ ແລະ ບໍລິການອື່ນໆ ຂອງ SNG Express",
@@ -186,9 +189,7 @@
     "chargeable": "ນ້ຳໜັກຄິດຄ່າສົ່ງ",
     "notFound": "ບໍ່ພົບໜ້ານີ້",
     "notFoundHint": "ໜ້າທີ່ທ່ານຄົ້ນຫາອາດຖືກຍ້າຍ ຫຼືບໍ່ມີແລ້ວ",
-    "backHome": "ກັບໜ້າຫຼັກ",
-    "comingSoon": "ໄວໆນີ້",
-    "comingSoonHint": "ຟີເຈີນີ້ກຳລັງຈະເປີດໃຫ້ໃຊ້ງານໄວໆນີ້"
+    "backHome": "ກັບໜ້າຫຼັກ"
   },
 
   "tracking": {
@@ -205,5 +206,38 @@
     "createdAt": "ວັນທີສ້າງ",
     "updatedAt": "ອັບເດດຫຼ້າສຸດ",
     "history": "ປະຫວັດສະຖານະ"
+  },
+
+  "member": {
+    "welcome": "ຍິນດີຕ້ອນຮັບ",
+    "myProfile": "ຂໍ້ມູນສ່ວນຕົວ",
+    "myOrders": "ພັດສະດຸຂອງຂ້ອຍ",
+    "points": "ຄະແນນສະສົມ",
+    "coupons": "ຄູປອງສ່ວນຫຼຸດ",
+    "referralCode": "ລະຫັດແນະນຳໝູ່",
+    "editProfile": "ແກ້ໄຂຂໍ້ມູນ",
+    "resendOtp": "ຂໍລະຫັດ OTP ໃໝ່",
+    "verifyOtp": "ຢືນຢັນລະຫັດ OTP",
+    "enterOtp": "ປ້ອນລະຫັດ OTP 6 ຫຼັກທີ່ສົ່ງໄປຫາ WhatsApp",
+    "otpSentTo": "ສົ່ງລະຫັດໄປຫາເບີ",
+    "noOrders": "ຍັງບໍ່ມີລາຍການພັດສະດຸ",
+    "viewTracking": "ເບິ່ງສະຖານະ"
+  },
+
+  "shops": {
+    "title": "ຮ້ານຄ້າເຂົ້າຮ່ວມ",
+    "subtitle": "ຮ້ານຄ້າ ແລະ ພັນທະມິດທີ່ SNG ເປັນຕົວແທນຈັດສົ່ງສິນຄ້າໃຫ້",
+    "allTypes": "ທັງໝົດ",
+    "searchPlaceholder": "ຄົ້ນຫາຊື່ຮ້ານຄ້າ ຫຼືແຂວງ...",
+    "noShopsFound": "ບໍ່ພົບຮ້ານຄ້າທີ່ກົງກັບການຄົ້ນຫາ",
+    "contactShop": "ຕິດຕໍ່ຮ້ານຄ້າ",
+    "reviewsTitle": "ຣີວິວຈາກສະມາຊິກ",
+    "writeReview": "ຂຽນຣີວິວຮ້ານຄ້ານີ້",
+    "submitReview": "ສົ່ງຣີວິວ",
+    "ratingLabel": "ໃຫ້ຄະແນນ",
+    "commentPlaceholder": "ແບ່ງປັນປະສົບການການຊື້ສິນຄ້າ ຫຼືຈັດສົ່ງ...",
+    "loginToReview": "ກະລຸນາເຂົ້າສູ່ລະບົບສະມາຊິກເພື່ອຂຽນຣີວິວ",
+    "reviewPendingNote": "ຣີວິວຂອງທ່ານຢູ່ລະຫວ່າງລໍຖ້າພະນັກງານອະນຸມັດ",
+    "averageRating": "ຄະແນນສະເລ່ຍ"
   }
 }

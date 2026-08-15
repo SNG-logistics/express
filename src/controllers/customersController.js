@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import { syncOneLegacyCustomer } from '../services/customerSyncService.js';
+import { toWaPhone } from '../utils/waPhone.js';
 
 export async function list(req, res) {
     const { q } = req.query;
@@ -48,9 +49,9 @@ export async function create(req, res) {
     const { type, name, phone, email, country, province, city, address, tax_id } = req.body;
     try {
         const [insertResult] = await pool.query(
-            `INSERT INTO customers (type, name, phone, email, country, province, city, address, tax_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [type, name, phone, email, country, province, city, address, tax_id]
+            `INSERT INTO customers (type, name, phone, phone_normalized, email, country, province, city, address, tax_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [type, name, phone, toWaPhone(phone), email, country, province, city, address, tax_id]
         );
         req.session.flash = { type: 'success', message: 'เพิ่มลูกค้าสำเร็จ' };
         // Non-blocking: sync new customer to CRM
@@ -96,9 +97,9 @@ export async function update(req, res) {
     const { type, name, phone, email, country, province, city, address, tax_id } = req.body;
     try {
         await pool.query(
-            `UPDATE customers SET type=?, name=?, phone=?, email=?, country=?, province=?, city=?, address=?, tax_id=? 
+            `UPDATE customers SET type=?, name=?, phone=?, phone_normalized=?, email=?, country=?, province=?, city=?, address=?, tax_id=?
        WHERE id=?`,
-            [type, name, phone, email, country, province, city, address, tax_id, id]
+            [type, name, phone, toWaPhone(phone), email, country, province, city, address, tax_id, id]
         );
         req.session.flash = { type: 'success', message: 'แก้ไขข้อมูลสำเร็จ' };
         // Non-blocking: sync updated customer to CRM
@@ -202,12 +203,13 @@ export async function phoneLookup(req, res) {
         if (save === 'true' && name) {
             const [result] = await pool.query(
                 `INSERT INTO customers
-                   (type, name, phone, country, province, district, city, address, preferred_carrier)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                   (type, name, phone, phone_normalized, country, province, district, city, address, preferred_carrier)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     type || 'person',
                     name,
                     phone,
+                    toWaPhone(phone),
                     country || 'LA',
                     province || null,
                     district || null,

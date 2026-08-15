@@ -162,6 +162,9 @@
   },
 
   "portal": {
+    "switchTheme": "สลับธีม",
+    "themeLight": "โหมดสว่าง",
+    "themeDark": "โหมดมืด",
     "home": "หน้าแรก",
     "heroTitle": "ส่งพัสดุไทย-ลาว ง่าย รวดเร็ว ไว้ใจได้",
     "heroSubtitle": "ติดตามพัสดุ คำนวณค่าส่ง และบริการอื่นๆ ของ SNG Express",
@@ -186,9 +189,7 @@
     "chargeable": "น้ำหนักคิดค่าส่ง",
     "notFound": "ไม่พบหน้านี้",
     "notFoundHint": "หน้าที่คุณค้นหาอาจถูกย้ายหรือไม่มีอยู่แล้ว",
-    "backHome": "กลับหน้าแรก",
-    "comingSoon": "เร็วๆ นี้",
-    "comingSoonHint": "ฟีเจอร์นี้กำลังจะเปิดให้ใช้งานเร็วๆ นี้"
+    "backHome": "กลับหน้าแรก"
   },
 
   "tracking": {
@@ -205,5 +206,38 @@
     "createdAt": "วันที่สร้าง",
     "updatedAt": "อัปเดตล่าสุด",
     "history": "ประวัติสถานะ"
+  },
+
+  "member": {
+    "welcome": "ยินดีต้อนรับ",
+    "myProfile": "ข้อมูลส่วนตัว",
+    "myOrders": "พัสดุของฉัน",
+    "points": "แต้มสะสม",
+    "coupons": "คูปองส่วนลด",
+    "referralCode": "รหัสแนะนำเพื่อน",
+    "editProfile": "แก้ไขข้อมูล",
+    "resendOtp": "ขอรหัส OTP ใหม่",
+    "verifyOtp": "ยืนยันรหัส OTP",
+    "enterOtp": "กรอกรหัส OTP 6 หลักที่ส่งไปยัง WhatsApp",
+    "otpSentTo": "ส่งรหัสไปยังเบอร์",
+    "noOrders": "ยังไม่มีรายการพัสดุ",
+    "viewTracking": "ดูสถานะ"
+  },
+
+  "shops": {
+    "title": "ร้านค้าเข้าร่วม",
+    "subtitle": "ร้านค้าและพันธมิตรที่ SNG เป็นตัวแทนจัดส่งสินค้าให้",
+    "allTypes": "ทั้งหมด",
+    "searchPlaceholder": "ค้นหาชื่อร้านค้า หรือจังหวัด...",
+    "noShopsFound": "ไม่พบร้านค้าที่ตรงกับการค้นหา",
+    "contactShop": "ติดต่อร้านค้า",
+    "reviewsTitle": "รีวิวจากสมาชิก",
+    "writeReview": "เขียนรีวิวร้านค้านี้",
+    "submitReview": "ส่งรีวิว",
+    "ratingLabel": "ให้คะแนน",
+    "commentPlaceholder": "แบ่งปันประสบการณ์การซื้อสินค้าหรือจัดส่ง...",
+    "loginToReview": "กรุณาเข้าสู่ระบบสมาชิกเพื่อเขียนรีวิว",
+    "reviewPendingNote": "รีวิวของคุณอยู่ระหว่างรอเจ้าหน้าที่อนุมัติ",
+    "averageRating": "คะแนนเฉลี่ย"
   }
 }

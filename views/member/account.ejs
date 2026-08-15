@@ -1,0 +1,52 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">SETTINGS</p>
+    <h1><%= t('member.editProfile') %></h1>
+    <p>ปรับแต่งข้อมูลส่วนตัวของคุณ</p>
+  </div>
+
+  <% if (error) { %>
+  <div class="portal-flash is-error">
+    <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i><%= error %>
+  </div>
+  <% } %>
+
+  <% if (success) { %>
+  <div class="portal-flash is-success">
+    <i class="fa-solid fa-circle-check" style="margin-right: 6px;"></i><%= success %>
+  </div>
+  <% } %>
+
+  <form class="card portal-form" action="/member/account" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label>
+      <span>เบอร์โทรศัพท์ (ยืนยันแล้ว)</span>
+      <input class="input-portal" type="text" value="<%= account.phone_display || account.phone %>" disabled style="opacity: 0.6; cursor: not-allowed;">
+    </label>
+
+    <label>
+      <span>ชื่อ <strong style="color:var(--portal-gold)">*</strong></span>
+      <input class="input-portal" name="first_name" type="text" value="<%= account.first_name || '' %>" required>
+    </label>
+
+    <label>
+      <span>นามสกุล</span>
+      <input class="input-portal" name="last_name" type="text" value="<%= account.last_name || '' %>">
+    </label>
+
+    <label>
+      <span>เพศ</span>
+      <select class="input-portal" name="gender">
+        <option value="">-- ไม่ระบุ --</option>
+        <option value="male" <%= account.gender === 'male' ? 'selected' : '' %>>ชาย</option>
+        <option value="female" <%= account.gender === 'female' ? 'selected' : '' %>>หญิง</option>
+        <option value="other" <%= account.gender === 'other' ? 'selected' : '' %>>อื่นๆ</option>
+      </select>
+    </label>
+
+    <button class="btn-gold" type="submit" style="width: 100%; margin-top: 0.5rem;">
+      <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
+    </button>
+  </form>
+</section>

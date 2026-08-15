@@ -5,6 +5,7 @@ import { transitionOrder, withTransaction } from '../services/orderWorkflowServi
 import { parseDimensionSum, resolveShippingRate } from '../services/pricingService.js';
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
 import { assignBranchToOrder, assignOrderToBranch } from './branchesController.js';
+import { toWaPhone } from '../utils/waPhone.js';
 
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
@@ -136,8 +137,8 @@ export async function showCreate(req, res) {
           quoteReceiverName = exist.name || q.customer_name || '';
         } else {
           const [res] = await pool.query(
-            'INSERT INTO customers (name, phone, type, country) VALUES (?, ?, "person", "la")',
-            [q.customer_name || 'ไม่ระบุชื่อ', cleanPhone]
+            'INSERT INTO customers (name, phone, phone_normalized, type, country) VALUES (?, ?, ?, "person", "la")',
+            [q.customer_name || 'ไม่ระบุชื่อ', cleanPhone, toWaPhone(cleanPhone)]
           );
           quoteReceiverId = res.insertId;
           quoteReceiverName = q.customer_name || 'ไม่ระบุชื่อ';

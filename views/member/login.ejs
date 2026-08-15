@@ -1,0 +1,38 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">SNG EXPRESS</p>
+    <h1><%= t('portal.login') %></h1>
+    <p><%= t('portal.heroSubtitle') %></p>
+  </div>
+
+  <% if (error) { %>
+  <div class="portal-flash is-error">
+    <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i><%= error %>
+  </div>
+  <% } %>
+
+  <form class="card portal-form" action="/member/login" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label>
+      <span>เบอร์โทรศัพท์ (WhatsApp)</span>
+      <input class="input-portal" name="phone" type="tel" placeholder="เช่น 0812345678" value="<%= values.phone || '' %>" required autofocus>
+    </label>
+
+    <label>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+        <span style="margin-bottom: 0;">รหัสผ่าน</span>
+        <a href="/member/forgot-password" style="color: var(--portal-gold); font-size: 0.8rem; text-decoration: none;">ลืมรหัสผ่าน?</a>
+      </div>
+      <input class="input-portal" name="password" type="password" required>
+    </label>
+
+    <button class="btn-gold" type="submit" style="width: 100%; margin-top: 0.5rem;">
+      <i class="fa-solid fa-right-to-bracket"></i> <%= t('portal.login') %>
+    </button>
+
+    <div style="text-align: center; font-size: 0.85rem; color: var(--portal-text-dim); margin-top: 0.5rem;">
+      ยังไม่มีบัญชีสมาชิก? <a href="/member/register" style="color: var(--portal-gold); font-weight: 600;"><%= t('portal.register') %></a>
+    </div>
+  </form>
+</section>

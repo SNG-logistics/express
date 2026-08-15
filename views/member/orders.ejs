@@ -1,0 +1,59 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">MY ORDERS</p>
+    <h1><%= t('member.myOrders') %></h1>
+    <p>รายการพัสดุที่คุณเป็นผู้ส่งหรือผู้รับ</p>
+  </div>
+
+  <% if (orders && orders.length > 0) { %>
+    <div style="display: grid; gap: 0.75rem;">
+      <% orders.forEach(order => {
+        const dirLabel = order.direction === 'TH_TO_LA' ? t('order.thToLa') : t('order.laToTh');
+        const dirFlags = order.direction === 'TH_TO_LA' ? '🇹🇭 → 🇱🇦' : '🇱🇦 → 🇹🇭';
+        const dateLocale = lang === 'lo' ? 'lo-LA' : 'th-TH';
+        const dt = order.created_at ? new Date(order.created_at) : null;
+        const fmtDate = dt ? dt.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: '2-digit' }) : '–';
+      %>
+      <div class="card tracking-card">
+        <div class="tracking-card-header">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <div class="tracking-job"><%= order.job_no %></div>
+              <div style="font-size: 0.8rem; color: var(--portal-text-dim); margin-top: 0.2rem;">
+                <span><%= dirFlags %></span> <%= dirLabel %>
+              </div>
+            </div>
+            <a href="/track/<%= order.job_no %>" class="btn-gold" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+              <%= t('member.viewTracking') %> <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem;"></i>
+            </a>
+          </div>
+        </div>
+        <div class="tracking-details">
+          <div>
+            <small><%= t('order.sender') %></small>
+            <strong><%= order.sender_name || '–' %></strong>
+          </div>
+          <div>
+            <small><%= t('order.receiver') %></small>
+            <strong><%= order.receiver_name || '–' %></strong>
+          </div>
+          <div>
+            <small><%= t('tracking.destination') %></small>
+            <strong><%= order.receiver_city || '–' %></strong>
+          </div>
+          <div>
+            <small><%= t('tracking.createdAt') %></small>
+            <strong><%= fmtDate %></strong>
+          </div>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <i class="fa-solid fa-box-open"></i>
+      <p style="font-size: 1.1rem; font-weight: 700; color: var(--portal-text); margin-top: 0.75rem;"><%= t('member.noOrders') %></p>
+      <p style="font-size: 0.85rem;">พัสดุที่คุณเป็นผู้ส่งหรือผู้รับจะแสดงที่นี่โดยอัตโนมัติเมื่อเบอร์โทรตรงกัน</p>
+    </div>
+  <% } %>
+</section>

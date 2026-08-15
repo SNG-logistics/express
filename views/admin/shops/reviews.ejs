@@ -1,0 +1,93 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0 text-gray-800">💬 ตรวจสอบและอนุมัติรีวิวร้านค้า</h1>
+      <p class="text-muted small">อนุมัติหรือปฏิเสธรีวิวจากสมาชิกก่อนแสดงผลบนหน้าเว็บ</p>
+    </div>
+    <a href="/admin/shops" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-arrow-left"></i> กลับหน้ารายการร้านค้า
+    </a>
+  </div>
+
+  <% if (flash) { %>
+  <div class="alert alert-<%= flash.type === 'error' ? 'danger' : 'success' %> alert-dismissible fade show" role="alert">
+    <%= flash.message %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <% } %>
+
+  <div class="card shadow mb-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ร้านค้า</th>
+              <th>สมาชิก</th>
+              <th>คะแนน</th>
+              <th>ข้อความรีวิว</th>
+              <th>วันที่ส่ง</th>
+              <th>สถานะ</th>
+              <th style="width: 160px;">อนุมัติ / ปฏิเสธ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (reviews && reviews.length > 0) { %>
+              <% reviews.forEach(rev => {
+                const stars = '⭐'.repeat(rev.rating);
+                const dt = new Date(rev.created_at);
+                const fmtDate = dt.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }) + ' ' + dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+              %>
+              <tr>
+                <td><strong><%= rev.shop_name %></strong></td>
+                <td>
+                  <div><%= rev.first_name %></div>
+                  <small class="text-muted"><%= rev.phone_display %></small>
+                </td>
+                <td><span class="text-warning"><%= stars %></span> (<%= rev.rating %>/5)</td>
+                <td style="max-width: 300px;">
+                  <p class="mb-0 small text-wrap"><%= rev.comment %></p>
+                </td>
+                <td class="small text-muted"><%= fmtDate %></td>
+                <td>
+                  <% if (rev.status === 'published') { %>
+                    <span class="badge bg-success">อนุมัติแล้ว (Published)</span>
+                  <% } else if (rev.status === 'rejected') { %>
+                    <span class="badge bg-danger">ปฏิเสธ (Rejected)</span>
+                  <% } else { %>
+                    <span class="badge bg-warning text-dark">รออนุมัติ (Pending)</span>
+                  <% } %>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <form action="/admin/shops/reviews/<%= rev.id %>/status" method="POST" class="d-inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="status" value="published">
+                      <button type="submit" class="btn btn-sm btn-success" title="อนุมัติ" <%= rev.status === 'published' ? 'disabled' : '' %>>
+                        <i class="fa-solid fa-check"></i> อนุมัติ
+                      </button>
+                    </form>
+                    <form action="/admin/shops/reviews/<%= rev.id %>/status" method="POST" class="d-inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="status" value="rejected">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="ปฏิเสธ" <%= rev.status === 'rejected' ? 'disabled' : '' %>>
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <% }); %>
+            <% } else { %>
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                  ยังไม่มีรายการรีวิวในระบบ
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

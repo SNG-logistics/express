@@ -1,0 +1,48 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">WHATSAPP OTP</p>
+    <h1><%= t('member.verifyOtp') %></h1>
+    <p><%= t('member.enterOtp') %></p>
+  </div>
+
+  <% if (error) { %>
+  <div class="portal-flash is-error">
+    <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i><%= error %>
+  </div>
+  <% } %>
+
+  <% if (success) { %>
+  <div class="portal-flash is-success">
+    <i class="fa-solid fa-circle-check" style="margin-right: 6px;"></i><%= success %>
+  </div>
+  <% } %>
+
+  <div class="card portal-form">
+    <div style="text-align: center; margin-bottom: 0.5rem;">
+      <i class="fa-brands fa-whatsapp" style="font-size: 2.5rem; color: #25D366; margin-bottom: 0.5rem; display: inline-block;"></i>
+      <div style="font-size: 0.9rem; color: var(--portal-text-dim);">
+        <%= t('member.otpSentTo') %>: <strong style="color: #fff;"><%= pending?.phoneDisplay || pending?.phone %></strong>
+      </div>
+    </div>
+
+    <form action="/member/verify" method="POST" style="display: grid; gap: 1rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label style="text-align: center;">
+        <span style="display: block; margin-bottom: 0.5rem;"><%= t('member.verifyOtp') %> (6 หลัก)</span>
+        <input class="input-portal" name="code" type="text" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" placeholder="• • • • • •" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; font-weight: 800;" required autofocus autocomplete="one-time-code">
+      </label>
+
+      <button class="btn-gold" type="submit" style="width: 100%;">
+        <i class="fa-solid fa-check-circle"></i> ยืนยันรหัส OTP
+      </button>
+    </form>
+
+    <form action="/member/verify/resend" method="POST" style="text-align: center; margin-top: 0.5rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" style="background: none; border: none; color: var(--portal-gold); font-size: 0.85rem; text-decoration: underline; cursor: pointer;">
+        <i class="fa-solid fa-rotate-right" style="margin-right: 4px;"></i> <%= t('member.resendOtp') %>
+      </button>
+    </form>
+  </div>
+</section>

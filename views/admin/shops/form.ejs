@@ -1,0 +1,83 @@
+<div class="container py-4" style="max-width: 720px;">
+  <div class="mb-4">
+    <a href="/admin/shops" class="text-decoration-none small">
+      <i class="fa-solid fa-arrow-left"></i> กลับหน้ารายการร้านค้า
+    </a>
+    <h1 class="h3 mt-2"><%= title %></h1>
+  </div>
+
+  <div class="card shadow">
+    <div class="card-body">
+      <form action="<%= shop ? '/admin/shops/' + shop.id : '/admin/shops' %>?_csrf=<%= encodeURIComponent(csrfToken) %>" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">ชื่อร้านค้า <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="name" value="<%= shop?.name || '' %>" required>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">หมวดหมู่สินค้า/ธุรกิจ</label>
+            <input type="text" class="form-control" name="business_type" placeholder="เช่น เสื้อผ้า, เครื่องใช้ไฟฟ้า, อาหาร" value="<%= shop?.business_type || '' %>">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">เบอร์โทรศัพท์ติดต่อ</label>
+            <input type="text" class="form-control" name="phone" placeholder="เช่น 081-234-5678" value="<%= shop?.phone || '' %>">
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">เมือง / เมืองหลวง</label>
+            <input type="text" class="form-control" name="city" placeholder="เช่น นครหลวงเวียงจันทน์ หรือ หนองคาย" value="<%= shop?.city || '' %>">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">จังหวัด / แขวง</label>
+            <input type="text" class="form-control" name="province" placeholder="เช่น แขวงเวียงจันทน์" value="<%= shop?.province || '' %>">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">รายละเอียดร้านค้า</label>
+          <textarea class="form-control" name="description" rows="4"><%= shop?.description || '' %></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">รูปภาพร้านค้า</label>
+          <% if (shop?.photo_path) { %>
+            <div class="mb-2">
+              <img src="<%= shop.photo_path %>" alt="" style="max-height: 120px;" class="rounded border">
+            </div>
+          <% } %>
+          <input type="file" class="form-control" name="photo" accept="image/*">
+          <small class="text-muted">รองรับไฟล์ภาพ JPG, PNG, WebP ขนาดไม่เกิน 5MB</small>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">สถานะการแสดงผล</label>
+            <select class="form-select" name="status">
+              <option value="draft" <%= shop?.status === 'draft' ? 'selected' : '' %>>ฉบับร่าง (Draft)</option>
+              <option value="published" <%= shop?.status === 'published' ? 'selected' : '' %>>เผยแพร่บนเว็บ (Published)</option>
+              <option value="hidden" <%= shop?.status === 'hidden' ? 'selected' : '' %>>ซ่อนไว้ (Hidden)</option>
+            </select>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">ลำดับการแสดงผล (Sort Order)</label>
+            <input type="number" class="form-control" name="sort_order" value="<%= shop?.sort_order || 0 %>">
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="d-flex justify-content-end gap-2">
+          <a href="/admin/shops" class="btn btn-secondary">ยกเลิก</a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลร้านค้า
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

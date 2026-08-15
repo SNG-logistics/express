@@ -10,7 +10,6 @@ router.use((req, res, next) => {
 });
 
 router.get('/calculate', publicController.calculatePage);
-router.get('/shops', publicController.shopsComingSoon);
 router.get('/api/public/shipping-quote',
   publicRateLimit({ max: 60, windowMs: 15 * 60 * 1000 }),
   publicController.shippingQuote);

@@ -1,0 +1,56 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">SNG EXPRESS</p>
+    <h1><%= t('portal.register') %></h1>
+    <p><%= t('portal.memberHint') %></p>
+  </div>
+
+  <% if (error) { %>
+  <div class="portal-flash is-error">
+    <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i><%= error %>
+  </div>
+  <% } %>
+
+  <form class="card portal-form" action="/member/register" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label>
+      <span>เบอร์โทรศัพท์ (WhatsApp) <strong style="color:var(--portal-gold)">*</strong></span>
+      <input class="input-portal" name="phone" type="tel" placeholder="เช่น 0812345678 หรือ 02012345678" value="<%= values.phone || '' %>" required autofocus>
+    </label>
+
+    <label>
+      <span>ชื่อผู้ใช้งาน <strong style="color:var(--portal-gold)">*</strong></span>
+      <input class="input-portal" name="first_name" type="text" placeholder="ชื่อของคุณ" value="<%= values.first_name || '' %>" required>
+    </label>
+
+    <label>
+      <span>นามสกุล</span>
+      <input class="input-portal" name="last_name" type="text" placeholder="นามสกุล (ถ้ามี)" value="<%= values.last_name || '' %>">
+    </label>
+
+    <div class="form-grid">
+      <label>
+        <span>รหัสผ่าน (ขั้นต่ำ 6 ตัว) <strong style="color:var(--portal-gold)">*</strong></span>
+        <input class="input-portal" name="password" type="password" required>
+      </label>
+      <label>
+        <span>ยืนยันรหัสผ่าน <strong style="color:var(--portal-gold)">*</strong></span>
+        <input class="input-portal" name="confirm_password" type="password" required>
+      </label>
+    </div>
+
+    <label>
+      <span>รหัสแนะนำเพื่อน (ถ้ามี)</span>
+      <input class="input-portal" name="referral_code" type="text" placeholder="เช่น SNG-XXXX" value="<%= values.referral_code || '' %>" style="text-transform: uppercase;">
+    </label>
+
+    <button class="btn-gold" type="submit" style="width: 100%; margin-top: 0.5rem;">
+      <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem;"></i> สมัครสมาชิกและรับรหัส OTP
+    </button>
+
+    <div style="text-align: center; font-size: 0.85rem; color: var(--portal-text-dim); margin-top: 0.5rem;">
+      มีบัญชีสมาชิกอยู่แล้ว? <a href="/member/login" style="color: var(--portal-gold); font-weight: 600;"><%= t('portal.login') %></a>
+    </div>
+  </form>
+</section>

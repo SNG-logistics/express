@@ -1,0 +1,69 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">MY ACCOUNT</p>
+    <h1><%= t('member.welcome') %>, <%= account.first_name %>!</h1>
+    <p style="font-size: 0.85rem; color: var(--portal-text-dim);">
+      <i class="fa-brands fa-whatsapp" style="color: #25D366; margin-right: 4px;"></i> <%= account.phone_display || account.phone %>
+      <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; background: rgba(34, 197, 94, 0.15); color: var(--portal-success); font-size: 0.75rem; font-weight: 700; margin-left: 6px;">
+        <i class="fa-solid fa-check-circle"></i> ยืนยันตัวตนแล้ว
+      </span>
+    </p>
+  </div>
+
+  <!-- Referral Card -->
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem; border-color: rgba(255, 224, 0, 0.25); background: linear-gradient(135deg, rgba(255, 224, 0, 0.05), rgba(20, 20, 20, 0.8));">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <small style="color: var(--portal-gold); font-weight: 800; font-size: 0.75rem; letter-spacing: 0.05em;"><%= t('member.referralCode') %></small>
+        <div style="font-size: 1.4rem; font-weight: 800; color: #fff; letter-spacing: 1px;"><%= account.referral_code || 'SNG-XXXX' %></div>
+      </div>
+      <button onclick="navigator.clipboard.writeText('<%= account.referral_code %>'); alert('คัดลอกรหัสแนะนำเพื่อนเรียบร้อย!');" class="btn-gold" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+        <i class="fa-regular fa-copy"></i> คัดลอกรหัส
+      </button>
+    </div>
+  </div>
+
+  <!-- Loyalty Placeholders Grid -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+    <div class="card" style="padding: 1rem; text-align: center;">
+      <i class="fa-solid fa-coins" style="font-size: 1.5rem; color: var(--portal-gold); margin-bottom: 0.25rem;"></i>
+      <div style="font-size: 1.2rem; font-weight: 800; color: #fff;">0</div>
+      <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= t('member.points') %> (เร็วๆ นี้)</small>
+    </div>
+    <div class="card" style="padding: 1rem; text-align: center;">
+      <i class="fa-solid fa-ticket" style="font-size: 1.5rem; color: var(--portal-gold); margin-bottom: 0.25rem;"></i>
+      <div style="font-size: 1.2rem; font-weight: 800; color: #fff;">0</div>
+      <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= t('member.coupons') %> (เร็วๆ นี้)</small>
+    </div>
+  </div>
+
+  <!-- Menu Shortcuts -->
+  <div class="shortcut-grid">
+    <a class="card shortcut" href="/member/orders">
+      <i class="fa-solid fa-boxes-stacked"></i>
+      <strong><%= t('member.myOrders') %></strong>
+      <small>ติดตามและเช็ครายการพัสดุของคุณ</small>
+    </a>
+    <a class="card shortcut" href="/track">
+      <i class="fa-solid fa-location-dot"></i>
+      <strong><%= t('portal.track') %></strong>
+      <small>เช็คสถานะพัสดุด้วยเลข SNG</small>
+    </a>
+    <a class="card shortcut" href="/calculate">
+      <i class="fa-solid fa-calculator"></i>
+      <strong><%= t('portal.calculate') %></strong>
+      <small>ประเมินค่าส่งไทย-ลาว</small>
+    </a>
+    <a class="card shortcut" href="/member/account">
+      <i class="fa-solid fa-user-gear"></i>
+      <strong><%= t('member.editProfile') %></strong>
+      <small>แก้ไขชื่อและข้อมูลส่วนตัว</small>
+    </a>
+  </div>
+
+  <div style="text-align: center; margin-top: 1.5rem;">
+    <a href="/member/logout" class="btn-gold" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+      <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+    </a>
+  </div>
+</section>

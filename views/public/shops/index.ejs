@@ -1,0 +1,74 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">PARTNER DIRECTORY</p>
+    <h1><%= t('shops.title') %></h1>
+    <p><%= t('shops.subtitle') %></p>
+  </div>
+
+  <!-- Search & Category Filters -->
+  <div class="card" style="padding: 1rem; margin-bottom: 1.25rem;">
+    <form action="/shops" method="GET" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <input class="input-portal" name="q" placeholder="<%= t('shops.searchPlaceholder') %>" value="<%= searchQuery || '' %>" style="flex: 1; min-width: 200px;">
+      <% if (selectedType) { %>
+        <input type="hidden" name="type" value="<%= selectedType %>">
+      <% } %>
+      <button class="btn-gold" type="submit"><i class="fa-solid fa-magnifying-glass"></i> <%= t('common.search') %></button>
+    </form>
+
+    <% if (availableTypes && availableTypes.length > 0) { %>
+    <div style="display: flex; gap: 0.4rem; overflow-x: auto; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--portal-border);">
+      <a href="/shops<%= searchQuery ? '?q=' + encodeURIComponent(searchQuery) : '' %>"
+         style="padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-decoration: none; white-space: nowrap; <%= !selectedType ? 'background: var(--portal-gold); color: #111;' : 'background: var(--portal-surface-2); color: var(--portal-text-dim);' %>">
+        <%= t('shops.allTypes') %>
+      </a>
+      <% availableTypes.forEach(tName => { %>
+      <a href="/shops?type=<%= encodeURIComponent(tName) %><%= searchQuery ? '&q=' + encodeURIComponent(searchQuery) : '' %>"
+         style="padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-decoration: none; white-space: nowrap; <%= selectedType === tName ? 'background: var(--portal-gold); color: #111;' : 'background: var(--portal-surface-2); color: var(--portal-text-dim);' %>">
+        <%= tName %>
+      </a>
+      <% }); %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Shops Grid -->
+  <% if (shops && shops.length > 0) { %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+      <% shops.forEach(shop => {
+        const avg = Number(shop.avg_rating || 0).toFixed(1);
+      %>
+      <a href="/shops/<%= shop.id %>" class="card" style="text-decoration: none; color: inherit; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div style="height: 140px; background: var(--portal-surface-2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <% if (shop.photo_path) { %>
+            <img src="<%= shop.photo_path %>" alt="<%= shop.name %>" style="width: 100%; height: 100%; object-fit: cover;">
+          <% } else { %>
+            <i class="fa-solid fa-store" style="font-size: 3rem; color: var(--portal-text-faint);"></i>
+          <% } %>
+          <span style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(10, 10, 10, 0.8); border: 1px solid var(--portal-border); padding: 0.2rem 0.5rem; border-radius: 0.5rem; font-size: 0.75rem; color: var(--portal-gold); font-weight: 700;">
+            <i class="fa-solid fa-star" style="color: var(--portal-gold); font-size: 0.7rem;"></i> <%= avg > 0 ? avg : 'ใหม่' %> (<%= shop.review_count || 0 %>)
+          </span>
+        </div>
+        <div style="padding: 1rem; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 0.75rem; color: var(--portal-gold); font-weight: 700; text-transform: uppercase;"><%= shop.business_type %></div>
+            <strong style="font-size: 1.1rem; color: #fff; display: block; margin-top: 0.2rem;"><%= shop.name %></strong>
+            <p style="font-size: 0.82rem; color: var(--portal-text-dim); margin-top: 0.4rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              <%= shop.description || 'ไม่มีรายละเอียดเพิ่มเติม' %>
+            </p>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--portal-text-faint); margin-top: 0.75rem; border-top: 1px solid var(--portal-border); padding-top: 0.5rem;" class="flex items-center gap-1">
+            <i class="fa-solid fa-location-dot" style="color: var(--portal-gold);"></i>
+            <span><%= [shop.city, shop.province].filter(Boolean).join(', ') || 'ไทย-ลาว' %></span>
+          </div>
+        </div>
+      </a>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <i class="fa-solid fa-store-slash"></i>
+      <p style="font-size: 1.1rem; font-weight: 700; color: var(--portal-text); margin-top: 0.75rem;"><%= t('shops.noShopsFound') %></p>
+      <p style="font-size: 0.85rem;">ลองค้นหาด้วยคำค้นอื่น หรือเลือกหมวดหมู่ทั้งหมด</p>
+    </div>
+  <% } %>
+</section>
