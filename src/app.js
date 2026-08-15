@@ -38,6 +38,8 @@ import { startNotificationWorker } from './services/notificationService.js';
 import { createServer } from 'http';                // ─ Socket.io needs raw http server
 import { Server as SocketIO } from 'socket.io';    // ─ Real-time CRM inbox
 import * as tracking from './controllers/trackingController.js';
+import * as publicController from './controllers/publicController.js';
+import publicRoutes from './routes/public.js';
 
 import { i18nMiddleware } from './middleware/i18n.js';
 import pool from './config/db.js';
@@ -391,7 +393,15 @@ app.use(webhookSimRoutes);   // ─ Dev webhook simulator (prod-blocked)
 app.use(crmRoutes);          // ─ Omnichannel CRM
 
 
-app.get('/', (req, res) => res.redirect('/dashboard'));
+// Staff (logged in) keep today's behavior everywhere; everyone else falls
+// through to the public customer portal instead of hitting the login wall.
+function routeLoggedOutUser(req, res, next) {
+  if (req.session?.user) return res.redirect('/dashboard');
+  return next();
+}
+
+app.use(publicRoutes);
+app.get('/', routeLoggedOutUser, publicController.home);
 
 // Temporary DB Migration Route for Production
 import { exec } from 'child_process';
@@ -437,7 +447,8 @@ app.get('/track/:jobNo', tracking.trackOrder);
 
 // Global 404 Handler
 app.use('*', (req, res) => {
-  res.redirect('/dashboard');
+  if (req.session?.user) return res.redirect('/dashboard');
+  res.status(404).render('errors/404-public', { title: 'ไม่พบหน้านี้ | SNG Express', layout: 'layouts/public' });
 });
 
 // ─── Error Handlers (MUST be after routes) ───────────────────────────────────

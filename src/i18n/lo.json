@@ -122,7 +122,17 @@
     "RETURNED": "ຄືນຜູ້ສົ່ງ",
     "CANCELLED": "ຍົກເລີກ",
     "PENDING_CUSTOMS": "ລໍດຳເນີນການພາສີ",
-    "SCREENING_FAILED": "ບໍ່ຜ່ານກວດກອງ"
+    "SCREENING_FAILED": "ບໍ່ຜ່ານກວດກອງ",
+    "ARRIVED_BORDER_WH": "ຮອດສາງຊາຍແດນ",
+    "CUSTOMS_REJECTED": "ພາສີກັກ",
+    "BRANCH_TRANSFER": "ສົ່ງໄປສາຂາ",
+    "BRANCH_RECEIVED": "ສາຂາຮັບແລ້ວ",
+    "RIDER_ASSIGNED": "ມອບໝາຍໄຣເດີ",
+    "RIDER_ACCEPTED": "ໄຣເດີຮັບງານແລ້ວ",
+    "COD_COLLECTED": "ເກັບ COD ແລ້ວ",
+    "COD_REMITTED": "ໂອນ COD ແລ້ວ",
+    "RETURN_TO_SENDER": "ຄືນຜູ້ສົ່ງ",
+    "CLOSED": "ປິດງານ"
   },
 
   "dashboard": {
@@ -149,5 +159,51 @@
     "switchTo": "ປ່ຽນພາສາ",
     "thai": "ไทย",
     "lao": "ລາວ"
+  },
+
+  "portal": {
+    "home": "ໜ້າຫຼັກ",
+    "heroTitle": "ສົ່ງພັດສະດຸໄທ-ລາວ ງ່າຍ ໄວ ໄວ້ໃຈໄດ້",
+    "heroSubtitle": "ຕິດຕາມພັດສະດຸ ຄຳນວນຄ່າສົ່ງ ແລະ ບໍລິການອື່ນໆ ຂອງ SNG Express",
+    "trackLabel": "ຄົ້ນຫາດ້ວຍເລກພັດສະດຸ",
+    "track": "ຕິດຕາມພັດສະດຸ",
+    "trackHint": "ເຊັກສະຖານະພັດສະດຸຂອງທ່ານ",
+    "calculate": "ຄຳນວນຄ່າສົ່ງ",
+    "calculateHint": "ປະເມີນຄ່າສົ່ງໄທ-ລາວລ່ວງໜ້າ",
+    "shops": "ຮ້ານຄ້າເຂົ້າຮ່ວມ",
+    "shopsHint": "ຮ້ານຄ້າພັນທະມິດທີ່ SNG ເປັນຕົວແທນສົ່ງໃຫ້",
+    "account": "ບັນຊີຂອງຂ້ອຍ",
+    "login": "ເຂົ້າສູ່ລະບົບ",
+    "register": "ສະໝັກສະມາຊິກ",
+    "memberHint": "ຄະແນນສະສົມ ຄູປອງ ແລະ ສິດທິພິເສດ",
+    "weight": "ນ້ຳໜັກ (ກກ.)",
+    "length": "ຍາວ (ຊມ.)",
+    "width": "ກວ້າງ (ຊມ.)",
+    "height": "ສູງ (ຊມ.)",
+    "getQuote": "ຄຳນວນລາຄາ",
+    "estimate": "ລາຄາປະເມີນ",
+    "noRate": "ບໍ່ພົບອັດຕາທີ່ກົງກັນ ກະລຸນາຕິດຕໍ່ພະນັກງານ",
+    "chargeable": "ນ້ຳໜັກຄິດຄ່າສົ່ງ",
+    "notFound": "ບໍ່ພົບໜ້ານີ້",
+    "notFoundHint": "ໜ້າທີ່ທ່ານຄົ້ນຫາອາດຖືກຍ້າຍ ຫຼືບໍ່ມີແລ້ວ",
+    "backHome": "ກັບໜ້າຫຼັກ",
+    "comingSoon": "ໄວໆນີ້",
+    "comingSoonHint": "ຟີເຈີນີ້ກຳລັງຈະເປີດໃຫ້ໃຊ້ງານໄວໆນີ້"
+  },
+
+  "tracking": {
+    "title": "ຕິດຕາມພັດສະດຸ",
+    "subtitle": "ຂົນສົ່ງໄທ-ລາວ ຕິດຕາມພັດສະດຸ",
+    "searchLabel": "ຄົ້ນຫາໝາຍເລກພັດສະດຸ",
+    "searchPlaceholder": "ເຊັ່ນ SNG-260417-1234",
+    "notFoundPrefix": "ບໍ່ພົບພັດສະດຸໝາຍເລກ",
+    "systemError": "ເກີດຂໍ້ຜິດພາດໃນລະບົບ ກະລຸນາລອງໃໝ່ອີກຄັ້ງ",
+    "emptyTitle": "ປ້ອນໝາຍເລກພັດສະດຸເພື່ອຕິດຕາມສະຖານະ",
+    "emptyHint": "ສະແກນ QR Code ບົນໃບປະໜ້າ ຫຼືພິມເລກ SNG-XXXXXX",
+    "destination": "ປາຍທາງ",
+    "codLabel": "ເກັບເງິນປາຍທາງ (COD)",
+    "createdAt": "ວັນທີສ້າງ",
+    "updatedAt": "ອັບເດດຫຼ້າສຸດ",
+    "history": "ປະຫວັດສະຖານະ"
   }
 }

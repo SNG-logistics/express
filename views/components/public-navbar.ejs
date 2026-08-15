@@ -1,0 +1,20 @@
+<% const member = portalCurrentUser || null; %>
+<header class="portal-topbar">
+  <a class="portal-brand" href="/">
+    <img src="/images/sng-logo-nav.png" alt="SNG Express">
+    <span>SNG <b>EXPRESS</b></span>
+  </a>
+  <div class="portal-top-actions">
+    <a href="?lang=<%= otherLang %>" title="<%= t('lang.switchTo') %>"><%= otherFlag %> <span><%= otherLabel %></span></a>
+    <a href="<%= member ? '/member/profile' : '/member/login' %>" title="<%= member ? t('portal.account') : t('portal.login') %>">
+      <i class="fa-solid fa-user"></i><span><%= member?.first_name || t('portal.account') %></span>
+    </a>
+  </div>
+</header>
+<nav class="bottom-nav" aria-label="Public navigation">
+  <a class="<%= currentPath === '/' ? 'active' : '' %>" href="/"><i class="fa-solid fa-house"></i><span><%= t('portal.home') %></span></a>
+  <a class="<%= currentPath.startsWith('/track') ? 'active' : '' %>" href="/track"><i class="fa-solid fa-location-dot"></i><span><%= t('portal.track') %></span></a>
+  <a class="<%= currentPath.startsWith('/calculate') ? 'active' : '' %>" href="/calculate"><i class="fa-solid fa-calculator"></i><span><%= t('portal.calculate') %></span></a>
+  <a class="<%= currentPath.startsWith('/shops') ? 'active' : '' %>" href="/shops"><i class="fa-solid fa-store"></i><span><%= t('portal.shops') %></span></a>
+  <a class="<%= currentPath.startsWith('/member') ? 'active' : '' %>" href="<%= member ? '/member/profile' : '/member/login' %>"><i class="fa-solid fa-user"></i><span><%= t('portal.account') %></span></a>
+</nav>

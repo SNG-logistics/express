@@ -122,7 +122,17 @@
     "RETURNED": "คืนผู้ส่ง",
     "CANCELLED": "ยกเลิก",
     "PENDING_CUSTOMS": "รอดำเนินการศุลกากร",
-    "SCREENING_FAILED": "ไม่ผ่านคัดกรอง"
+    "SCREENING_FAILED": "ไม่ผ่านคัดกรอง",
+    "ARRIVED_BORDER_WH": "ถึงคลังชายแดน",
+    "CUSTOMS_REJECTED": "ศุลกากรกัก",
+    "BRANCH_TRANSFER": "ส่งไปสาขา",
+    "BRANCH_RECEIVED": "สาขารับแล้ว",
+    "RIDER_ASSIGNED": "มอบหมายไรเดอร์",
+    "RIDER_ACCEPTED": "ไรเดอร์รับงานแล้ว",
+    "COD_COLLECTED": "เก็บ COD แล้ว",
+    "COD_REMITTED": "โอน COD แล้ว",
+    "RETURN_TO_SENDER": "คืนผู้ส่ง",
+    "CLOSED": "ปิดงาน"
   },
 
   "dashboard": {
@@ -149,5 +159,51 @@
     "switchTo": "เปลี่ยนภาษา",
     "thai": "ไทย",
     "lao": "ລາວ"
+  },
+
+  "portal": {
+    "home": "หน้าแรก",
+    "heroTitle": "ส่งพัสดุไทย-ลาว ง่าย รวดเร็ว ไว้ใจได้",
+    "heroSubtitle": "ติดตามพัสดุ คำนวณค่าส่ง และบริการอื่นๆ ของ SNG Express",
+    "trackLabel": "ค้นหาด้วยเลขพัสดุ",
+    "track": "ติดตามพัสดุ",
+    "trackHint": "เช็คสถานะพัสดุของคุณ",
+    "calculate": "คำนวณค่าส่ง",
+    "calculateHint": "ประเมินค่าส่งไทย-ลาวล่วงหน้า",
+    "shops": "ร้านค้าเข้าร่วม",
+    "shopsHint": "ร้านค้าพันธมิตรที่ SNG เป็นตัวแทนส่งให้",
+    "account": "บัญชีของฉัน",
+    "login": "เข้าสู่ระบบ",
+    "register": "สมัครสมาชิก",
+    "memberHint": "แต้มสะสม คูปอง และสิทธิพิเศษ",
+    "weight": "น้ำหนัก (กก.)",
+    "length": "ยาว (ซม.)",
+    "width": "กว้าง (ซม.)",
+    "height": "สูง (ซม.)",
+    "getQuote": "คำนวณราคา",
+    "estimate": "ราคาประมาณการ",
+    "noRate": "ไม่พบอัตราที่ตรงกัน กรุณาติดต่อเจ้าหน้าที่",
+    "chargeable": "น้ำหนักคิดค่าส่ง",
+    "notFound": "ไม่พบหน้านี้",
+    "notFoundHint": "หน้าที่คุณค้นหาอาจถูกย้ายหรือไม่มีอยู่แล้ว",
+    "backHome": "กลับหน้าแรก",
+    "comingSoon": "เร็วๆ นี้",
+    "comingSoonHint": "ฟีเจอร์นี้กำลังจะเปิดให้ใช้งานเร็วๆ นี้"
+  },
+
+  "tracking": {
+    "title": "ติดตามพัสดุ",
+    "subtitle": "ขนส่งไทย-ลาว ติดตามพัสดุ",
+    "searchLabel": "ค้นหาหมายเลขพัสดุ",
+    "searchPlaceholder": "เช่น SNG-260417-1234",
+    "notFoundPrefix": "ไม่พบพัสดุหมายเลข",
+    "systemError": "เกิดข้อผิดพลาดในระบบ กรุณาลองอีกครั้ง",
+    "emptyTitle": "กรอกหมายเลขพัสดุเพื่อติดตามสถานะ",
+    "emptyHint": "สแกน QR Code บนใบปะหน้าหรือพิมพ์เลข SNG-XXXXXX",
+    "destination": "ปลายทาง",
+    "codLabel": "เก็บเงินปลายทาง (COD)",
+    "createdAt": "วันที่สร้าง",
+    "updatedAt": "อัปเดตล่าสุด",
+    "history": "ประวัติสถานะ"
   }
 }

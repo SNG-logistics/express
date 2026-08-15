@@ -17,12 +17,12 @@ export async function trackOrder(req, res) {
 
   if (!jobNo) {
     return res.render('tracking/index', {
-      layout: false,
+      layout: 'layouts/public',
       order: null,
       logs: [],
       statusLabels: ORDER_STATUS_LABELS,
       error: null,
-      title: 'ติดตามพัสดุ | SNG Express',
+      title: `${res.locals.t('tracking.title')} | SNG Express`,
     });
   }
 
@@ -43,12 +43,12 @@ export async function trackOrder(req, res) {
 
     if (!order) {
       return res.render('tracking/index', {
-        layout: false,
+        layout: 'layouts/public',
         order: null,
         logs: [],
         statusLabels: ORDER_STATUS_LABELS,
-        error: `ไม่พบพัสดุหมายเลข "${jobNo}"`,
-        title: 'ติดตามพัสดุ | SNG Express',
+        error: `${res.locals.t('tracking.notFoundPrefix')} "${jobNo}"`,
+        title: `${res.locals.t('tracking.title')} | SNG Express`,
       });
     }
 
@@ -64,22 +64,22 @@ export async function trackOrder(req, res) {
     );
 
     res.render('tracking/index', {
-      layout: false,
+      layout: 'layouts/public',
       order,
       logs,
       statusLabels: ORDER_STATUS_LABELS,
       error: null,
-      title: `ติดตามพัสดุ ${order.job_no} | SNG Express`,
+      title: `${res.locals.t('tracking.title')} ${order.job_no} | SNG Express`,
     });
   } catch (err) {
     console.error('[Tracking]', err);
     res.render('tracking/index', {
-      layout: false,
+      layout: 'layouts/public',
       order: null,
       logs: [],
       statusLabels: ORDER_STATUS_LABELS,
-      error: 'เกิดข้อผิดพลาดในระบบ กรุณาลองอีกครั้ง',
-      title: 'ติดตามพัสดุ | SNG Express',
+      error: res.locals.t('tracking.systemError'),
+      title: `${res.locals.t('tracking.title')} | SNG Express`,
     });
   }
 }
@@ -93,11 +93,11 @@ export async function trackLanding(req, res) {
     return res.redirect(`/track/${encodeURIComponent(q)}`);
   }
   res.render('tracking/index', {
-    layout: false,
+    layout: 'layouts/public',
     order: null,
     logs: [],
     statusLabels: ORDER_STATUS_LABELS,
     error: null,
-    title: 'ติดตามพัสดุ | SNG Express',
+    title: `${res.locals.t('tracking.title')} | SNG Express`,
   });
 }

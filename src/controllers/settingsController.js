@@ -1,13 +1,9 @@
 import pool from '../config/db.js';
 import bcrypt from 'bcryptjs';
-import { computeRatePrice } from '../services/pricingService.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
+import { findBestShippingRate } from '../services/pricingService.js';
 
 // ─── Helper: load all company_settings into a plain object ───────────────────
-async function getCompanySettings() {
-  const [rows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-  return Object.fromEntries(rows.map(r => [r.setting_key, r.setting_value]));
-}
-
 export async function showRates(req, res) {
     try {
         const [rates] = await pool.query('SELECT * FROM shipping_rates ORDER BY max_weight ASC');
@@ -77,38 +73,14 @@ export async function deleteRate(req, res) {
 
 export async function calculatePrice(req, res) {
     const { weight, width, length, height } = req.query;
-    const w = parseFloat(weight) || 0;
-    const widthValue = parseFloat(width) || 0;
-    const lengthValue = parseFloat(length) || 0;
-    const heightValue = parseFloat(height) || 0;
-    const dimSum = widthValue + lengthValue + heightValue;
-    const volumetricWeight = widthValue && lengthValue && heightValue
-        ? (widthValue * lengthValue * heightValue) / 5000
-        : 0;
-    const chargeableKg = Math.max(w, volumetricWeight);
-
     try {
-        const [rates] = await pool.query(
-            `SELECT * FROM shipping_rates
-             WHERE active=1 AND max_weight >= ?
-               AND (max_dimension=0 OR max_dimension >= ?)`,
-            [chargeableKg, dimSum]
-        );
-        const candidates = rates.map(rate => ({
-            rate,
-            price: computeRatePrice(rate, chargeableKg),
-        })).sort((a, b) => a.price - b.price);
-        const selected = candidates[0] || null;
-        const finalPrice = selected?.price || 0;
-
-        res.json({
-            price: finalPrice,
-            found: finalPrice > 0,
-            rate_id: selected?.rate.id || null,
-            rate_name: selected?.rate.name || null,
-            details: { chargeableKg, volumetricWeight, dimSum }
+        const quote = await findBestShippingRate({
+            weightKg: parseFloat(weight) || 0,
+            widthCm: parseFloat(width) || 0,
+            lengthCm: parseFloat(length) || 0,
+            heightCm: parseFloat(height) || 0,
         });
-
+        res.json(quote);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal error calculating price' });

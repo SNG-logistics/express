@@ -1,0 +1,34 @@
+<%
+  // company_settings uses a _th/_la country-entity suffix, but the i18n
+  // language code is 'th'/'lo' — 'lo' never matches '_la', so this mapping
+  // is needed or the Lao view silently falls back to Thai company data.
+  const companySuffix = lang === 'lo' ? 'la' : 'th';
+%>
+<section class="portal-shell home-page">
+  <div class="hero-card">
+    <p class="eyebrow">SNG EXPRESS</p>
+    <h1><%= t('portal.heroTitle') %></h1>
+    <p><%= t('portal.heroSubtitle') %></p>
+    <form class="portal-search" action="/track" method="get">
+      <label for="job-search"><%= t('portal.trackLabel') %></label>
+      <div>
+        <input id="job-search" name="q" autocomplete="off" placeholder="SNG-XXXXXX" required>
+        <button class="btn-gold" type="submit"><i class="fa-solid fa-magnifying-glass"></i> <%= t('common.search') %></button>
+      </div>
+    </form>
+  </div>
+
+  <section class="shortcut-grid" aria-label="Services">
+    <a class="card shortcut" href="/track"><i class="fa-solid fa-location-dot"></i><strong><%= t('portal.track') %></strong><small><%= t('portal.trackHint') %></small></a>
+    <a class="card shortcut" href="/calculate"><i class="fa-solid fa-calculator"></i><strong><%= t('portal.calculate') %></strong><small><%= t('portal.calculateHint') %></small></a>
+    <a class="card shortcut" href="/shops"><i class="fa-solid fa-store"></i><strong><%= t('portal.shops') %></strong><small><%= t('portal.shopsHint') %></small></a>
+    <a class="card shortcut" href="<%= portalCurrentUser ? '/member/profile' : '/member/register' %>"><i class="fa-solid fa-user-plus"></i><strong><%= portalCurrentUser ? t('portal.account') : t('portal.register') %></strong><small><%= t('portal.memberHint') %></small></a>
+  </section>
+
+  <footer class="portal-footer">
+    <strong><%= company['company_name_' + companySuffix] || company.company_name_th || 'SNG Express' %></strong>
+    <span><%= company['company_address_' + companySuffix] || company.company_address_th || '' %></span>
+    <a href="tel:<%= company.company_phone || '' %>"><%= company.company_phone || '' %></a>
+    <a href="mailto:<%= company.company_email || '' %>"><%= company.company_email || '' %></a>
+  </footer>
+</section>

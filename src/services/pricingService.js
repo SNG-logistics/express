@@ -1,4 +1,5 @@
 import { WorkflowError } from './orderWorkflowService.js';
+import pool from '../config/db.js';
 
 function finiteNonNegative(value, field) {
   const number = Number(value || 0);
@@ -22,6 +23,44 @@ export function parseDimensionSum(value) {
     throw new WorkflowError('Invalid parcel dimensions; use LxWxH', 400, 'INVALID_DIMENSIONS');
   }
   return parts.reduce((sum, part) => sum + part, 0);
+}
+
+/**
+ * Select the least expensive active rate that fits the parcel.  Both the
+ * staff and public calculators use this exact function.
+ */
+export async function findBestShippingRate({
+  weightKg = 0,
+  lengthCm = 0,
+  widthCm = 0,
+  heightCm = 0,
+} = {}) {
+  const weight = finiteNonNegative(weightKg, 'Weight');
+  const length = finiteNonNegative(lengthCm, 'Length');
+  const width = finiteNonNegative(widthCm, 'Width');
+  const height = finiteNonNegative(heightCm, 'Height');
+  const dimSum = width + length + height;
+  const volumetricWeight = width && length && height
+    ? (width * length * height) / 5000
+    : 0;
+  const chargeableKg = Math.max(weight, volumetricWeight);
+
+  const [rates] = await pool.query(
+    'SELECT * FROM shipping_rates WHERE active=1 AND max_weight >= ? '
+      + 'AND (max_dimension=0 OR max_dimension >= ?)',
+    [chargeableKg, dimSum]
+  );
+  const selected = rates
+    .map(rate => ({ rate, price: computeRatePrice(rate, chargeableKg) }))
+    .sort((a, b) => a.price - b.price)[0] || null;
+
+  return {
+    price: selected?.price || 0,
+    found: Boolean(selected),
+    rate_id: selected?.rate.id || null,
+    rate_name: selected?.rate.name || null,
+    details: { chargeableKg, volumetricWeight, dimSum },
+  };
 }
 
 export async function resolveShippingRate(connection, {

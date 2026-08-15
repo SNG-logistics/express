@@ -27,6 +27,24 @@
 const loginAttempts = new Map();
 const MAX_ATTEMPTS  = 5;
 const WINDOW_MS     = 15 * 60 * 1000; // 15 minutes
+const publicRequestWindows = new Map();
+
+/** Lightweight per-IP sliding window for inexpensive public JSON endpoints. */
+export function publicRateLimit({ max = 60, windowMs = WINDOW_MS } = {}) {
+  return (req, res, next) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    const recent = (publicRequestWindows.get(ip) || []).filter(time => now - time < windowMs);
+    if (recent.length >= max) {
+      const retryAfterMs = windowMs - (now - recent[0]);
+      res.set('Retry-After', String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
+      return res.status(429).json({ error: 'Too many requests', retryAfterMs });
+    }
+    recent.push(now);
+    publicRequestWindows.set(ip, recent);
+    next();
+  };
+}
 
 /** Clean up expired windows (called on each attempt) */
 function pruneLoginAttempts() {
@@ -201,12 +219,14 @@ export const ROLES_CRM_VIEW       = [
 export function regenerateSession(req, newUserPayload, callback) {
   const returnTo = req.session.returnTo;
   const flash    = req.session.flash;
+  const customer = req.session.customer;
 
   req.session.regenerate((err) => {
     if (err) return callback(err);
     req.session.user     = newUserPayload;
     req.session.returnTo = returnTo;
     req.session.flash    = flash;
+    if (customer) req.session.customer = customer;
     req.session.save(callback);
   });
 }

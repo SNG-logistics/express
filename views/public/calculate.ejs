@@ -1,0 +1,36 @@
+<section class="portal-shell">
+  <div class="page-heading"><p class="eyebrow">TH ↔ LA</p><h1><%= t('portal.calculate') %></h1><p><%= t('portal.calculateHint') %></p></div>
+  <form class="card portal-form" action="/calculate" method="get" id="quote-form">
+    <div class="form-grid">
+      <label><span><%= t('portal.weight') %></span><input class="input-portal" name="weight_kg" type="number" min="0" step="0.01" value="<%= values.weight_kg || '' %>" required></label>
+      <label><span><%= t('portal.length') %></span><input class="input-portal" name="length_cm" type="number" min="0" step="0.01" value="<%= values.length_cm || '' %>"></label>
+      <label><span><%= t('portal.width') %></span><input class="input-portal" name="width_cm" type="number" min="0" step="0.01" value="<%= values.width_cm || '' %>"></label>
+      <label><span><%= t('portal.height') %></span><input class="input-portal" name="height_cm" type="number" min="0" step="0.01" value="<%= values.height_cm || '' %>"></label>
+    </div>
+    <button class="btn-gold" type="submit"><%= t('portal.getQuote') %></button>
+  </form>
+  <section class="card quote-result <%= quote ? '' : 'is-hidden' %>" id="quote-result">
+    <p class="eyebrow"><%= t('portal.estimate') %></p>
+    <strong id="quote-price"><%= quote?.found ? Number(quote.price).toLocaleString() + ' THB' : t('portal.noRate') %></strong>
+    <p id="quote-rate"><%= quote?.rate_name || '' %></p>
+    <small id="quote-details"><%= quote ? t('portal.chargeable') + ': ' + quote.details.chargeableKg.toFixed(2) + ' kg' : '' %></small>
+  </section>
+</section>
+<script>
+  const form = document.getElementById('quote-form');
+  let timer;
+  form.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const params = new URLSearchParams(new FormData(form));
+      const response = await fetch('/api/public/shipping-quote?' + params);
+      if (!response.ok) return;
+      const quote = await response.json();
+      const result = document.getElementById('quote-result');
+      result.classList.remove('is-hidden');
+      document.getElementById('quote-price').textContent = quote.found ? Number(quote.price).toLocaleString() + ' THB' : '<%= t('portal.noRate') %>';
+      document.getElementById('quote-rate').textContent = quote.rate_name || '';
+      document.getElementById('quote-details').textContent = '<%= t('portal.chargeable') %>: ' + Number(quote.details.chargeableKg).toFixed(2) + ' kg';
+    }, 300);
+  });
+</script>
