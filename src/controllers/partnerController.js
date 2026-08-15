@@ -240,6 +240,68 @@ export async function apiCalc(req, res) {
     }
 }
 
+// ─── Quote Requests Queue (from public member portal) ─────────────────────────
+export async function quoteRequestQueue(req, res) {
+    try {
+        const [requests] = await pool.query(
+            `SELECT pqr.id, pqr.product_url, pqr.product_name, pqr.desired_qty,
+                    pqr.note, pqr.status, pqr.linked_quotation_id, pqr.created_at,
+                    ca.first_name, ca.last_name, ca.phone, ca.phone_display
+             FROM product_quote_requests pqr
+             LEFT JOIN customer_accounts ca ON ca.id = pqr.customer_account_id
+             ORDER BY FIELD(pqr.status, 'new','in_progress','quoted','closed'), pqr.created_at DESC`
+        );
+
+        res.render('partner/quote-requests', {
+            user: req.session.user,
+            title: 'คำขอเช็คราคาสินค้า',
+            requests
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send(err.message);
+    }
+}
+
+// ─── Convert a public request into a quotation (pre-fill newForm) ─────────────
+export async function convertRequest(req, res) {
+    const { id } = req.params;
+    try {
+        const [[request]] = await pool.query(
+            `SELECT pqr.*,
+                    ca.first_name, ca.last_name, ca.phone, ca.phone_display
+             FROM product_quote_requests pqr
+             LEFT JOIN customer_accounts ca ON ca.id = pqr.customer_account_id
+             WHERE pqr.id = ?`,
+            [id]
+        );
+        if (!request) return res.status(404).send('ไม่พบคำขอเช็คราคา');
+
+        const [branches] = await pool.query(
+            "SELECT id, name FROM branches WHERE status = 'active' ORDER BY name"
+        );
+        const [[fx]] = await pool.query(
+            "SELECT rate FROM exchange_rates WHERE pair = 'THB_LAK' ORDER BY created_at DESC LIMIT 1"
+        );
+        const [shippingRates] = await pool.query(
+            'SELECT * FROM shipping_rates WHERE active = 1 ORDER BY max_weight ASC'
+        );
+
+        res.render('partner/quotes/new', {
+            user: req.session.user,
+            title: 'สร้างใบเสนอราคาจากคำขอลูกค้า',
+            branches,
+            fx_rate: fx?.rate || 200,
+            shippingRates,
+            request,
+            error: null
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send(err.message);
+    }
+}
+
 // ─── Partner Dashboard ────────────────────────────────────────────────────────
 export async function dashboard(req, res) {
     try {
@@ -260,10 +322,24 @@ export async function dashboard(req, res) {
             LEFT JOIN branches b ON b.id = pq.branch_id
             ORDER BY pq.created_at DESC LIMIT 10
         `);
+        const [[{ pending_requests }]] = await pool.query(
+            `SELECT COUNT(*) AS pending_requests
+             FROM product_quote_requests
+             WHERE status IN ('new','in_progress')`
+        );
+        const [recentRequests] = await pool.query(
+            `SELECT pqr.id, pqr.product_name, pqr.status, pqr.created_at,
+                    ca.phone_display
+             FROM product_quote_requests pqr
+             LEFT JOIN customer_accounts ca ON ca.id = pqr.customer_account_id
+             ORDER BY pqr.created_at DESC LIMIT 5`
+        );
         res.render('partner/dashboard', {
             user: req.session.user,
             title: 'Partner — ภาพรวม',
-            totals, recent
+            totals, recent,
+            pending_requests,
+            recentRequests
         });
     } catch (err) {
         console.error(err);
