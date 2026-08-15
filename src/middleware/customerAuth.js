@@ -36,8 +36,8 @@ export function memberLoginRateLimit(req, res, next) {
 
   if (rec && rec.count >= MEMBER_MAX_ATTEMPTS) {
     const waitMin = Math.ceil((MEMBER_WINDOW_MS - (Date.now() - rec.firstAttempt)) / 60000);
-    return res.render('member/login', {
-      layout: 'layouts/public',
+    return res.render('customer/member/login', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
       values: {},
       error: `เข้าสู่ระบบผิดเกินกำหนด — กรุณารอ ${waitMin} นาทีแล้วลองใหม่`,

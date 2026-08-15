@@ -81,6 +81,7 @@ export async function newForm(req, res) {
             branches,
             fx_rate: fx?.rate || 200,
             shippingRates,
+            request: null,
             error: null
         });
     } catch (err) {
@@ -95,7 +96,8 @@ export async function create(req, res) {
         branch_id, product_url, product_name, product_price_thb,
         shipping_th_thb, weight_kg, exchange_rate, fx_spread_pct,
         sng_shipping_lak, service_fee_lak,
-        customer_name, customer_phone, customer_address, note, status
+        customer_name, customer_phone, customer_address, note, status,
+        quote_request_id
     } = req.body;
 
     try {
@@ -132,6 +134,19 @@ export async function create(req, res) {
         const [[inserted]] = await pool.query(
             'SELECT id FROM partner_quotations WHERE quote_no = ? LIMIT 1', [quote_no]
         );
+
+        // If created from a public quote request, link the quotation back
+        // and flip the request to 'quoted' so the member sees it as done.
+        const requestId = Number(quote_request_id) || null;
+        if (requestId) {
+            await pool.query(
+                `UPDATE product_quote_requests
+                 SET linked_quotation_id = ?, status = 'quoted'
+                 WHERE id = ?`,
+                [inserted.id, requestId]
+            );
+        }
+
         res.redirect(`/partner/quotes/${inserted.id}`);
     } catch (err) {
         console.error(err);

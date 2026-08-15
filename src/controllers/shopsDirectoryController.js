@@ -46,8 +46,8 @@ export async function listShops(req, res) {
     );
     const availableTypes = typesResult.map(row => row.business_type).filter(Boolean);
 
-    res.render('public/shops/index', {
-      layout: 'layouts/public',
+    res.render('customer/shops/index', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.shops')} | SNG Express`,
       shops,
       availableTypes,
@@ -56,8 +56,8 @@ export async function listShops(req, res) {
     });
   } catch (err) {
     console.error('[Shops List]', err);
-    res.render('public/shops/index', {
-      layout: 'layouts/public',
+    res.render('customer/shops/index', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.shops')} | SNG Express`,
       shops: [],
       availableTypes: [],
@@ -88,8 +88,8 @@ export async function shopDetail(req, res) {
     );
 
     if (!shop) {
-      return res.status(404).render('errors/404-public', {
-        layout: 'layouts/public',
+      return res.status(404).render('customer/404', {
+        layout: 'customer/layout',
         title: 'ไม่พบร้านค้าที่ต้องการ | SNG Express',
       });
     }
@@ -116,8 +116,8 @@ export async function shopDetail(req, res) {
       myReview = userRev || null;
     }
 
-    res.render('public/shops/detail', {
-      layout: 'layouts/public',
+    res.render('customer/shops/detail', {
+      layout: 'customer/layout',
       title: `${shop.name} | SNG Express`,
       shop,
       reviews,
@@ -126,8 +126,8 @@ export async function shopDetail(req, res) {
     });
   } catch (err) {
     console.error('[Shop Detail]', err);
-    res.status(500).render('errors/404-public', {
-      layout: 'layouts/public',
+    res.status(500).render('customer/404', {
+      layout: 'customer/layout',
       title: 'เกิดข้อผิดพลาด | SNG Express',
     });
   }

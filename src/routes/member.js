@@ -35,4 +35,9 @@ router.get('/member/orders', requireCustomerLogin, member.myOrders);
 router.get('/member/account', requireCustomerLogin, member.accountEdit);
 router.post('/member/account', requireCustomerLogin, member.processAccountEdit);
 
+// Phase 3 — เช็คราคาสินค้าออนไลน์จากไทย (quote requests → partner_quotations)
+router.get('/member/quote-request', requireCustomerLogin, member.showQuoteRequest);
+router.post('/member/quote-request', requireCustomerLogin, member.processQuoteRequest);
+router.get('/member/quote-requests', requireCustomerLogin, member.myQuoteRequests);
+
 export default router;

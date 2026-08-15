@@ -7,12 +7,12 @@ function numberParam(value) {
 }
 
 function publicView(res, view, data) {
-  return res.render(view, { ...data, layout: 'layouts/public' });
+  return res.render(view, { ...data, layout: 'customer/layout' });
 }
 
 export async function home(req, res) {
   const company = await getCompanySettings();
-  return publicView(res, 'public/home', {
+  return publicView(res, 'customer/home', {
     title: 'SNG Express | ไทย ↔ ลาว',
     company,
   });
@@ -33,7 +33,7 @@ export async function calculatePage(req, res, next) {
       widthCm: values.width_cm,
       heightCm: values.height_cm,
     }) : null;
-    return publicView(res, 'public/calculate', {
+    return publicView(res, 'customer/calculate', {
       title: 'คำนวณค่าส่ง | SNG Express',
       values,
       quote,

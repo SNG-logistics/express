@@ -1,0 +1,51 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">BUY & SHIP AGENT</p>
+    <h1><%= t('quoteRequest.title') %></h1>
+    <p><%= t('quoteRequest.subtitle') %></p>
+  </div>
+
+  <% if (error) { %>
+  <div class="portal-flash is-error">
+    <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i><%= error %>
+  </div>
+  <% } %>
+
+  <form class="card portal-form" action="/member/quote-request" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label>
+      <span>ลิงก์สินค้า (Lazada / Shopee / ฯลฯ)</span>
+      <input class="input-portal" name="product_url" type="url" placeholder="https://..." value="<%= values.product_url || '' %>">
+    </label>
+
+    <label>
+      <span>ชื่อสินค้า <em style="color: #ef4444;">*</em></span>
+      <input class="input-portal" name="product_name" required placeholder="เช่น รองเท้าผ้าใบ Adidas size 42" value="<%= values.product_name || '' %>">
+    </label>
+
+    <label>
+      <span>จำนวน (ชิ้น)</span>
+      <input class="input-portal" name="desired_qty" type="number" min="1" step="1" value="<%= values.desired_qty || 1 %>" placeholder="1">
+    </label>
+
+    <label>
+      <span>หมายเหตุ (สี / ไซซ์ / รายละเอียดเพิ่มเติม)</span>
+      <textarea class="input-portal" name="note" rows="3" placeholder="ระบุรายละเอียดที่ต้องการ..."></textarea>
+    </label>
+
+    <button class="btn-gold" type="submit" style="width: 100%; margin-top: 0.5rem;">
+      <i class="fa-solid fa-paper-plane"></i> <%= t('quoteRequest.submit') %>
+    </button>
+
+    <p style="font-size: 0.8rem; color: var(--portal-text-faint); text-align: center; margin: 0;">
+      เมื่อได้รับคำขอ เจ้าหน้าที่จะติดต่อกลับทาง WhatsApp พร้อมราคารวมและค่าบริการ
+    </p>
+  </form>
+
+  <div style="text-align: center; margin-top: 1rem;">
+    <a href="/member/quote-requests" style="color: var(--portal-gold); font-size: 0.85rem; text-decoration: none;">
+      <i class="fa-solid fa-clock-rotate-left"></i> <%= t('quoteRequest.myRequests') %>
+    </a>
+  </div>
+</section>

@@ -16,8 +16,8 @@ export async function trackOrder(req, res) {
   const jobNo = (req.params.jobNo || '').trim().toUpperCase();
 
   if (!jobNo) {
-    return res.render('tracking/index', {
-      layout: 'layouts/public',
+    return res.render('customer/track', {
+      layout: 'customer/layout',
       order: null,
       logs: [],
       statusLabels: ORDER_STATUS_LABELS,
@@ -42,8 +42,8 @@ export async function trackOrder(req, res) {
     );
 
     if (!order) {
-      return res.render('tracking/index', {
-        layout: 'layouts/public',
+      return res.render('customer/track', {
+        layout: 'customer/layout',
         order: null,
         logs: [],
         statusLabels: ORDER_STATUS_LABELS,
@@ -63,8 +63,8 @@ export async function trackOrder(req, res) {
       [order.id]
     );
 
-    res.render('tracking/index', {
-      layout: 'layouts/public',
+    res.render('customer/track', {
+      layout: 'customer/layout',
       order,
       logs,
       statusLabels: ORDER_STATUS_LABELS,
@@ -73,8 +73,8 @@ export async function trackOrder(req, res) {
     });
   } catch (err) {
     console.error('[Tracking]', err);
-    res.render('tracking/index', {
-      layout: 'layouts/public',
+    res.render('customer/track', {
+      layout: 'customer/layout',
       order: null,
       logs: [],
       statusLabels: ORDER_STATUS_LABELS,
@@ -92,8 +92,8 @@ export async function trackLanding(req, res) {
   if (q) {
     return res.redirect(`/track/${encodeURIComponent(q)}`);
   }
-  res.render('tracking/index', {
-    layout: 'layouts/public',
+  res.render('customer/track', {
+    layout: 'customer/layout',
     order: null,
     logs: [],
     statusLabels: ORDER_STATUS_LABELS,

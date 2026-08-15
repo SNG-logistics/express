@@ -35,8 +35,8 @@ export function memberRoot(req, res) {
  */
 export function showRegister(req, res) {
   if (req.session?.customer) return res.redirect('/member/profile');
-  res.render('member/register', {
-    layout: 'layouts/public',
+  res.render('customer/member/register', {
+    layout: 'customer/layout',
     title: `${res.locals.t('portal.register')} | SNG Express`,
     values: {},
     error: null,
@@ -52,8 +52,8 @@ export async function processRegister(req, res) {
   const values = { phone: rawPhone, first_name, last_name, gender, referral_code };
 
   if (!rawPhone || !password || !first_name) {
-    return res.render('member/register', {
-      layout: 'layouts/public',
+    return res.render('customer/member/register', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.register')} | SNG Express`,
       values,
       error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (เบอร์โทร, ชื่อ, รหัสผ่าน)',
@@ -61,8 +61,8 @@ export async function processRegister(req, res) {
   }
 
   if (password.length < 6) {
-    return res.render('member/register', {
-      layout: 'layouts/public',
+    return res.render('customer/member/register', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.register')} | SNG Express`,
       values,
       error: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร',
@@ -70,8 +70,8 @@ export async function processRegister(req, res) {
   }
 
   if (password !== confirm_password) {
-    return res.render('member/register', {
-      layout: 'layouts/public',
+    return res.render('customer/member/register', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.register')} | SNG Express`,
       values,
       error: 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน',
@@ -80,8 +80,8 @@ export async function processRegister(req, res) {
 
   const phone = toWaPhone(rawPhone);
   if (!phone) {
-    return res.render('member/register', {
-      layout: 'layouts/public',
+    return res.render('customer/member/register', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.register')} | SNG Express`,
       values,
       error: 'เบอร์โทรศัพท์ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง',
@@ -96,8 +96,8 @@ export async function processRegister(req, res) {
     );
 
     if (existing && existing.status === 'active') {
-      return res.render('member/register', {
-        layout: 'layouts/public',
+      return res.render('customer/member/register', {
+        layout: 'customer/layout',
         title: `${res.locals.t('portal.register')} | SNG Express`,
         values,
         error: 'เบอร์โทรศัพท์นี้ลงทะเบียนแล้ว กรุณาเข้าสู่ระบบ',
@@ -157,8 +157,8 @@ export async function processRegister(req, res) {
     res.redirect('/member/verify');
   } catch (err) {
     console.error('[Member Register]', err);
-    res.render('member/register', {
-      layout: 'layouts/public',
+    res.render('customer/member/register', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.register')} | SNG Express`,
       values,
       error: err.message || 'เกิดข้อผิดพลาดในการลงทะเบียน กรุณาลองใหม่อีกครั้ง',
@@ -173,8 +173,8 @@ export function showVerify(req, res) {
   const pending = req.session.pendingVerification;
   if (!pending) return res.redirect('/member/register');
 
-  res.render('member/verify', {
-    layout: 'layouts/public',
+  res.render('customer/member/verify', {
+    layout: 'customer/layout',
     title: `ยืนยันรหัส OTP | SNG Express`,
     pending,
     error: null,
@@ -200,8 +200,8 @@ export async function processVerify(req, res) {
     });
 
     if (!result.success) {
-      return res.render('member/verify', {
-        layout: 'layouts/public',
+      return res.render('customer/member/verify', {
+        layout: 'customer/layout',
         title: `ยืนยันรหัส OTP | SNG Express`,
         pending,
         error: result.message,
@@ -232,8 +232,8 @@ export async function processVerify(req, res) {
     });
   } catch (err) {
     console.error('[Member Verify]', err);
-    res.render('member/verify', {
-      layout: 'layouts/public',
+    res.render('customer/member/verify', {
+      layout: 'customer/layout',
       title: `ยืนยันรหัส OTP | SNG Express`,
       pending,
       error: 'เกิดข้อผิดพลาดในการตรวจสอบรหัส OTP กรุณาลองใหม่',
@@ -259,16 +259,16 @@ export async function resendOtp(req, res) {
       ip,
     });
 
-    res.render('member/verify', {
-      layout: 'layouts/public',
+    res.render('customer/member/verify', {
+      layout: 'customer/layout',
       title: `ยืนยันรหัส OTP | SNG Express`,
       pending,
       error: null,
       success: 'ส่งรหัส OTP ใหม่ไปยัง WhatsApp เรียบร้อยแล้ว',
     });
   } catch (err) {
-    res.render('member/verify', {
-      layout: 'layouts/public',
+    res.render('customer/member/verify', {
+      layout: 'customer/layout',
       title: `ยืนยันรหัส OTP | SNG Express`,
       pending,
       error: err.message,
@@ -282,8 +282,8 @@ export async function resendOtp(req, res) {
  */
 export function showLogin(req, res) {
   if (req.session?.customer) return res.redirect('/member/profile');
-  res.render('member/login', {
-    layout: 'layouts/public',
+  res.render('customer/member/login', {
+    layout: 'customer/layout',
     title: `${res.locals.t('portal.login')} | SNG Express`,
     values: {},
     error: null,
@@ -298,8 +298,8 @@ export async function processLogin(req, res) {
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
 
   if (!rawPhone || !password) {
-    return res.render('member/login', {
-      layout: 'layouts/public',
+    return res.render('customer/member/login', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
       values: { phone: rawPhone },
       error: 'กรุณากรอกเบอร์โทรศัพท์และรหัสผ่าน',
@@ -308,8 +308,8 @@ export async function processLogin(req, res) {
 
   const phone = toWaPhone(rawPhone);
   if (!phone) {
-    return res.render('member/login', {
-      layout: 'layouts/public',
+    return res.render('customer/member/login', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
       values: { phone: rawPhone },
       error: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
@@ -331,8 +331,8 @@ export async function processLogin(req, res) {
 
     if (!account || account.status === 'disabled' || !matches) {
       recordMemberLoginAttempt(ip, false);
-      return res.render('member/login', {
-        layout: 'layouts/public',
+      return res.render('customer/member/login', {
+        layout: 'customer/layout',
         title: `${res.locals.t('portal.login')} | SNG Express`,
         values: { phone: rawPhone },
         error: 'เบอร์โทรศัพท์หรือรหัสผ่านไม่ถูกต้อง',
@@ -372,8 +372,8 @@ export async function processLogin(req, res) {
     });
   } catch (err) {
     console.error('[Member Login]', err);
-    res.render('member/login', {
-      layout: 'layouts/public',
+    res.render('customer/member/login', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
       values: { phone: rawPhone },
       error: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่',
@@ -395,8 +395,8 @@ export function logout(req, res) {
  * GET /member/forgot-password
  */
 export function showForgotPassword(req, res) {
-  res.render('member/forgot-password', {
-    layout: 'layouts/public',
+  res.render('customer/member/forgot-password', {
+    layout: 'customer/layout',
     title: 'ลืมรหัสผ่าน | SNG Express',
     error: null,
   });
@@ -411,8 +411,8 @@ export async function processForgotPassword(req, res) {
 
   const phone = toWaPhone(rawPhone);
   if (!phone) {
-    return res.render('member/forgot-password', {
-      layout: 'layouts/public',
+    return res.render('customer/member/forgot-password', {
+      layout: 'customer/layout',
       title: 'ลืมรหัสผ่าน | SNG Express',
       error: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
     });
@@ -425,8 +425,8 @@ export async function processForgotPassword(req, res) {
     );
 
     if (!account || account.status !== 'active') {
-      return res.render('member/forgot-password', {
-        layout: 'layouts/public',
+      return res.render('customer/member/forgot-password', {
+        layout: 'customer/layout',
         title: 'ลืมรหัสผ่าน | SNG Express',
         error: 'ไม่พบบัญชีสมาชิกที่เปิดใช้งานด้วยเบอร์โทรศัพท์นี้',
       });
@@ -443,8 +443,8 @@ export async function processForgotPassword(req, res) {
 
     res.redirect('/member/verify');
   } catch (err) {
-    res.render('member/forgot-password', {
-      layout: 'layouts/public',
+    res.render('customer/member/forgot-password', {
+      layout: 'customer/layout',
       title: 'ลืมรหัสผ่าน | SNG Express',
       error: err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่',
     });
@@ -456,8 +456,8 @@ export async function processForgotPassword(req, res) {
  */
 export function showResetPassword(req, res) {
   if (!req.session?.resetVerified) return res.redirect('/member/login');
-  res.render('member/reset-password', {
-    layout: 'layouts/public',
+  res.render('customer/member/reset-password', {
+    layout: 'customer/layout',
     title: 'ตั้งรหัสผ่านใหม่ | SNG Express',
     error: null,
   });
@@ -473,16 +473,16 @@ export async function processResetPassword(req, res) {
   const { password, confirm_password } = req.body;
 
   if (!password || password.length < 6) {
-    return res.render('member/reset-password', {
-      layout: 'layouts/public',
+    return res.render('customer/member/reset-password', {
+      layout: 'customer/layout',
       title: 'ตั้งรหัสผ่านใหม่ | SNG Express',
       error: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร',
     });
   }
 
   if (password !== confirm_password) {
-    return res.render('member/reset-password', {
-      layout: 'layouts/public',
+    return res.render('customer/member/reset-password', {
+      layout: 'customer/layout',
       title: 'ตั้งรหัสผ่านใหม่ | SNG Express',
       error: 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน',
     });
@@ -501,8 +501,8 @@ export async function processResetPassword(req, res) {
     res.redirect('/member/login');
   } catch (err) {
     console.error('[Member Reset Password]', err);
-    res.render('member/reset-password', {
-      layout: 'layouts/public',
+    res.render('customer/member/reset-password', {
+      layout: 'customer/layout',
       title: 'ตั้งรหัสผ่านใหม่ | SNG Express',
       error: 'เกิดข้อผิดพลาดในการตั้งรหัสผ่านใหม่',
     });
@@ -521,15 +521,15 @@ export async function profile(req, res) {
       [customer.id]
     );
 
-    res.render('member/profile', {
-      layout: 'layouts/public',
+    res.render('customer/member/profile', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.account')} | SNG Express`,
       account: account || customer,
     });
   } catch (err) {
     console.error('[Member Profile]', err);
-    res.render('member/profile', {
-      layout: 'layouts/public',
+    res.render('customer/member/profile', {
+      layout: 'customer/layout',
       title: `${res.locals.t('portal.account')} | SNG Express`,
       account: customer,
     });
@@ -556,15 +556,15 @@ export async function myOrders(req, res) {
       [phone, phone, phone, phone]
     );
 
-    res.render('member/orders', {
-      layout: 'layouts/public',
+    res.render('customer/member/orders', {
+      layout: 'customer/layout',
       title: `รายการพัสดุของฉัน | SNG Express`,
       orders,
     });
   } catch (err) {
     console.error('[Member Orders]', err);
-    res.render('member/orders', {
-      layout: 'layouts/public',
+    res.render('customer/member/orders', {
+      layout: 'customer/layout',
       title: `รายการพัสดุของฉัน | SNG Express`,
       orders: [],
     });
@@ -580,8 +580,8 @@ export async function accountEdit(req, res) {
     `SELECT id, phone, phone_display, first_name, last_name, gender FROM customer_accounts WHERE id = ?`,
     [customer.id]
   );
-  res.render('member/account', {
-    layout: 'layouts/public',
+  res.render('customer/member/account', {
+    layout: 'customer/layout',
     title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
     account: account || customer,
     error: null,
@@ -597,8 +597,8 @@ export async function processAccountEdit(req, res) {
   const { first_name, last_name, gender } = req.body;
 
   if (!first_name || !first_name.trim()) {
-    return res.render('member/account', {
-      layout: 'layouts/public',
+    return res.render('customer/member/account', {
+      layout: 'customer/layout',
       title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
       account: { ...customer, first_name, last_name, gender },
       error: 'กรุณากรอกชื่อ',
@@ -616,8 +616,8 @@ export async function processAccountEdit(req, res) {
     req.session.customer.last_name = (last_name || '').trim();
     req.session.customer.gender = gender || null;
 
-    res.render('member/account', {
-      layout: 'layouts/public',
+    res.render('customer/member/account', {
+      layout: 'customer/layout',
       title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
       account: req.session.customer,
       error: null,
@@ -625,12 +625,114 @@ export async function processAccountEdit(req, res) {
     });
   } catch (err) {
     console.error('[Member Account Edit]', err);
-    res.render('member/account', {
-      layout: 'layouts/public',
+    res.render('customer/member/account', {
+      layout: 'customer/layout',
       title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
       account: { ...customer, first_name, last_name, gender },
       error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล',
       success: null,
+    });
+  }
+}
+
+/**
+ * GET /member/quote-request
+ * Public intake form for "เช็คราคาสินค้าออนไลน์จากไทย".
+ * Requires a logged-in (OTP-verified) member.
+ */
+export function showQuoteRequest(req, res) {
+  const values = {
+    product_url: typeof req.query.url === 'string' ? req.query.url.slice(0, 1000) : '',
+    product_name: '',
+    desired_qty: 1,
+    note: '',
+  };
+  res.render('customer/member/quote-request', {
+    layout: 'customer/layout',
+    title: 'เช็คราคาสินค้าออนไลน์ | SNG Express',
+    values,
+    error: null,
+  });
+}
+
+/**
+ * POST /member/quote-request
+ * Saves a customer intent row (status='new'). Pricing stays staff-side.
+ */
+export async function processQuoteRequest(req, res) {
+  const customer = req.session.customer;
+  const { product_url, product_name, desired_qty, note } = req.body;
+
+  const values = {
+    product_url: (product_url || '').trim().slice(0, 1000),
+    product_name: (product_name || '').trim().slice(0, 500),
+    desired_qty: Math.max(1, parseInt(desired_qty, 10) || 1),
+    note: (note || '').trim().slice(0, 1000),
+  };
+
+  if (!values.product_name) {
+    return res.render('customer/member/quote-request', {
+      layout: 'customer/layout',
+      title: 'เช็คราคาสินค้าออนไลน์ | SNG Express',
+      values,
+      error: 'กรุณากรอกชื่อสินค้าหรือลิงก์สินค้า',
+    });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO product_quote_requests
+         (customer_account_id, product_url, product_name, desired_qty, note, status)
+       VALUES (?, ?, ?, ?, ?, 'new')`,
+      [customer.id, values.product_url || null, values.product_name, values.desired_qty, values.note || null]
+    );
+
+    req.session.flash = {
+      type: 'success',
+      message: 'ส่งคำขอเช็คราคาเรียบร้อย เจ้าหน้าที่จะติดต่อกลับทาง WhatsApp',
+    };
+    res.redirect('/member/quote-requests');
+  } catch (err) {
+    console.error('[Member Quote Request]', err);
+    res.render('customer/member/quote-request', {
+      layout: 'customer/layout',
+      title: 'เช็คราคาสินค้าออนไลน์ | SNG Express',
+      values,
+      error: 'เกิดข้อผิดพลาดในการส่งคำขอ กรุณาลองใหม่อีกครั้ง',
+    });
+  }
+}
+
+/**
+ * GET /member/quote-requests
+ * The member's own request history, with quotation reference when converted.
+ */
+export async function myQuoteRequests(req, res) {
+  const customer = req.session.customer;
+  try {
+    const [requests] = await pool.query(
+      `SELECT pqr.id, pqr.product_url, pqr.product_name, pqr.desired_qty, pqr.note,
+              pqr.status, pqr.linked_quotation_id, pqr.created_at,
+              pq.quote_no
+       FROM product_quote_requests pqr
+       LEFT JOIN partner_quotations pq ON pq.id = pqr.linked_quotation_id
+       WHERE pqr.customer_account_id = ?
+       ORDER BY pqr.created_at DESC
+       LIMIT 100`,
+      [customer.id]
+    );
+
+    res.render('customer/member/quote-requests', {
+      layout: 'customer/layout',
+      title: 'คำขอเช็คราคาของฉัน | SNG Express',
+      requests,
+    });
+  } catch (err) {
+    console.error('[Member Quote Requests]', err);
+    res.render('customer/member/quote-requests', {
+      layout: 'customer/layout',
+      title: 'คำขอเช็คราคาของฉัน | SNG Express',
+      requests: [],
     });
   }
 }

@@ -257,10 +257,13 @@ app.use((req, res, next) => {
       // /login, /register, /profile, ... → the real routes live under /member.
       req.url = '/member' + req.url;
     } else if (!isCustomerDirectPath(req.path)) {
-      // Not a recognized customer path — a staff URL opened on the customer
-      // subdomain (by mistake or an old bookmark). Bounce to the main host
-      // instead of 404ing, or worse, matching something unintended here.
-      return res.redirect(`//${mainHost}${req.originalUrl}`);
+      // Not a recognized customer path — could be a staff-only URL (e.g.
+      // /dashboard) or just a bad link. Route to something nothing will ever
+      // match so this falls through cleanly to the existing catch-all 404
+      // (rendered once every res.locals is populated) instead of bouncing to
+      // the main host — which would leak that a staff host exists — or, worse,
+      // actually reaching a real staff route and inheriting its own redirects.
+      req.url = '/__customer_not_found__';
     }
     // else: already a direct match (/, /track, /calculate, /shops, /member/*,
     // /api/public/*) — these routes work unprefixed, no rewrite needed.
@@ -518,7 +521,7 @@ app.get('/track/:jobNo', tracking.trackOrder);
 // Global 404 Handler
 app.use('*', (req, res) => {
   if (req.session?.user) return res.redirect('/dashboard');
-  res.status(404).render('errors/404-public', { title: 'ไม่พบหน้านี้ | SNG Express', layout: 'layouts/public' });
+  res.status(404).render('customer/404', { title: 'ไม่พบหน้านี้ | SNG Express', layout: 'customer/layout' });
 });
 
 // ─── Error Handlers (MUST be after routes) ───────────────────────────────────
