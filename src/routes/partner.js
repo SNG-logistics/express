@@ -8,6 +8,10 @@ const staff = requireRole(['admin', 'manager', 'staff', 'branch_operator']);
 // ─── Partner Dashboard ────────────────────────────────────────────────────────
 router.get('/partner',                requireLogin, staff, partner.dashboard);
 
+// ─── Quote Requests Queue (from public member portal) ────────────────────────
+router.get('/partner/quote-requests',            requireLogin, staff, partner.quoteRequestQueue);
+router.get('/partner/quote-requests/:id/convert', requireLogin, staff, partner.convertRequest);
+
 // ─── Quotation CRUD ───────────────────────────────────────────────────────────
 router.get('/partner/quotes',         requireLogin, staff, partner.list);
 router.get('/partner/quotes/new',     requireLogin, staff, partner.newForm);

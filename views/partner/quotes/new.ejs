@@ -12,14 +12,29 @@
     <div>
       <h1 class="text-2xl font-black text-white flex items-center gap-3">
         <span class="bg-amber-500 w-1.5 h-7 rounded-full"></span>
-        สร้างใบเสนอราคา
+        <%= request ? 'สร้างใบเสนอราคาจากคำขอลูกค้า' : 'สร้างใบเสนอราคา' %>
       </h1>
       <p class="text-slate-500 text-sm mt-1 ml-5">คำนวณราคาสินค้าออนไลน์สำหรับลูกค้าลาว</p>
     </div>
   </div>
 
+  <% if (request) { %>
+  <div class="glass-panel-dark rounded-2xl p-4 border border-cyan-500/20 bg-cyan-500/5 mb-6 flex items-center gap-3">
+    <i class="fa-solid fa-inbox text-cyan-400"></i>
+    <div class="text-sm text-slate-300">
+      กำลังแปลงคำขอ #<%= request.id %> จาก
+      <span class="font-semibold text-white"><%= [request.first_name, request.last_name].filter(Boolean).join(' ') || 'ลูกค้า' %></span>
+      (จำนวนที่ต้องการ: <%= request.desired_qty %> ชิ้น) —
+      <a href="/partner/quote-requests" class="text-cyan-400 hover:text-cyan-300 underline">กลับไปคิวคำขอ</a>
+    </div>
+  </div>
+  <% } %>
+
   <form action="/partner/quotes" method="post" class="grid lg:grid-cols-5 gap-6">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (request) { %>
+    <input type="hidden" name="quote_request_id" value="<%= request.id %>">
+    <% } %>
 
     <%# ─── LEFT: Input ──────────────────────────────────── %>
     <div class="lg:col-span-3 space-y-5">
@@ -187,11 +202,13 @@
           <div>
             <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">ชื่อลูกค้า</label>
             <input type="text" name="customer_name" placeholder="นาง สมหมาย"
+              value="<%= request ? [request.first_name, request.last_name].filter(Boolean).join(' ') : '' %>"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600">
           </div>
           <div>
             <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">เบอร์โทร</label>
             <input type="tel" name="customer_phone" placeholder="020-xxx-xxx"
+              value="<%= request ? (request.phone_display || request.phone || '') : '' %>"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600">
           </div>
         </div>
@@ -283,7 +300,7 @@
         <div class="glass-panel-dark rounded-2xl p-5 border border-white/5 mb-4">
           <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">หมายเหตุ</label>
           <textarea name="note" rows="3" placeholder="บันทึกเพิ่มเติม..."
-            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-white/20 focus:border-white/20 placeholder-slate-600 resize-none"></textarea>
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-white/20 focus:border-white/20 placeholder-slate-600 resize-none"><% if (request && request.note) { %><%= request.note %><% } %></textarea>
         </div>
 
         <button type="submit"
@@ -301,8 +318,8 @@
 function quoteCalc() {
   return {
     form: {
-      product_url: '',
-      product_name: '',
+      product_url: <%- request && request.product_url ? JSON.stringify(request.product_url).replace(/</g, '\\u003c') : "''" %>,
+      product_name: <%- request && request.product_name ? JSON.stringify(request.product_name).replace(/</g, '\\u003c') : "''" %>,
       product_price_thb: '',
       shipping_th_thb: 0,
       weight_kg: 0,

@@ -8,10 +8,21 @@
       </h1>
       <p class="text-slate-500 text-sm mt-1 ml-5">ภาพรวมการตลาดสาขา 30 วันล่าสุด</p>
     </div>
-    <a href="/partner/quotes/new"
-      class="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl shadow-lg shadow-amber-900/20 hover:shadow-amber-500/30 transition-all">
-      <i class="fa-solid fa-calculator"></i> คำนวณราคา
-    </a>
+    <div class="flex items-center gap-3">
+      <a href="/partner/quote-requests"
+        class="relative flex items-center gap-2 px-5 py-3 bg-slate-800 border border-slate-700 text-white font-bold rounded-xl hover:border-cyan-500/40 transition-all">
+        <i class="fa-solid fa-inbox text-cyan-400"></i> คำขอเช็คราคา
+        <% if (pending_requests > 0) { %>
+        <span class="absolute -top-2 -right-2 bg-cyan-500 text-black text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
+          <%= pending_requests %>
+        </span>
+        <% } %>
+      </a>
+      <a href="/partner/quotes/new"
+        class="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl shadow-lg shadow-amber-900/20 hover:shadow-amber-500/30 transition-all">
+        <i class="fa-solid fa-calculator"></i> คำนวณราคา
+      </a>
+    </div>
   </div>
 
   <%# Stats Grid %>
@@ -74,6 +85,46 @@
             </td>
             <td class="px-5 py-3">
               <a href="/partner/quotes/<%= q.id %>" class="text-slate-500 hover:text-amber-400 transition-colors">
+                <i class="fa-solid fa-chevron-right"></i>
+              </a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%# Recent Quote Requests %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/5 mt-6">
+    <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+      <h3 class="font-bold text-white text-sm">คำขอเช็คราคาล่าสุด</h3>
+      <a href="/partner/quote-requests" class="text-cyan-400 hover:text-cyan-300 text-xs font-semibold">ดูทั้งหมด →</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% if (recentRequests.length === 0) { %>
+          <tr><td colspan="4" class="py-10 text-center text-slate-600">ยังไม่มีคำขอ</td></tr>
+          <% } %>
+          <% recentRequests.forEach(r => { %>
+          <%
+            const rMap = { new:'text-cyan-400', in_progress:'text-amber-400', quoted:'text-emerald-400', closed:'text-slate-500' };
+            const rLbl = { new:'ใหม่', in_progress:'กำลังดำเนินการ', quoted:'เสนอราคาแล้ว', closed:'ปิดแล้ว' };
+          %>
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3">
+              <div class="font-semibold text-white max-w-[220px] truncate"><%= r.product_name %></div>
+              <div class="text-[11px] text-slate-500"><%= r.phone_display || '—' %></div>
+            </td>
+            <td class="px-5 py-3 text-center text-xs font-bold <%= rMap[r.status] || 'text-slate-400' %>">
+              <%= rLbl[r.status] || r.status %>
+            </td>
+            <td class="px-5 py-3 text-slate-500 text-xs font-mono">
+              <%= new Date(r.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit'}) %>
+            </td>
+            <td class="px-5 py-3">
+              <a href="/partner/quote-requests" class="text-slate-500 hover:text-cyan-400 transition-colors">
                 <i class="fa-solid fa-chevron-right"></i>
               </a>
             </td>

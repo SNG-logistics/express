@@ -1,0 +1,88 @@
+<%# Partner — Quote Requests Queue (public member portal intake) %>
+<div class="max-w-6xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-white flex items-center gap-3">
+        <span class="bg-cyan-500 w-1.5 h-7 rounded-full"></span>
+        คำขอเช็คราคาสินค้า
+      </h1>
+      <p class="text-slate-500 text-sm mt-1 ml-5">คำขอจากสมาชิกผ่านพอร์ทัลลูกค้า — แปลงเป็นใบเสนอราคา</p>
+    </div>
+    <a href="/partner"
+      class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 text-sm hover:text-white transition-colors">
+      <i class="fa-solid fa-arrow-left"></i> กลับ Partner Hub
+    </a>
+  </div>
+
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/5">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead class="text-xs text-slate-500 uppercase bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-5 py-3">สินค้า</th>
+            <th class="px-5 py-3">ลูกค้า</th>
+            <th class="px-5 py-3 text-center">จำนวน</th>
+            <th class="px-5 py-3 text-center">สถานะ</th>
+            <th class="px-5 py-3">วันที่</th>
+            <th class="px-5 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% if (requests.length === 0) { %>
+          <tr><td colspan="6" class="py-12 text-center text-slate-600">
+            <i class="fa-solid fa-inbox text-3xl mb-2 opacity-20"></i><p>ยังไม่มีคำขอเช็คราคา</p>
+          </td></tr>
+          <% } %>
+          <% requests.forEach(r => { %>
+          <%
+            const statusMap = {
+              new:         { cls:'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',     label:'ใหม่' },
+              in_progress: { cls:'bg-amber-500/10 text-amber-400 border-amber-500/20',  label:'กำลังดำเนินการ' },
+              quoted:      { cls:'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', label:'เสนอราคาแล้ว' },
+              closed:      { cls:'bg-slate-500/10 text-slate-400 border-slate-500/20',  label:'ปิดแล้ว' },
+            };
+            const s = statusMap[r.status] || statusMap.new;
+            const custName = [r.first_name, r.last_name].filter(Boolean).join(' ') || '—';
+          %>
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3">
+              <div class="font-semibold text-white max-w-[260px] truncate"><%= r.product_name %></div>
+              <% if (r.product_url) { %>
+              <a href="<%= r.product_url %>" target="_blank" rel="noopener"
+                class="text-[11px] text-cyan-400 hover:text-cyan-300 truncate block max-w-[260px]">
+                <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i><%= r.product_url %>
+              </a>
+              <% } %>
+              <% if (r.note) { %><div class="text-[11px] text-slate-500 mt-0.5 max-w-[260px] truncate">📝 <%= r.note %></div><% } %>
+            </td>
+            <td class="px-5 py-3">
+              <div class="text-white text-xs font-semibold"><%= custName %></div>
+              <div class="text-[11px] text-slate-500"><%= r.phone_display || r.phone || '—' %></div>
+            </td>
+            <td class="px-5 py-3 text-center font-mono text-slate-300"><%= r.desired_qty %></td>
+            <td class="px-5 py-3 text-center">
+              <span class="inline-flex px-2 py-0.5 rounded-lg border text-[11px] font-bold <%= s.cls %>"><%= s.label %></span>
+            </td>
+            <td class="px-5 py-3 text-slate-500 text-xs font-mono">
+              <%= new Date(r.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit'}) %>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <% if (r.linked_quotation_id) { %>
+              <a href="/partner/quotes/<%= r.linked_quotation_id %>"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 text-xs hover:text-white transition-colors">
+                <i class="fa-solid fa-file-invoice"></i> ดูใบเสนอราคา
+              </a>
+              <% } else { %>
+              <a href="/partner/quote-requests/<%= r.id %>/convert"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold rounded-lg text-xs shadow-md shadow-amber-900/20 hover:shadow-amber-500/30 transition-all">
+                <i class="fa-solid fa-calculator"></i> แปลงเป็นใบเสนอราคา
+              </a>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
