@@ -43,6 +43,49 @@
     </div>
   </div>
 
+  <%# Public Quote Requests (เช็คราคาสินค้าออนไลน์) %>
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-amber-500/20 bg-amber-500/5 mb-8">
+    <div class="px-5 py-4 border-b border-amber-500/10 flex items-center justify-between">
+      <h3 class="font-bold text-white text-sm flex items-center gap-2">
+        <i class="fa-solid fa-cart-shopping text-amber-400"></i>
+        คำขอเช็คราคาสินค้าออนไลน์
+        <% if (pending_requests > 0) { %>
+        <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold"><%= pending_requests %></span>
+        <% } %>
+      </h3>
+      <a href="/partner/quote-requests" class="text-amber-400 hover:text-amber-300 text-xs font-semibold">ดูทั้งหมด →</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% if (recentRequests.length === 0) { %>
+          <tr><td colspan="4" class="py-8 text-center text-slate-600">ยังไม่มีคำขอ</td></tr>
+          <% } %>
+          <% recentRequests.forEach(pr => {
+            const prMap = { new:'ใหม่', in_progress:'กำลังทำ', quoted:'มีใบเสนอราคา', closed:'ปิด' };
+            const prCls = { new:'text-amber-400', in_progress:'text-blue-400', quoted:'text-emerald-400', closed:'text-slate-400' };
+          %>
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3">
+              <div class="font-semibold text-white max-w-[240px] truncate"><%= pr.product_name %></div>
+              <div class="text-[11px] text-slate-500"><%= pr.phone_display || '—' %></div>
+            </td>
+            <td class="px-5 py-3 text-center text-xs font-bold <%= prCls[pr.status] || 'text-slate-400' %>"><%= prMap[pr.status] || pr.status %></td>
+            <td class="px-5 py-3 text-slate-500 text-xs font-mono">
+              <%= new Date(pr.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short'}) %>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <a href="/partner/quote-requests/<%= pr.id %>/convert" class="text-amber-400 hover:text-amber-300 text-xs font-semibold">
+                <i class="fa-solid fa-calculator"></i> สร้างใบเสนอราคา
+              </a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <%# Recent Quotes %>
   <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/5">
     <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">

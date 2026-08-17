@@ -2,7 +2,6 @@
   "name": "sng-logistics",
   "version": "1.0.0",
   "type": "module",
-  "main": "app.js",
   "scripts": {
     "dev": "nodemon src/app.js",
     "deploy": "node scripts/deploy.js",
@@ -12,9 +11,6 @@
     "migrate": "node scripts/migrate_image_upload.js",
     "migrate-db": "node scripts/migrate_db.js",
     "migrate-expenses": "node scripts/migrate_expenses.mjs",
-    "migrate-011": "node run_migration_011.js",
-    "fix-rider": "node fix_rider_role.js",
-    "fix-rates": "node fix_rates_tables.js",
     "clean": "node scripts/clean_and_restart.js",
     "force-update": "node scripts/force_update.js",
     "lint": "eslint src scripts tests eslint.config.js",

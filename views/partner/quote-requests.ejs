@@ -1,0 +1,90 @@
+<%# Partner — Public Quote Request Queue (จากพอร์ทัลสมาชิก) %>
+<div class="max-w-6xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-white flex items-center gap-3">
+        <span class="bg-amber-500 w-1.5 h-7 rounded-full"></span>
+        คำขอเช็คราคาสินค้า
+      </h1>
+      <p class="text-slate-500 text-sm mt-1 ml-5">ลูกค้าสมาชิกส่งคำขอจากเว็บ — กดแปลงเป็นใบเสนอราคา</p>
+    </div>
+    <a href="/partner/quote-requests"
+      class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 text-sm hover:text-white transition-colors">
+      <i class="fa-solid fa-rotate"></i> รีเฟรช
+    </a>
+  </div>
+
+  <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/5">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead class="text-xs text-slate-500 uppercase bg-black/20 border-b border-white/5">
+          <tr>
+            <th class="px-5 py-3">สินค้า</th>
+            <th class="px-5 py-3">ลูกค้า</th>
+            <th class="px-5 py-3 text-center">จำนวน</th>
+            <th class="px-5 py-3">สถานะ</th>
+            <th class="px-5 py-3">วันที่</th>
+            <th class="px-5 py-3 text-right">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-slate-300">
+          <% if (requests.length === 0) { %>
+          <tr><td colspan="6" class="py-12 text-center text-slate-600">
+            <i class="fa-solid fa-inbox text-3xl mb-2 opacity-20"></i><p>ยังไม่มีคำขอเช็คราคา</p>
+          </td></tr>
+          <% } %>
+          <% requests.forEach(request => {
+            const statusMap = {
+              new:         { cls:'bg-amber-500/10 text-amber-400 border-amber-500/20',  label:'ใหม่' },
+              in_progress: { cls:'bg-blue-500/10 text-blue-400 border-blue-500/20',     label:'กำลังทำ' },
+              quoted:      { cls:'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', label:'มีใบเสนอราคา' },
+              closed:      { cls:'bg-slate-500/10 text-slate-400 border-slate-500/20',  label:'ปิด' },
+            };
+            const st = statusMap[request.status] || statusMap.new;
+            const memberName = request.first_name
+              ? `${request.first_name} ${request.last_name || ''}`.trim()
+              : '—';
+            const memberPhone = request.phone_display || request.phone || '—';
+          %>
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3">
+              <div class="font-semibold text-white max-w-[260px] truncate"><%= request.product_name %></div>
+              <% if (request.product_url) { %>
+              <a href="<%= request.product_url %>" target="_blank" rel="noopener" class="text-[11px] text-amber-400 hover:text-amber-300">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> ลิงก์สินค้า
+              </a>
+              <% } %>
+              <% if (request.note) { %>
+              <div class="text-[11px] text-slate-500 max-w-[260px] truncate mt-0.5"><%= request.note %></div>
+              <% } %>
+            </td>
+            <td class="px-5 py-3">
+              <div class="text-slate-300"><%= memberName %></div>
+              <div class="text-[11px] text-slate-500"><i class="fa-brands fa-whatsapp" style="color:#25D366; margin-right:3px;"></i><%= memberPhone %></div>
+            </td>
+            <td class="px-5 py-3 text-center"><%= request.desired_qty %></td>
+            <td class="px-5 py-3">
+              <span class="inline-flex px-2 py-0.5 rounded-lg border text-[11px] font-bold <%= st.cls %>"><%= st.label %></span>
+            </td>
+            <td class="px-5 py-3 text-slate-500 text-xs font-mono">
+              <%= new Date(request.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit'}) %>
+            </td>
+            <td class="px-5 py-3 text-right whitespace-nowrap">
+              <% if (request.status === 'quoted' && request.linked_quotation_id) { %>
+              <a href="/partner/quotes/<%= request.linked_quotation_id %>" class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold mr-3">
+                <i class="fa-solid fa-file-invoice"></i> ดูใบเสนอราคา
+              </a>
+              <% } else { %>
+              <a href="/partner/quote-requests/<%= request.id %>/convert"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold rounded-lg text-xs hover:shadow-amber-500/30 transition-all">
+                <i class="fa-solid fa-calculator"></i> สร้างใบเสนอราคา
+              </a>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

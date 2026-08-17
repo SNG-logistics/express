@@ -221,7 +221,28 @@
     "enterOtp": "กรอกรหัส OTP 6 หลักที่ส่งไปยัง WhatsApp",
     "otpSentTo": "ส่งรหัสไปยังเบอร์",
     "noOrders": "ยังไม่มีรายการพัสดุ",
-    "viewTracking": "ดูสถานะ"
+    "viewTracking": "ดูสถานะ",
+    "quoteRequest": "เช็คราคาสินค้า"
+  },
+
+  "quoteRequest": {
+    "title": "เช็คราคาสินค้าออนไลน์จากไทย",
+    "subtitle": "ส่งลิงก์สินค้าจาก Lazada / Shopee / ร้านค้าออนไลน์ แล้วเจ้าหน้าที่จะคำนวณราคารวมค่าส่งและค่าบริการให้",
+    "submit": "ส่งคำขอเช็คราคา",
+    "myRequests": "คำขอเช็คราคาของฉัน",
+    "myRequestsHint": "ติดตามสถานะคำขอและใบเสนอราคาของคุณ",
+    "newRequest": "ส่งคำขอใหม่",
+    "noRequests": "ยังไม่มีคำขอเช็คราคา",
+    "productUrl": "ลิงก์สินค้า",
+    "productName": "ชื่อสินค้า",
+    "quantity": "จำนวน",
+    "note": "หมายเหตุ",
+    "notePlaceholder": "ระบุสี / ไซซ์ / รายละเอียดเพิ่มเติม",
+    "statusNew": "รอเจ้าหน้าที่",
+    "statusInProgress": "กำลังดำเนินการ",
+    "statusQuoted": "มีใบเสนอราคาแล้ว",
+    "statusClosed": "ปิดคำขอ",
+    "viewQuote": "ดูใบเสนอราคา"
   },
 
   "shops": {

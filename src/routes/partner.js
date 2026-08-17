@@ -16,6 +16,10 @@ router.get('/partner/quotes/:id',     requireLogin, staff, partner.detail);
 router.get('/partner/quotes/:id/print', requireLogin, staff, partner.printQuote);
 router.post('/partner/quotes/:id/status', requireLogin, staff, partner.updateStatus);
 
+// ─── Public Quote Requests (เช็คราคาสินค้าออนไลน์) ───────────────────────────
+router.get('/partner/quote-requests',     requireLogin, staff, partner.quoteRequestQueue);
+router.get('/partner/quote-requests/:id/convert', requireLogin, staff, partner.convertRequest);
+
 // ─── API (AJAX Calculator) ────────────────────────────────────────────────────
 router.get('/api/partner/calc',       requireLogin, partner.apiCalc);
 

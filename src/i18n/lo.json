@@ -221,7 +221,28 @@
     "enterOtp": "ປ້ອນລະຫັດ OTP 6 ຫຼັກທີ່ສົ່ງໄປຫາ WhatsApp",
     "otpSentTo": "ສົ່ງລະຫັດໄປຫາເບີ",
     "noOrders": "ຍັງບໍ່ມີລາຍການພັດສະດຸ",
-    "viewTracking": "ເບິ່ງສະຖານະ"
+    "viewTracking": "ເບິ່ງສະຖານະ",
+    "quoteRequest": "ກວດລາຄາສິນຄ້າ"
+  },
+
+  "quoteRequest": {
+    "title": "ກວດລາຄາສິນຄ້າອອນລາຍຈາກໄທ",
+    "subtitle": "ສົ່ງລິ້ງສິນຄ້າຈາກ Lazada / Shopee / ຮ້ານອອນລາຍ ແລ້ວພະນັກງານຈະຄິດໄລ່ລາຄາລວມຄ່າສົ່ງ ແລະ ຄ່າບໍລິການໃຫ້",
+    "submit": "ສົ່ງຄຳຂໍກວດລາຄາ",
+    "myRequests": "ຄຳຂໍກວດລາຄາຂອງຂ້ອຍ",
+    "myRequestsHint": "ຕິດຕາມສະຖານະຄຳຂໍ ແລະ ໃບສະເໜີລາຄາຂອງທ່ານ",
+    "newRequest": "ສົ່ງຄຳຂໍໃໝ່",
+    "noRequests": "ຍັງບໍ່ມີຄຳຂໍກວດລາຄາ",
+    "productUrl": "ລິ້ງສິນຄ້າ",
+    "productName": "ຊື່ສິນຄ້າ",
+    "quantity": "ຈຳນວນ",
+    "note": "ໝາຍເຫດ",
+    "notePlaceholder": "ລະບຸສີ / ໄຊ / ລາຍລະອຽດເພີ່ມເຕີມ",
+    "statusNew": "ລໍຖ້າພະນັກງານ",
+    "statusInProgress": "ກຳລັງດຳເນີນການ",
+    "statusQuoted": "ມີໃບສະເໜີລາຄາແລ້ວ",
+    "statusClosed": "ປິດຄຳຂໍ",
+    "viewQuote": "ເບິ່ງໃບສະເໜີລາຄາ"
   },
 
   "shops": {

@@ -61,12 +61,19 @@ if $FULL_SETUP; then
   fi
 
   # Nginx config
-  DOMAIN=$(grep APP_URL .env | cut -d= -f2 | sed 's|https\?://||')
-  echo -e "${YELLOW}Configuring Nginx for domain: $DOMAIN${NC}"
+  DOMAIN=$(grep '^APP_URL=' .env | cut -d= -f2 | sed 's|https\?://||' | sed 's|/.*||')
+  PORT=$(grep '^PORT=' .env | cut -d= -f2 | tr -d '\r' || echo 3000)
+  PORT=${PORT:-3000}
+  
+  if [ -z "$DOMAIN" ]; then
+    DOMAIN="your-domain.com"
+  fi
+
+  echo -e "${YELLOW}Configuring Nginx for domain: $DOMAIN (subdomains: www.$DOMAIN, member.$DOMAIN) on port $PORT...${NC}"
   cat > /tmp/sng-nginx.conf << NGINXEOF
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN www.$DOMAIN member.$DOMAIN;
 
     # Max upload size
     client_max_body_size 20M;
@@ -98,7 +105,7 @@ server {
 
     # Node.js app (all other requests)
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:$PORT;
         proxy_http_version 1.1;
 
         # Socket.io support
@@ -117,7 +124,7 @@ server {
 
     # Facebook/LINE webhook — no timeout limit
     location /webhooks/ {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:$PORT;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -134,8 +141,8 @@ NGINXEOF
 
   # SSL (Certbot)
   if [ -n "$DOMAIN" ] && [ "$DOMAIN" != "your-domain.com" ]; then
-    echo -e "${YELLOW}Setting up SSL for $DOMAIN...${NC}"
-    sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@"$DOMAIN" || true
+    echo -e "${YELLOW}Setting up SSL for $DOMAIN, www.$DOMAIN, member.$DOMAIN...${NC}"
+    sudo certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" -d "member.$DOMAIN" --non-interactive --agree-tos --email admin@"$DOMAIN" || true
     echo -e "${GREEN}✓ SSL configured${NC}"
   fi
 fi

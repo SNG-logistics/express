@@ -230,18 +230,35 @@ app.use(i18nMiddleware);
 app.use(themeMiddleware);
 
 // ─── Member subdomain (member.<host>) — the whole customer portal lives here ─
-// Local dev: this browser environment auto-resolves *.localhost, so
-// http://member.localhost:<PORT>/ just works with no hosts-file edit needed.
-// Production: once a real APP_URL is set, point a member.<domain> DNS record
-// + Plesk subdomain at this same app (no separate deploy needed) — everything
-// below is host-based, not a second copy of the app. Goal: customer traffic
-// (home/track/calculate/shops/member) and staff/admin traffic never share a
-// host, so an old bookmark or typo on the wrong side gets bounced, not served.
+// Point a member.<domain> DNS record + Plesk Domain Alias at this same app
+// (no separate deploy needed) — everything below is host-based, not a second
+// copy of the app. Goal: customer traffic (home/track/calculate/shops/member)
+// and staff/admin traffic never share a host, so an old bookmark or typo on
+// the wrong side gets bounced, not served.
+//
+// The main host's '/' bounces anonymous visitors to the customer subdomain
+// too (handled in the app.get('/', ...) route below, not the bounce list
+// here, since it needs the isMemberSubdomain branch as well) — staff sign in
+// via /login directly instead of the bare root. Deliberate: the bare domain
+// root shouldn't hand a login form to every random visitor or bot probing
+// it. Everything else customer-shaped bounces away from the main host
+// unconditionally (even for logged-in staff — they have their own internal
+// tools for these), which is what actually keeps the two hosts separate
+// instead of merely "separate when logged out."
+// Paths that pass through unprefixed on the subdomain — includes '/', the
+// customer home page, which IS a valid direct route there.
 const CUSTOMER_DIRECT_PATHS = ['/', '/track', '/calculate', '/shops', '/api/public', '/member'];
+// Same set minus '/' — used on the main host, where '/' gets its own
+// host-aware handling below instead of a blind bounce (see app.get('/', ...)).
+const MAIN_HOST_BOUNCE_PATHS = CUSTOMER_DIRECT_PATHS.filter(p => p !== '/');
 const MEMBER_BARE_PATHS = ['/register', '/verify', '/verify/resend', '/login', '/logout', '/forgot-password', '/reset-password', '/profile', '/orders', '/account'];
 
 function isCustomerDirectPath(path) {
   return CUSTOMER_DIRECT_PATHS.some(p => path === p || (p !== '/' && path.startsWith(p + '/')));
+}
+
+function shouldBounceFromMainHost(path) {
+  return MAIN_HOST_BOUNCE_PATHS.some(p => path === p || path.startsWith(p + '/'));
 }
 
 app.use((req, res, next) => {
@@ -251,6 +268,7 @@ app.use((req, res, next) => {
   const memberHost = isMemberSubdomain ? host : 'member.' + host;
   res.locals.isMemberSubdomain = isMemberSubdomain;
   res.locals.mainHost = mainHost;
+  res.locals.memberHost = memberHost;
 
   if (isMemberSubdomain) {
     if (MEMBER_BARE_PATHS.includes(req.path)) {
@@ -282,25 +300,13 @@ app.use((req, res, next) => {
       }
       return status ? originalRedirect(status, url) : originalRedirect(url);
     };
-  } else if (!req.session?.user && isCustomerDirectPath(req.path)) {
-    // Main host: staff keep today's behaviour unchanged. A logged-out visitor
-    // hitting a customer-facing path — including old /track links already
-    // printed on shipping stickers — gets sent to the customer subdomain
-    // instead of served here.
+  } else if (shouldBounceFromMainHost(req.path)) {
+    // Main host never serves customer-facing routes, staff session or not —
+    // this is what makes the split real instead of just a logged-out default.
+    // Covers old /track links already printed on shipping stickers too.
     return res.redirect(`//${memberHost}${req.originalUrl}`);
   }
 
-  next();
-});
-
-// ─── Raw POST logger (BEFORE csrf) ─────────────────────────────────────────
-import fs from 'fs';
-app.use((req, res, next) => {
-  if (req.method === 'POST') {
-    const logStr = `[RAW POST] ${req.path} | keys: ${Object.keys(req.body || {}).join(', ')}\n`;
-    console.log(logStr);
-    try { fs.appendFileSync('post_debug.log', logStr); } catch(e){}
-  }
   next();
 });
 
@@ -464,17 +470,22 @@ app.use(webhookSimRoutes);   // ─ Dev webhook simulator (prod-blocked)
 app.use(crmRoutes);          // ─ Omnichannel CRM
 
 
-// Staff (logged in) keep today's behavior everywhere; everyone else falls
-// through to the public customer portal instead of hitting the login wall.
-function routeLoggedOutUser(req, res, next) {
-  if (req.session?.user) return res.redirect('/dashboard');
-  return next();
-}
-
 app.use(shopsDirectoryRoutes);
 app.use(memberRoutes);
 app.use(publicRoutes);
-app.get('/', routeLoggedOutUser, publicController.home);
+
+// '/' needs its own host-aware handler rather than the blind bounce list
+// above: staff get the dashboard on either host; on the subdomain everyone
+// else gets the customer home page; on the main host everyone else (regular
+// customers who typed the bare domain, or anyone probing it) gets bounced to
+// the customer subdomain instead of ever seeing a login form there — staff
+// sign in via /login directly, which stays reachable on the main host no
+// matter what this route does.
+app.get('/', (req, res) => {
+  if (req.session?.user) return res.redirect('/dashboard');
+  if (res.locals.isMemberSubdomain) return publicController.home(req, res);
+  return res.redirect(`//${res.locals.memberHost}/`);
+});
 
 // Temporary DB Migration Route for Production
 import { exec } from 'child_process';

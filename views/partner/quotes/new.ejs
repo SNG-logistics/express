@@ -20,6 +20,15 @@
 
   <form action="/partner/quotes" method="post" class="grid lg:grid-cols-5 gap-6">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (request) { %>
+    <input type="hidden" name="quote_request_id" value="<%= request.id %>">
+    <div class="lg:col-span-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+      <i class="fa-solid fa-cart-shopping mr-2"></i>
+      <strong>กำลังสร้างใบเสนอราคาจากคำขอ #<%= request.id %></strong>
+      <span class="text-amber-400/70"> — <%= request.product_name %> (×<%= request.desired_qty %>)
+      <% if (request.first_name) { %> — สมาชิก: <%= request.first_name %> <%= request.last_name || '' %> (<%= request.phone_display || request.phone %>)<% } %></span>
+    </div>
+    <% } %>
 
     <%# ─── LEFT: Input ──────────────────────────────────── %>
     <div class="lg:col-span-3 space-y-5">
@@ -38,6 +47,7 @@
             <div class="flex gap-2">
               <input type="url" name="product_url" id="product_url"
                 x-model="form.product_url"
+                value="<%= request?.product_url || '' %>"
                 placeholder="https://s.lazada.co.th/s.ZfXHBA"
                 class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600">
               <a :href="form.product_url || '#'" target="_blank"
@@ -53,6 +63,7 @@
             </label>
             <input type="text" name="product_name" required
               x-model="form.product_name"
+              value="<%= request?.product_name || '' %>"
               placeholder="เช่น รองเท้าวิ่ง Nike Air Max size 42"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-amber-500 focus:border-amber-500 placeholder-slate-600">
           </div>
@@ -186,12 +197,12 @@
         <div class="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">ชื่อลูกค้า</label>
-            <input type="text" name="customer_name" placeholder="นาง สมหมาย"
+            <input type="text" name="customer_name" value="<%= request?.first_name ? (request.first_name + ' ' + (request.last_name || '')).trim() : '' %>" placeholder="นาง สมหมาย"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600">
           </div>
           <div>
             <label class="block text-xs text-slate-500 font-semibold mb-1.5 uppercase tracking-wider">เบอร์โทร</label>
-            <input type="tel" name="customer_phone" placeholder="020-xxx-xxx"
+            <input type="tel" name="customer_phone" value="<%= request?.phone_display || request?.phone || '' %>" placeholder="020-xxx-xxx"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-600">
           </div>
         </div>
@@ -301,8 +312,8 @@
 function quoteCalc() {
   return {
     form: {
-      product_url: '',
-      product_name: '',
+      product_url: '<%= request?.product_url ? String(request.product_url).replace(/'/g, "\\'") : '' %>',
+      product_name: '<%= request?.product_name ? String(request.product_name).replace(/'/g, "\\'") : '' %>',
       product_price_thb: '',
       shipping_th_thb: 0,
       weight_kg: 0,
