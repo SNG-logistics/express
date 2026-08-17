@@ -6,7 +6,7 @@ import { findBestShippingRate } from '../services/pricingService.js';
 // ─── Helper: load all company_settings into a plain object ───────────────────
 export async function showRates(req, res) {
     try {
-        const [rates] = await pool.query('SELECT * FROM shipping_rates ORDER BY max_weight ASC');
+        const [rates] = await pool.query('SELECT * FROM shipping_rates WHERE active = 1 ORDER BY max_weight ASC');
         const [fxRates] = await pool.query(
             'SELECT er.*, u.username AS set_by_name FROM exchange_rates er LEFT JOIN users u ON u.id = er.set_by ORDER BY er.created_at DESC LIMIT 20'
         );
