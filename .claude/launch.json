@@ -5,7 +5,8 @@
       "name": "sng-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3500
+      "port": 3500,
+      "autoPort": false
     }
   ]
 }
