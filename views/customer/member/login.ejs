@@ -16,12 +16,13 @@
 
     <label>
       <span>เบอร์โทรศัพท์ (WhatsApp)</span>
-      <div style="display: flex; gap: 0.55rem;">
-        <select class="input-portal" name="country_code" aria-label="Country calling code" style="flex: 0 0 10.5rem; padding-right: 0.4rem;">
-          <option value="66" <%= values.country_code !== '856' ? 'selected' : '' %>>🇹🇭 ไทย +66</option>
-          <option value="856" <%= values.country_code === '856' ? 'selected' : '' %>>🇱🇦 ລາວ +856</option>
+      <div class="country-phone-row" data-country-picker>
+        <span class="country-flag <%= values.country_code === '856' ? 'is-laos' : '' %>" data-country-flag aria-hidden="true"></span>
+        <select class="input-portal country-code-select" name="country_code" aria-label="Country calling code" data-country-code>
+          <option value="66" <%= values.country_code !== '856' ? 'selected' : '' %>>ไทย (Thailand) +66</option>
+          <option value="856" <%= values.country_code === '856' ? 'selected' : '' %>>ลาว (Laos) +856</option>
         </select>
-        <input class="input-portal" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" pattern="[0-9 ()-]+" placeholder="0812345678" value="<%= values.phone || '' %>" required autofocus style="min-width: 0;">
+        <input class="input-portal country-phone-input" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" pattern="[0-9 ()-]+" placeholder="0812345678" value="<%= values.phone || '' %>" required autofocus>
       </div>
       <small style="display: block; margin-top: 0.4rem; color: var(--portal-text-dim);">เลือกประเทศก่อน แล้วกรอกเบอร์โทรศัพท์ในประเทศนั้น</small>
     </label>

@@ -29,6 +29,14 @@
   <%- include('./navbar') %>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+    document.querySelectorAll('[data-country-code]').forEach((select) => {
+      const flag = select.closest('[data-country-picker]')?.querySelector('[data-country-flag]');
+      if (!flag) return;
+      const updateFlag = () => flag.classList.toggle('is-laos', select.value === '856');
+      updateFlag();
+      select.addEventListener('change', updateFlag);
+    });
   </script>
 </body>
 </html>

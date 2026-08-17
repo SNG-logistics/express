@@ -105,6 +105,24 @@ body {
 }
 .portal-search input:focus, .input-portal:focus { outline: 2px solid var(--portal-gold); outline-offset: 1px; }
 
+.country-phone-row { display: flex; align-items: stretch; gap: .55rem; }
+.country-flag {
+  position: relative; flex: 0 0 2.6rem; min-height: 3rem; overflow: hidden;
+  border: 1px solid var(--portal-border); border-radius: .75rem;
+  background: linear-gradient(to bottom,
+    #a51931 0 16.67%, #f8f8f8 16.67% 33.33%, #2d2a4a 33.33% 66.67%,
+    #f8f8f8 66.67% 83.33%, #a51931 83.33% 100%);
+}
+.country-flag.is-laos {
+  background: linear-gradient(to bottom, #ce1126 0 25%, #002868 25% 75%, #ce1126 75% 100%);
+}
+.country-flag.is-laos::after {
+  content: ''; position: absolute; top: 50%; left: 50%; width: 1.25rem; height: 1.25rem;
+  transform: translate(-50%, -50%); border-radius: 50%; background: #fff;
+}
+.country-code-select { flex: 0 0 10rem; width: auto; padding-right: .4rem; }
+.country-phone-input { min-width: 0; }
+
 .btn-gold {
   display: inline-flex; justify-content: center; align-items: center; gap: .4rem;
   border: 0; border-radius: .75rem; padding: .82rem 1rem;

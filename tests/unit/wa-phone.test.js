@@ -25,8 +25,10 @@ test('member login provides explicit Thai and Lao country choices', async () => 
   );
 
   assert.match(template, /name="country_code"/);
-  assert.match(template, /🇹🇭 ไทย \+66/);
-  assert.match(template, /🇱🇦 ລາວ \+856/);
+  assert.match(template, /data-country-flag/);
+  assert.match(template, /ไทย \(Thailand\) \+66/);
+  assert.match(template, /ลาว \(Laos\) \+856/);
+  assert.doesNotMatch(template, /🇹🇭|🇱🇦/);
   assert.match(template, /autocomplete="tel-national"/);
 
   const render = (countryCode) => ejs.render(template, {
@@ -37,4 +39,39 @@ test('member login provides explicit Thai and Lao country choices', async () => 
   });
   assert.match(render('66'), /<option value="66"\s+selected\s*>/);
   assert.match(render('856'), /<option value="856"\s+selected\s*>/);
+  assert.match(render('856'), /class="country-flag is-laos"/);
+});
+
+test('member registration provides the same explicit country choices', async () => {
+  const template = await readFile(
+    new URL('../../views/customer/member/register.ejs', import.meta.url),
+    'utf8'
+  );
+  const render = (countryCode) => ejs.render(template, {
+    t: () => 'Register',
+    error: null,
+    csrfToken: 'test-token',
+    values: { country_code: countryCode, phone: '' },
+  });
+
+  assert.match(template, /name="country_code"/);
+  assert.match(template, /data-country-flag/);
+  assert.match(template, /ไทย \(Thailand\) \+66/);
+  assert.match(template, /ลาว \(Laos\) \+856/);
+  assert.doesNotMatch(template, /🇹🇭|🇱🇦/);
+  assert.match(render('66'), /<option value="66"\s+selected\s*>/);
+  assert.match(render('856'), /<option value="856"\s+selected\s*>/);
+  assert.match(render('856'), /class="country-flag is-laos"/);
+});
+
+test('country flag is a CSS graphic that follows the selected country', async () => {
+  const [layout, styles] = await Promise.all([
+    readFile(new URL('../../views/customer/layout.ejs', import.meta.url), 'utf8'),
+    readFile(new URL('../../public/css/portal.css', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(layout, /select\.addEventListener\('change', updateFlag\)/);
+  assert.match(layout, /classList\.toggle\('is-laos', select\.value === '856'\)/);
+  assert.match(styles, /\.country-flag\.is-laos/);
+  assert.match(styles, /\.country-flag\.is-laos::after/);
 });

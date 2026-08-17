@@ -38,7 +38,7 @@ export function showRegister(req, res) {
   res.render('customer/member/register', {
     layout: 'customer/layout',
     title: `${res.locals.t('portal.register')} | SNG Express`,
-    values: {},
+    values: { country_code: '66' },
     error: null,
   });
 }
@@ -47,9 +47,19 @@ export function showRegister(req, res) {
  * POST /member/register
  */
 export async function processRegister(req, res) {
-  const { phone: rawPhone, password, confirm_password, first_name, last_name, gender, referral_code } = req.body;
+  const {
+    phone: rawPhone, password, confirm_password, first_name, last_name, gender, referral_code,
+    country_code: countryCode,
+  } = req.body;
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-  const values = { phone: rawPhone, first_name, last_name, gender, referral_code };
+  const values = {
+    phone: rawPhone,
+    country_code: countryCode === '856' ? '856' : '66',
+    first_name,
+    last_name,
+    gender,
+    referral_code,
+  };
 
   if (!rawPhone || !password || !first_name) {
     return res.render('customer/member/register', {
@@ -78,7 +88,7 @@ export async function processRegister(req, res) {
     });
   }
 
-  const phone = toWaPhone(rawPhone);
+  const phone = toWaPhone(rawPhone, countryCode ?? '');
   if (!phone) {
     return res.render('customer/member/register', {
       layout: 'customer/layout',
