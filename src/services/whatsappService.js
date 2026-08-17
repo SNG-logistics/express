@@ -116,6 +116,30 @@ async function startSock() {
             }
 
             if (connection === 'close') {
+                const errMsg = lastDisconnect?.error?.message || lastDisconnect?.error?.description || lastDisconnect?.error?.toString() || 'Unknown';
+                // WhatsApp only supplies a handful of QR ref tokens per pairing
+                // session. If the QR is never scanned, Baileys closes with
+                // "QR refs attempts ended" (408/timedOut). That's a normal
+                // expiry — NOT a failure — so don't count it toward the
+                // reconnect/auth-clear threshold; just quietly refresh the QR.
+                const isQrExpired = typeof errMsg === 'string' && errMsg.includes('QR refs attempts ended');
+
+                if (isQrExpired) {
+                    console.log('[WhatsApp] QR expired (no scan). Refreshing QR...');
+                    addLog('QR หมดอายุ (ยังไม่สแกน) กำลังสร้าง QR ใหม่...');
+                    connectionStatus = 'QR_READY';
+                    isClientReady = false;
+                    qrCodeData = null; // force the UI to render the fresh QR
+                    lastError = null;
+                    const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
+                    if (fs.existsSync(flagPath)) {
+                        connectionStatus = 'DISABLED_MANUALLY';
+                        return;
+                    }
+                    setTimeout(startSock, 1500);
+                    return;
+                }
+
                 // Dynamic import makes DisconnectReason available here? 
                 // Yes, it is in the same scope (try block of startSock).
                 // But wait, makeWASocket returns sock.
@@ -124,7 +148,6 @@ async function startSock() {
                 // So it is available.
                 const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
                 console.log('[WhatsApp] Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
-                const errMsg = lastDisconnect?.error?.message || lastDisconnect?.error?.description || lastDisconnect?.error?.toString() || 'Unknown';
                 addLog(`Connection closed. Reconnecting: ${shouldReconnect}. Error: ${errMsg}`);
 
                 connectionStatus = 'DISCONNECTED';
