@@ -49,3 +49,7 @@ public/uploads/*
 # scripts/deploy.js state — records which GitHub commit is live on this host
 .deployed_commit
 .deploy_download.tar.gz
+
+# Claude Code's own local preview-tool config (per-developer, never used by
+# production — PM2/ecosystem.config.cjs starts the app directly, not this)
+.claude/launch.json
