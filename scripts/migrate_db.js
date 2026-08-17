@@ -47,6 +47,8 @@ const SQL_FILES = [
   'migrate_026_directory_shops.sql',
   'migrate_027_product_quote_requests.sql',
   'migrate_028_expenses_usd_currency.sql',
+  'migrate_029_partner_quotations_reconcile.sql',
+  'migrate_030_purchase_agent_core.sql',
   // Keep LAST: canonical role enum re-asserted after any migration (incl. CRM)
   // that redeclares users.role, so owner/accounting are never dropped.
   'migrate_021_role_enum_canonical.sql',

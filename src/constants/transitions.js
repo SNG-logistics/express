@@ -50,6 +50,21 @@ const TRIP_TRANSITIONS = {
   'CLOSED':                [],
 };
 
+// ─── Quotation Allowed Transitions (Purchase-Agent, Phase 3.x) ───────────────
+// Same shape as the order/trip machines. `accepted → purchasing` is additionally
+// gated at the service layer on payment_status === 'PAID' (deposit covered) —
+// the graph below only encodes the status relationship itself.
+const QUOTATION_TRANSITIONS = {
+  draft:       ['sent', 'cancelled'],
+  sent:        ['accepted', 'rejected', 'cancelled'],
+  accepted:    ['purchasing', 'cancelled'],
+  purchasing:  ['purchased', 'cancelled'],
+  purchased:   ['ordered', 'cancelled'],
+  rejected:    [],
+  ordered:     [],
+  cancelled:   [],
+};
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -79,6 +94,16 @@ export function canTransitionTrip(from, to) {
 }
 
 /**
+ * ตรวจสอบว่า quotation (ใบเสนอราคา purchase-agent) สามารถเปลี่ยนจาก `from`
+ * ไป `to` ได้หรือไม่ ตาม QUOTATION_TRANSITIONS ข้างต้น
+ */
+export function canTransitionQuotation(from, to) {
+  const allowed = QUOTATION_TRANSITIONS[from];
+  if (!allowed) return false;
+  return allowed.includes(to);
+}
+
+/**
  * ดึงรายการสถานะถัดไปที่อนุญาตของ order
  * @param {string} currentStatus
  * @returns {string[]}
@@ -95,6 +120,13 @@ export function getNextTripStatuses(currentStatus) {
 }
 
 /**
+ * ดึงรายการสถานะถัดไปที่อนุญาตของ quotation
+ */
+export function getNextQuotationStatuses(currentStatus) {
+  return QUOTATION_TRANSITIONS[currentStatus] || [];
+}
+
+/**
  * แปลง status เก่า → ชื่อใหม่ (backward compat)
  * ถ้าไม่ใช่ legacy status → คืนค่าเดิม
  * @param {string} raw
@@ -108,6 +140,7 @@ export function resolveStatus(raw) {
 
 export const ORDER_TRANSITION_RULES = Object.freeze(ORDER_TRANSITIONS);
 export const TRIP_TRANSITION_RULES = Object.freeze(TRIP_TRANSITIONS);
+export const QUOTATION_TRANSITION_RULES = Object.freeze(QUOTATION_TRANSITIONS);
 
 /**
  * ตรวจสอบว่า order ปิดการทำงาน COD ครบแล้วหรือไม่ ก่อนจะ CLOSE ได้

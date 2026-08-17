@@ -40,5 +40,7 @@ router.get('/member/quote-request', requireCustomerLogin, member.showQuoteReques
 router.post('/member/quote-request', requireCustomerLogin, member.processQuoteRequest);
 router.get('/member/quote-requests', requireCustomerLogin, member.myQuoteRequests);
 router.get('/member/quote-requests/:id/quotation', requireCustomerLogin, member.myQuoteRequestQuotation);
+router.post('/member/quote-requests/:id/accept', requireCustomerLogin, member.customerAcceptQuote);
+router.post('/member/quote-requests/:id/reject', requireCustomerLogin, member.customerRejectQuote);
 
 export default router;

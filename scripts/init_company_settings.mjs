@@ -7,6 +7,20 @@ const defaults = [
   ['company_logo', '/images/snglogo.png'],
   ['company_tax_id', ''],
   ['company_email', ''],
+  // ── Purchase-Agent service (tunable without a deploy; see plan Phase 3.2) ──
+  // Service fee = MAX(minimum_flat_lak, productLak × fee_pct / 100).
+  ['purchase_agent_fee_min_lak', '20000'],
+  ['purchase_agent_fee_pct', '6'],
+  // Unused in v1 (payment proof is WhatsApp-manual); reserved for later.
+  ['purchase_agent_deposit_min_lak', '0'],
+  // Bank / PromptPay details shown on the customer's quote detail page.
+  ['purchase_agent_bank_name', ''],
+  ['purchase_agent_bank_account_name', ''],
+  ['purchase_agent_bank_account_no', ''],
+  ['purchase_agent_promptpay_no', ''],
+  ['purchase_agent_whatsapp_contact', ''],
+  ['purchase_agent_policy_text_th', ''],
+  ['purchase_agent_policy_text_lo', ''],
 ];
 
 try {

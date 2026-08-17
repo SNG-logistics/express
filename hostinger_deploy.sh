@@ -172,7 +172,7 @@ if pm2 list | grep -q "sng-logistics"; then
 else
   echo -e "${YELLOW}🚀 Starting app with PM2...${NC}"
   pm2 start ecosystem.config.cjs --env production
-  pm2 startup | tail -1 | sudo bash  # auto-start on reboot
+  pm2 startup systemd -u $(whoami) --hp $HOME 2>/dev/null || true
 fi
 
 pm2 save
@@ -181,17 +181,27 @@ echo -e "${GREEN}✓ PM2 running${NC}"
 # ── Health check ──────────────────────────────────────────────────────────────
 echo ""
 echo -e "${YELLOW}🏥 Health check...${NC}"
-sleep 3
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo "000")
-if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" ]]; then
-  echo -e "${GREEN}✓ App responding (HTTP $HTTP_CODE)${NC}"
+CHECK_PORT=$(grep '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '\r"' || echo 3000)
+CHECK_PORT=${CHECK_PORT:-3000}
+
+HTTP_CODE="000"
+for i in {1..5}; do
+  sleep 2
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:${CHECK_PORT}/ 2>/dev/null || echo "000")
+  if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "404" ]]; then
+    break
+  fi
+done
+
+if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "404" ]]; then
+  echo -e "${GREEN}✓ App responding (HTTP $HTTP_CODE on port $CHECK_PORT)${NC}"
 else
-  echo -e "${RED}⚠️  App not responding (HTTP $HTTP_CODE) — check logs:${NC}"
+  echo -e "${RED}⚠️  App not responding (HTTP $HTTP_CODE on port $CHECK_PORT) — check logs:${NC}"
   echo "   pm2 logs sng-logistics --lines 20"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
-APP_URL=$(grep APP_URL .env | cut -d= -f2)
+APP_URL=$(grep '^APP_URL=' .env 2>/dev/null | cut -d= -f2 | tr -d '\r"' || echo "http://localhost:$CHECK_PORT")
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   ✅ Deploy Complete!                             ║${NC}"

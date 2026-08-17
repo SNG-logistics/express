@@ -675,13 +675,15 @@ export function showQuoteRequest(req, res) {
  */
 export async function processQuoteRequest(req, res) {
   const customer = req.session.customer;
-  const { product_url, product_name, desired_qty, note } = req.body;
+  const { product_url, product_name, desired_qty, note, platform } = req.body;
 
+  const PLATFORMS = new Set(['lazada', 'shopee', 'alibaba', 'tiktok_shop', 'makro', 'other']);
   const values = {
     product_url: (product_url || '').trim().slice(0, 1000),
     product_name: (product_name || '').trim().slice(0, 500),
     desired_qty: Math.max(1, parseInt(desired_qty, 10) || 1),
     note: (note || '').trim().slice(0, 1000),
+    platform: PLATFORMS.has(platform) ? platform : 'other',
   };
 
   if (!values.product_name) {
@@ -694,12 +696,22 @@ export async function processQuoteRequest(req, res) {
   }
 
   try {
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO product_quote_requests
-         (customer_account_id, product_url, product_name, desired_qty, note, status)
-       VALUES (?, ?, ?, ?, ?, 'new')`,
-      [customer.id, values.product_url || null, values.product_name, values.desired_qty, values.note || null]
+         (customer_account_id, product_url, platform, product_name, desired_qty, note, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'new')`,
+      [customer.id, values.product_url || null, values.platform, values.product_name, values.desired_qty, values.note || null]
     );
+
+    // Fire the first WhatsApp touch-point: the customer learns immediately
+    // that SNG received their request (outbox row — send worker handles it).
+    const { enqueuePurchaseAgentNotification, kickNotificationWorker } = await import('../services/notificationService.js');
+    await enqueuePurchaseAgentNotification(pool, {
+      quoteRequestId: result.insertId,
+      eventType: 'PURCHASE_AGENT:REQUEST_RECEIVED',
+      eventKey: `PURCHASE_AGENT:REQUEST_RECEIVED:${result.insertId}`,
+    });
+    kickNotificationWorker();
 
     req.session.flash = {
       type: 'success',
@@ -725,11 +737,12 @@ export async function myQuoteRequests(req, res) {
   const customer = req.session.customer;
   try {
     const [requests] = await pool.query(
-      `SELECT pqr.id, pqr.product_url, pqr.product_name, pqr.desired_qty, pqr.note,
+      `SELECT pqr.id, pqr.product_url, pqr.platform, pqr.product_name, pqr.desired_qty, pqr.note,
               pqr.status, pqr.linked_quotation_id, pqr.created_at,
-              pq.quote_no,
+              pq.quote_no, pq.status AS quotation_status,
+              pq.total_lak, pq.deposit_required_lak, pq.paid_amount_lak, pq.payment_status,
               CASE
-                WHEN pq.status IN ('sent', 'accepted', 'ordered') THEN 1
+                WHEN pq.status IN ('sent', 'accepted', 'purchasing', 'purchased', 'ordered') THEN 1
                 ELSE 0
               END AS quote_available
        FROM product_quote_requests pqr
@@ -781,23 +794,37 @@ export async function myQuoteRequestQuotation(req, res) {
               pq.product_price_thb, pq.shipping_th_thb, pq.weight_kg,
               pq.exchange_rate, pq.fx_spread_pct, pq.sng_shipping_lak,
               pq.service_fee_lak, pq.subtotal_thb, pq.total_lak,
-              pq.note, pq.status, pq.created_at AS quote_created_at
+              pq.deposit_required_lak, pq.paid_amount_lak, pq.payment_status, pq.payment_ref,
+              pq.status_reason, pq.note, pq.status, pq.created_at AS quote_created_at
        FROM product_quote_requests pqr
        INNER JOIN partner_quotations pq ON pq.id = pqr.linked_quotation_id
        WHERE pqr.id = ?
          AND pqr.customer_account_id = ?
-         AND pq.status IN ('sent', 'accepted', 'ordered')
+         AND pq.status IN ('sent', 'accepted', 'purchasing', 'purchased', 'ordered')
        LIMIT 1`,
       [requestId, customer.id]
     );
 
     if (!quote) return renderNotFound();
 
+    // Bank / PromptPay details shown on the payment panel.
+    const { getCompanySettings } = await import('../services/companySettingsService.js');
+    const company = await getCompanySettings();
+    const lang = req.session?.lang || 'th';
+
     res.set('Cache-Control', 'no-store');
     return res.render('customer/member/quote-detail', {
       layout: 'customer/layout',
       title: `ใบเสนอราคา ${quote.quote_no} | SNG Express`,
       quote,
+      paymentInfo: {
+        bankName: company.purchase_agent_bank_name || '',
+        accountName: company.purchase_agent_bank_account_name || '',
+        accountNo: company.purchase_agent_bank_account_no || '',
+        promptpayNo: company.purchase_agent_promptpay_no || '',
+        whatsappContact: company.purchase_agent_whatsapp_contact || '',
+        policyText: (lang === 'lo' ? company.purchase_agent_policy_text_lo : company.purchase_agent_policy_text_th) || '',
+      },
     });
   } catch (err) {
     console.error('[Member Quote Detail]', err);
@@ -806,5 +833,75 @@ export async function myQuoteRequestQuotation(req, res) {
       title: 'ใบเสนอราคา | SNG Express',
       quote: null,
     });
+  }
+}
+
+/**
+ * POST /member/quote-requests/:id/accept
+ * POST /member/quote-requests/:id/reject
+ * Customer self-service accept / reject — only while status='sent'.
+ * Funnels through quotationWorkflowService with the customer as actor, so
+ * the status log carries action_by_customer_id and a WhatsApp message fires.
+ */
+export async function customerAcceptQuote(req, res) {
+  return customerDecideQuote(req, res, 'accepted');
+}
+
+export async function customerRejectQuote(req, res) {
+  return customerDecideQuote(req, res, 'rejected');
+}
+
+async function customerDecideQuote(req, res, decision) {
+  const customer = req.session.customer;
+  const requestId = Number(req.params.id);
+  const renderBack = (flash) => {
+    req.session.flash = flash;
+    return res.redirect(`/member/quote-requests/${requestId}/quotation`);
+  };
+
+  if (!Number.isSafeInteger(requestId) || requestId < 1) {
+    return renderBack({ type: 'error', message: 'คำขอไม่ถูกต้อง' });
+  }
+
+  const note = decision === 'rejected'
+    ? String(req.body.reason || '').trim().slice(0, 1000) || 'ลูกค้าปฏิเสธใบเสนอราคา'
+    : 'ลูกค้ายืนยันใบเสนอราคา';
+
+  try {
+    // Ownership gate: only the customer who owns the request may act.
+    const [[row]] = await pool.query(
+      `SELECT pq.id AS quotation_id, pq.status, pq.payment_status, pq.deposit_required_lak
+       FROM product_quote_requests pqr
+       INNER JOIN partner_quotations pq ON pq.id = pqr.linked_quotation_id
+       WHERE pqr.id = ? AND pqr.customer_account_id = ?
+       LIMIT 1`,
+      [requestId, customer.id]
+    );
+    if (!row) return renderBack({ type: 'error', message: 'ไม่พบใบเสนอราคานี้' });
+    if (row.status !== 'sent') {
+      return renderBack({ type: 'error', message: 'ใบเสนอราคานี้ไม่สามารถยืนยัน/ปฏิเสธได้อีกแล้ว' });
+    }
+
+    const { transitionQuotation } = await import('../services/quotationWorkflowService.js');
+    const { kickNotificationWorker } = await import('../services/notificationService.js');
+    await transitionQuotation({
+      quotationId: row.quotation_id,
+      toStatus: decision,
+      customerId: customer.id,
+      note,
+    });
+    kickNotificationWorker();
+
+    await pool.query(
+      'UPDATE product_quote_requests SET status = ? WHERE id = ?',
+      [decision === 'accepted' ? 'quoted' : 'closed', requestId]
+    );
+
+    return renderBack(decision === 'accepted'
+      ? { type: 'success', message: 'ยืนยันใบเสนอราคาแล้ว — กรุณาชำระเงินมัดจำตามที่แจ้ง' }
+      : { type: 'success', message: 'ปฏิเสธใบเสนอราคาแล้ว' });
+  } catch (err) {
+    console.error('[Member Quote Decide]', err);
+    return renderBack({ type: 'error', message: err.message });
   }
 }
