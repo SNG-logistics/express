@@ -22,7 +22,7 @@
           <option value="66" <%= values.country_code !== '856' ? 'selected' : '' %>>TH +66</option>
           <option value="856" <%= values.country_code === '856' ? 'selected' : '' %>>LA +856</option>
         </select>
-        <input class="input-portal country-phone-input" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" pattern="[0-9 ()-]+" placeholder="<%= values.country_code === '856' ? '020xxxxxxxx' : '09xxxxxxxx' %>" value="<%= values.phone || '' %>" required autofocus data-phone-input>
+        <input class="input-portal country-phone-input" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" pattern="[0-9 \(\)\-]+" placeholder="<%= values.country_code === '856' ? '020xxxxxxxx' : '09xxxxxxxx' %>" value="<%= values.phone || '' %>" required autofocus data-phone-input>
       </div>
       <small style="display: block; margin-top: 0.4rem; color: var(--portal-text-dim);">เลือกประเทศก่อน แล้วกรอกเบอร์โทรศัพท์ในประเทศนั้น</small>
     </label>
