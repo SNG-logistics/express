@@ -124,6 +124,21 @@ async function pullLatestCode() {
     return;
   }
 
+  // Option A: If .git folder exists, try standard git pull first
+  if (fs.existsSync(path.join(rootDir, '.git'))) {
+    console.log(`\n▶ Pull: .git directory detected, trying 'git pull origin ${BRANCH}'...`);
+    const pulled = run('Pull latest code via git', `git pull origin ${BRANCH}`, { fatal: false });
+    if (pulled) {
+      codeUpdated = true;
+      try {
+        const headSha = execSync('git rev-parse HEAD', { cwd: rootDir, encoding: 'utf8' }).trim();
+        fs.writeFileSync(MARKER_FILE, headSha + '\n');
+      } catch (_e) {}
+      return;
+    }
+    console.warn('⚠️  git pull failed — falling back to GitHub tarball download...');
+  }
+
   const before = fs.existsSync(MARKER_FILE) ? fs.readFileSync(MARKER_FILE, 'utf8').trim() : null;
   console.log(`\n▶ Pull: currently deployed commit: ${before || 'unknown (first deploy on this host)'}`);
 
@@ -133,7 +148,7 @@ async function pullLatestCode() {
   } catch (err) {
     console.warn(`\n⚠️  Pull: could not reach GitHub API — ${err.message}`);
     warnings.push('Pull latest code');
-    codeUpdated = false;
+    codeUpdated = true; // Continue deploy with current files
     return;
   }
   console.log(`▶ Pull: latest ${BRANCH} on GitHub: ${latestSha}`);
@@ -162,7 +177,7 @@ async function pullLatestCode() {
 
   if (!extracted) {
     warnings.push('Pull latest code');
-    codeUpdated = false;
+    codeUpdated = true; // Continue deploy with current files
     return;
   }
 

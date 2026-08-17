@@ -60,6 +60,76 @@ export async function enqueueRiderNotification(conn, {
   return result.insertId || null;
 }
 
+/**
+ * Enqueue a purchase-agent WhatsApp notification. The recipient phone and a
+ * stage payload are resolved at ENQUEUE time (quotation → linked
+ * product_quote_requests → customer_accounts.phone) and stored on the row —
+ * the send worker never re-queries, exactly like the RIDER_OFFER pattern.
+ * Needs either a quotationId (most stages) or a quoteRequestId (stages that
+ * fire before a quotation exists: REQUEST_RECEIVED, DECLINED).
+ */
+export async function enqueuePurchaseAgentNotification(conn, {
+  quotationId = null,
+  quoteRequestId = null,
+  eventType,
+  eventKey,
+  extraPayload = {},
+}) {
+  if (!quotationId && !quoteRequestId) return null;
+
+  const [[row]] = await conn.query(
+    `SELECT pq.quote_no, pq.product_name, pq.desired_qty,
+            pq.total_lak, pq.deposit_required_lak,
+            pq.sng_shipping_lak, pq.service_fee_lak,
+            pqr.id AS request_id, pqr.decline_reason, pqr.product_name AS request_product,
+            pqr.desired_qty AS request_qty,
+            ca.phone, ca.phone_display
+     FROM partner_quotations pq
+     LEFT JOIN product_quote_requests pqr ON pqr.linked_quotation_id = pq.id
+     LEFT JOIN customer_accounts ca ON ca.id = pqr.customer_account_id
+     WHERE pq.id = ?`,
+    [quotationId || 0]
+  );
+  const [[reqRow]] = !quotationId
+    ? await conn.query(
+        `SELECT pqr.id AS request_id, pqr.product_name, pqr.desired_qty,
+                pqr.decline_reason, ca.phone, ca.phone_display
+         FROM product_quote_requests pqr
+         LEFT JOIN customer_accounts ca ON ca.id = pqr.customer_account_id
+         WHERE pqr.id = ?`,
+        [quoteRequestId || 0]
+      )
+    : [[null, null]];
+
+  const source = quotationId ? row : reqRow;
+  if (!source) return null;
+  const recipient = source.phone || source.phone_display || null;
+  if (!recipient) return null;
+
+  const payload = !quotationId ? {
+    productName: source.product_name || '',
+    qty: Number(source.desired_qty) || 1,
+    reason: source.decline_reason || null,
+  } : {
+    quoteNo: row.quote_no || '',
+    productName: row.product_name || '',
+    qty: Number(row.desired_qty) || 1,
+    productLak: Number(row.deposit_required_lak) || 0,
+    depositLak: Number(row.deposit_required_lak) || 0,
+    sngShippingLak: Number(row.sng_shipping_lak) || 0,
+    serviceFeeLak: Number(row.service_fee_lak) || 0,
+    totalLak: Number(row.total_lak) || 0,
+  };
+
+  const [result] = await conn.query(
+    `INSERT IGNORE INTO customer_notification_outbox
+       (event_key, order_id, quote_request_id, quotation_id, channel, event_type, status, recipient, payload, next_attempt_at)
+     VALUES (?, NULL, ?, ?, 'WHATSAPP', ?, 'PENDING', ?, ?, NOW())`,
+    [eventKey, quoteRequestId || null, quotationId || null, eventType, recipient, JSON.stringify({ ...payload, ...extraPayload })]
+  );
+  return result.insertId || null;
+}
+
 async function markSent(id, recipient = null) {
   await pool.query(
     `UPDATE customer_notification_outbox
@@ -136,6 +206,11 @@ export async function dispatchPendingNotifications({ orderId = null, limit = 20 
           // Rider job offer / result / expiry — sent to the phone on the row.
           const { sendRiderNotification } = await import('./riderDispatchService.js');
           result = await sendRiderNotification(row);
+        } else if (row.event_type.startsWith('PURCHASE_AGENT:')) {
+          // Purchase-agent stage message (Lao) — recipient + payload resolved
+          // at enqueue time and stored on the row, mirroring RIDER_OFFER.
+          const { sendPurchaseAgentNotification } = await import('./purchaseAgentNotificationService.js');
+          result = await sendPurchaseAgentNotification(row);
         } else {
           const status = row.event_type.replace('ORDER_STATUS:', '');
           const { sendOrderUpdate } = await import('./whatsappService.js');

@@ -109,37 +109,14 @@ async function initDb() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // Partner Quotation System
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS partner_quotations (
-          id                  BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-          branch_id           INT UNSIGNED NULL,
-          created_by          INT UNSIGNED NULL,
-          quote_no            VARCHAR(30) NOT NULL,
-          product_url         TEXT NULL,
-          product_name        VARCHAR(500) NOT NULL,
-          product_price_thb   DECIMAL(12,2) NOT NULL,
-          shipping_th_thb     DECIMAL(10,2) NOT NULL DEFAULT 0,
-          weight_kg           DECIMAL(8,2) NOT NULL DEFAULT 0,
-          exchange_rate       DECIMAL(12,4) NOT NULL,
-          fx_spread_pct       DECIMAL(5,2) NOT NULL DEFAULT 0,
-          sng_shipping_lak    DECIMAL(12,2) NOT NULL DEFAULT 0,
-          service_fee_lak     DECIMAL(12,2) NOT NULL DEFAULT 0,
-          subtotal_thb        DECIMAL(12,2) NOT NULL DEFAULT 0,
-          total_lak           DECIMAL(14,2) NOT NULL,
-          customer_name       VARCHAR(200) NULL,
-          customer_phone      VARCHAR(30) NULL,
-          customer_address    TEXT NULL,
-          status ENUM('draft','sent','accepted','ordered','cancelled') NOT NULL DEFAULT 'draft',
-          note                TEXT NULL,
-          order_id            BIGINT UNSIGNED NULL,
-          created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at          TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-          KEY idx_pq_branch (branch_id),
-          KEY idx_pq_status (status),
-          KEY idx_pq_quote_no (quote_no)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
+    // partner_quotations is defined ONLY by database migrations now
+    // (migrate_007 production sync baseline + migrate_029 reconcile +
+    // migrate_030 purchase-agent core). The stale inline CREATE TABLE that
+    // used to live here was removed — it had drifted from the migration
+    // definition (quote_no VARCHAR(30)/no-unique vs VARCHAR(50)/UNIQUE) and
+    // acting as a second source of truth could silently recreate a wrong
+    // schema on a fresh install. Run `npm run migrate-db` on new deploys.
+    // Keep this placeholder comment (initDb must still log completion).
 
     console.log('[DB] initDb complete.');
   } catch (err) {
