@@ -32,8 +32,8 @@
     </div>
     <div class="card" style="padding: 1rem; text-align: center;">
       <i class="fa-solid fa-ticket" style="font-size: 1.5rem; color: var(--portal-gold); margin-bottom: 0.25rem;"></i>
-      <div style="font-size: 1.2rem; font-weight: 800; color: #fff;">0</div>
-      <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= t('member.coupons') %> (เร็วๆ นี้)</small>
+      <div style="font-size: 1.2rem; font-weight: 800; color: #fff;"><%= Number(referralCreditLak || 0).toLocaleString('th-TH') %></div>
+      <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= t('member.referralCredit') %> (กีบ)</small>
     </div>
   </div>
 

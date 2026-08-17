@@ -25,6 +25,14 @@ const defaults = [
   // since only the owner can supply real account details.
   ['purchase_agent_policy_text_th', 'มัดจำที่ชำระคือค่าสินค้าที่ SNG ต้องจ่ายให้ร้านค้าล่วงหน้า ส่วนค่าขนส่งและค่าบริการเก็บปลายทางแบบ COD ตอนรับสินค้า หากสินค้าหมดหรือร้านค้ายกเลิกออเดอร์หลังชำระมัดจำแล้ว SNG จะคืนเงินมัดจำเต็มจำนวน'],
   ['purchase_agent_policy_text_lo', 'ຍອດມັດຈຳທີ່ຊຳລະແມ່ນຄ່າສິນຄ້າທີ່ SNG ຕ້ອງຈ່າຍໃຫ້ຮ້ານລ່ວງໜ້າ ສ່ວນຄ່າຂົນສົ່ງ ແລະ ຄ່າບໍລິການເກັບປາຍທາງແບບ COD ຕອນຮັບເຄື່ອງ ຫາກສິນຄ້າໝົດ ຫຼືຮ້ານຍົກເລີກອອເດີຫຼັງຊຳລະມັດຈຳແລ້ວ SNG ຈະຄືນເງິນມັດຈຳເຕັມຈຳນວນ'],
+  // ── Referral reward (tunable without a deploy; "give one, get one" — see
+  //    plan). Granted once, atomically, when a referred friend's first order
+  //    reaches DELIVERED (src/services/referralRewardService.js). Two
+  //    separate keys, not one shared amount, so asymmetric rewards never
+  //    need a schema change later. 20000 is a functional placeholder, not a
+  //    confirmed business number — set real values before launch.
+  ['referral_reward_referrer_lak', '20000'],
+  ['referral_reward_referred_lak', '20000'],
 ];
 
 try {

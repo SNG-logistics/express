@@ -5,8 +5,10 @@ import {
   enqueueOrderNotification,
   requeueFailedNotifications,
   enqueuePurchaseAgentNotification,
+  enqueueReferralRewardNotification,
 } from '../../src/services/notificationService.js';
 import { buildPurchaseAgentMessage } from '../../src/services/purchaseAgentNotificationService.js';
+import { buildReferralRewardMessage } from '../../src/services/referralRewardNotificationService.js';
 
 test('customers are notified at exactly two touch-points (on-truck + arrived)', () => {
   // Only these two statuses notify the customer — no per-step spam.
@@ -144,4 +146,56 @@ test('every enqueueable purchase-agent stage has a Lao WhatsApp template', () =>
   }
   // Unknown event types must not crash the dispatcher — just skip.
   assert.equal(buildPurchaseAgentMessage('PURCHASE_AGENT:NOT_A_REAL_STAGE', payload), null);
+});
+
+test('referral-reward enqueue resolves beneficiary phone + payload at enqueue time', async () => {
+  const calls = [];
+  let callCount = 0;
+  const conn = {
+    async query(sql, params) {
+      callCount += 1;
+      calls.push({ sql, params });
+      if (callCount === 1) {
+        return [[{
+          id: 501, role: 'referred', amount_lak: 20000, triggering_order_id: 9,
+          job_no: 'SNG-000009', beneficiary_phone: '85620987654', beneficiary_phone_display: '020 987 654',
+          counterpart_first_name: 'Somchai',
+        }]];
+      }
+      return [{ insertId: 900 }];
+    },
+  };
+  const id = await enqueueReferralRewardNotification(conn, {
+    rewardId: 501, eventType: 'REFERRAL_REWARD:REFERRED_CREDIT', eventKey: 'REFERRAL_REWARD:REFERRED_CREDIT:501',
+  });
+  assert.equal(id, 900);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /referral_reward_events/);
+  assert.match(calls[1].sql, /customer_notification_outbox/);
+  assert.match(calls[1].sql, /referral_reward_id/);
+  assert.equal(calls[1].params[1], 9); // order_id = triggering_order_id, so it rides along with the order's own notification
+  assert.equal(calls[1].params[4], '85620987654'); // recipient
+  const payload = JSON.parse(calls[1].params[5]);
+  assert.equal(payload.amountLak, 20000);
+  assert.equal(payload.jobNo, 'SNG-000009');
+});
+
+test('referral-reward enqueue skips silently when the resolved row has no phone', async () => {
+  const conn = {
+    async query() {
+      return [[{ id: 1, amount_lak: 1000, triggering_order_id: 1, job_no: 'X', beneficiary_phone: null, beneficiary_phone_display: null }]];
+    },
+  };
+  assert.equal(await enqueueReferralRewardNotification({ ...conn }, {
+    rewardId: 1, eventType: 'REFERRAL_REWARD:REFERRED_CREDIT', eventKey: 'k',
+  }), null);
+});
+
+test('referral-reward templates render for both roles in both languages', () => {
+  const payload = { amountLak: 20000, jobNo: 'SNG-000009', counterpartName: 'Somchai' };
+  for (const eventType of ['REFERRAL_REWARD:REFERRED_CREDIT', 'REFERRAL_REWARD:REFERRER_CREDIT']) {
+    assert.ok(buildReferralRewardMessage(eventType, payload, '66812345678').length > 0);   // th
+    assert.ok(buildReferralRewardMessage(eventType, payload, '85620987654').length > 0);   // lo
+  }
+  assert.equal(buildReferralRewardMessage('REFERRAL_REWARD:NOT_REAL', payload, '66812345678'), null);
 });

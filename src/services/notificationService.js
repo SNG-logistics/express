@@ -130,6 +130,49 @@ export async function enqueuePurchaseAgentNotification(conn, {
   return result.insertId || null;
 }
 
+/**
+ * Enqueue a referral-reward WhatsApp notification. Recipient + payload are
+ * resolved at ENQUEUE time (referral_reward_events row -> beneficiary
+ * customer_accounts.phone) and stored on the row, exactly like RIDER_OFFER
+ * and PURCHASE_AGENT:* -- the send worker never re-queries. order_id is set
+ * to the triggering order so kickNotificationWorker(orderId), already called
+ * post-commit wherever transitionOrder owns its transaction, picks these up
+ * for free alongside the order's own status notification.
+ */
+export async function enqueueReferralRewardNotification(conn, { rewardId, eventType, eventKey }) {
+  const [[row]] = await conn.query(
+    `SELECT rre.id, rre.role, rre.amount_lak, rre.triggering_order_id,
+            o.job_no,
+            beneficiary.phone AS beneficiary_phone, beneficiary.phone_display AS beneficiary_phone_display,
+            counterpart.first_name AS counterpart_first_name
+     FROM referral_reward_events rre
+     INNER JOIN orders o ON o.id = rre.triggering_order_id
+     INNER JOIN customer_accounts beneficiary ON beneficiary.id = rre.beneficiary_account_id
+     LEFT JOIN customer_accounts counterpart
+       ON counterpart.id = IF(rre.role = 'referrer', rre.referred_account_id, rre.referrer_account_id)
+     WHERE rre.id = ?`,
+    [rewardId]
+  );
+  if (!row) return null;
+
+  const recipient = row.beneficiary_phone || row.beneficiary_phone_display || null;
+  if (!recipient) return null;
+
+  const payload = {
+    amountLak: Number(row.amount_lak) || 0,
+    jobNo: row.job_no || '',
+    counterpartName: row.counterpart_first_name || '',
+  };
+
+  const [result] = await conn.query(
+    `INSERT IGNORE INTO customer_notification_outbox
+       (event_key, order_id, referral_reward_id, channel, event_type, status, recipient, payload, next_attempt_at)
+     VALUES (?, ?, ?, 'WHATSAPP', ?, 'PENDING', ?, ?, NOW())`,
+    [eventKey, row.triggering_order_id, rewardId, eventType, recipient, JSON.stringify(payload)]
+  );
+  return result.insertId || null;
+}
+
 async function markSent(id, recipient = null) {
   await pool.query(
     `UPDATE customer_notification_outbox
@@ -211,6 +254,12 @@ export async function dispatchPendingNotifications({ orderId = null, limit = 20 
           // at enqueue time and stored on the row, mirroring RIDER_OFFER.
           const { sendPurchaseAgentNotification } = await import('./purchaseAgentNotificationService.js');
           result = await sendPurchaseAgentNotification(row);
+        } else if (row.event_type.startsWith('REFERRAL_REWARD:')) {
+          // Referral-reward grant message (bilingual TH/LA) — recipient +
+          // payload resolved at enqueue time and stored on the row, mirroring
+          // RIDER_OFFER / PURCHASE_AGENT:.
+          const { sendReferralRewardNotification } = await import('./referralRewardNotificationService.js');
+          result = await sendReferralRewardNotification(row);
         } else {
           const status = row.event_type.replace('ORDER_STATUS:', '');
           const { sendOrderUpdate } = await import('./whatsappService.js');

@@ -14,6 +14,8 @@
  *   - Link / unlink member account : admin + manager only (changes which member
  *     account a customer's identity/history resolves to — tighter than a plain
  *     address edit)
+ *   - Redeem referral reward credit : admin + manager only (direct financial
+ *     effect, no built-in undo — same tier as link/unlink)
  */
 import { Router } from 'express';
 import * as customersController from '../controllers/customersController.js';
@@ -37,6 +39,7 @@ router.post('/customers/:id',        requireLogin, requireRole(ROLES_CUSTOMER_ED
 router.post('/customers/:id/invite-member', requireLogin, requireRole(ROLES_CUSTOMER_EDIT), customersController.inviteMember);
 router.post('/customers/:id/link-member',   requireLogin, requireRole(ROLES_MANAGE),   customersController.linkMember);
 router.post('/customers/:id/unlink-member', requireLogin, requireRole(ROLES_MANAGE),   customersController.unlinkMember);
+router.post('/customers/:id/referral-rewards/:rewardId/redeem', requireLogin, requireRole(ROLES_MANAGE), customersController.redeemReferralReward);
 router.post('/customers/:id/delete', requireLogin, requireRole(ROLES_MANAGE),         customersController.remove);
 
 export default router;

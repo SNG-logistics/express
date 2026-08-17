@@ -207,6 +207,42 @@
                             </form>
                         </details>
                         <% } %>
+                        <!-- Referral Reward Credit -->
+                        <div class="border-t border-white/5 mt-5 pt-5">
+                            <h4 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-gift text-amber-400"></i>
+                                เครดิตแนะนำเพื่อน (Referral Reward)
+                            </h4>
+                            <% const unredeemed = referralRewards || []; %>
+                            <% if (unredeemed.length === 0) { %>
+                                <p class="text-sm text-slate-500">ยังไม่มีเครดิตแนะนำเพื่อนที่รอใช้งาน</p>
+                            <% } else { %>
+                                <% const unredeemedTotal = unredeemed.reduce((sum, r) => sum + Number(r.amount_lak), 0); %>
+                                <p class="text-sm text-slate-300 mb-3">
+                                    คงเหลือ <strong class="text-amber-400"><%= unredeemedTotal.toLocaleString('th-TH') %> กีบ</strong>
+                                    (<%= unredeemed.length %> รายการ)
+                                </p>
+                                <div class="space-y-2">
+                                    <% unredeemed.forEach(r => { %>
+                                    <div class="flex items-center justify-between bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 gap-3">
+                                        <div class="text-xs text-slate-400">
+                                            <span class="text-white font-bold"><%= Number(r.amount_lak).toLocaleString('th-TH') %> กีบ</span>
+                                            — <%= r.role === 'referrer' ? 'ผู้แนะนำ' : 'เพื่อนที่ถูกแนะนำ' %>
+                                            <% if (r.triggering_job_no) { %> · งาน <%= r.triggering_job_no %><% } %>
+                                            · <%= new Date(r.granted_at).toLocaleDateString('th-TH') %>
+                                        </div>
+                                        <form action="/customers/<%= customer.id %>/referral-rewards/<%= r.id %>/redeem" method="post"
+                                              onsubmit="return confirm('ยืนยันว่าเครดิตนี้ถูกใช้แล้ว?');">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <button type="submit" class="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold hover:bg-amber-500/25 whitespace-nowrap">
+                                                ทำเครื่องหมายว่าใช้แล้ว
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <% }) %>
+                                </div>
+                            <% } %>
+                        </div>
                     <% } else if (memberLink.state === 'linkable') { %>
                         <p class="text-sm text-slate-300 mb-4">
                             พบบัญชีสมาชิกที่ใช้เบอร์นี้แล้ว (<%= memberLink.account.first_name %> <%= memberLink.account.last_name || '' %>)

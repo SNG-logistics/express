@@ -4,6 +4,7 @@ import { toWaPhone, isLaoPhone } from '../utils/waPhone.js';
 import { sendTextMessage } from '../services/whatsappService.js';
 import { findAccountByPhone } from '../services/memberLinkService.js';
 import { createInviteToken } from '../services/inviteTokenService.js';
+import { getUnredeemedRewards } from '../services/referralRewardService.js';
 
 export async function list(req, res) {
     const { q } = req.query;
@@ -92,9 +93,13 @@ export async function showEdit(req, res) {
             return res.redirect('/customers');
         }
         const memberLink = await resolveMemberLinkState(customer);
+        const referralRewards = memberLink.state === 'linked'
+            ? await getUnredeemedRewards(memberLink.account.id)
+            : [];
         res.render('customers/form', {
             customer,
             memberLink,
+            referralRewards,
             user: req.session.user,
             title: 'แก้ไขลูกค้า',
             mode: 'edit',
@@ -123,8 +128,14 @@ export async function update(req, res) {
         res.redirect('/customers');
     } catch (err) {
         console.error(err);
+        // memberLink/referralRewards are required here too — customers/form.ejs
+        // unconditionally reads memberLink.state whenever mode==='edit', so
+        // omitting them (as this catch path previously did) throws inside the
+        // template instead of showing the validation error.
         res.render('customers/form', {
             customer: { ...req.body, id },
+            memberLink: { state: 'no_phone', account: null },
+            referralRewards: [],
             user: req.session.user,
             title: 'แก้ไขลูกค้า',
             mode: 'edit',
@@ -464,6 +475,54 @@ export async function unlinkMember(req, res) {
     } catch (err) {
         console.error('[CustomersController] unlinkMember:', err);
         req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาดในการยกเลิกการเชื่อมบัญชี' };
+    }
+    res.redirect(`/customers/${id}/edit`);
+}
+
+/**
+ * POST /customers/:id/referral-rewards/:rewardId/redeem
+ * Marks ONE unredeemed reward row as used. Re-derives the owning member
+ * account server-side via resolveMemberLinkState (never trusts the URL's
+ * :id alone to authorize the reward id) — same defensive pattern as
+ * linkMember/unlinkMember. The WHERE ... AND status='granted' guard makes
+ * this idempotent (a repeat click / double submit is a harmless no-op).
+ */
+export async function redeemReferralReward(req, res) {
+    const { id, rewardId } = req.params;
+    const staffId = req.session.user?.id;
+    const note = String(req.body.note || '').trim().slice(0, 255) || null;
+
+    if (!Number.isSafeInteger(Number(rewardId)) || Number(rewardId) < 1) {
+        req.session.flash = { type: 'error', message: 'รายการเครดิตไม่ถูกต้อง' };
+        return res.redirect(`/customers/${id}/edit`);
+    }
+
+    try {
+        const [[customer]] = await pool.query('SELECT * FROM customers WHERE id = ?', [id]);
+        if (!customer) {
+            req.session.flash = { type: 'error', message: 'ไม่พบข้อมูลลูกค้า' };
+            return res.redirect('/customers');
+        }
+
+        const memberLink = await resolveMemberLinkState(customer);
+        if (memberLink.state !== 'linked') {
+            req.session.flash = { type: 'error', message: 'ลูกค้ารายนี้ไม่ได้เชื่อมกับบัญชีสมาชิก' };
+            return res.redirect(`/customers/${id}/edit`);
+        }
+
+        const [result] = await pool.query(
+            `UPDATE referral_reward_events
+             SET status = 'redeemed', redeemed_at = NOW(), redeemed_by = ?, redeemed_note = ?
+             WHERE id = ? AND beneficiary_account_id = ? AND status = 'granted'`,
+            [staffId, note, rewardId, memberLink.account.id]
+        );
+
+        req.session.flash = result.affectedRows > 0
+            ? { type: 'success', message: 'บันทึกการใช้เครดิตแนะนำเพื่อนแล้ว' }
+            : { type: 'error', message: 'ไม่พบเครดิตที่สามารถทำเครื่องหมายได้ (อาจถูกใช้ไปแล้ว)' };
+    } catch (err) {
+        console.error('[CustomersController] redeemReferralReward:', err);
+        req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาดในการบันทึก' };
     }
     res.redirect(`/customers/${id}/edit`);
 }

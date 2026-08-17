@@ -10,6 +10,7 @@ import { toWaPhone } from '../utils/waPhone.js';
 import { createAndSendOtp, verifyOtp } from '../services/otpService.js';
 import { regenerateCustomerSession, recordMemberLoginAttempt } from '../middleware/customerAuth.js';
 import { resolveInviteToken } from '../services/inviteTokenService.js';
+import { getUnredeemedRewards } from '../services/referralRewardService.js';
 
 // Constant-time login even when the phone isn't registered (resist enumeration).
 const DUMMY_PASSWORD_HASH = '$2b$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -558,10 +559,14 @@ export async function profile(req, res) {
       [customer.id]
     );
 
+    const rewards = await getUnredeemedRewards(customer.id);
+    const referralCreditLak = rewards.reduce((sum, r) => sum + Number(r.amount_lak), 0);
+
     res.render('customer/member/profile', {
       layout: 'customer/layout',
       title: `${res.locals.t('portal.account')} | SNG Express`,
       account: account || customer,
+      referralCreditLak,
     });
   } catch (err) {
     console.error('[Member Profile]', err);
@@ -569,6 +574,7 @@ export async function profile(req, res) {
       layout: 'customer/layout',
       title: `${res.locals.t('portal.account')} | SNG Express`,
       account: customer,
+      referralCreditLak: 0,
     });
   }
 }

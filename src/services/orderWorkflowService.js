@@ -108,6 +108,21 @@ export async function transitionOrder({
       });
     }
 
+    // Referral-reward check runs INSIDE this same transaction/connection —
+    // deliberately NOT the post-commit fire-and-forget pattern used below for
+    // BRANCH_RECEIVED/AT_DEST_WH. Most DELIVERED call sites pass their own
+    // `connection` and never set ownsTransaction=true (branch delivery, rider
+    // self-delivery, office self-pickup/forward all do) — a post-commit-only
+    // hook would silently never fire for those paths. Running pre-commit also
+    // gives correct atomicity for free: if the caller's outer transaction
+    // later rolls back for an unrelated reason, the reward grant rolls back
+    // with it. maybeGrantReferralReward() owns its own try/catch internally
+    // and never throws, so it can never block or fail the order transition.
+    if (normalizedTo === 'DELIVERED') {
+      const { maybeGrantReferralReward } = await import('./referralRewardService.js');
+      await maybeGrantReferralReward(conn, order);
+    }
+
     if (ownsTransaction) await conn.commit();
     if (notify && ownsTransaction) kickNotificationWorker(orderId);
     // Auto-broadcast the last-mile job to branch riders once the branch receives it.
