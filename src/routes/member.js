@@ -39,5 +39,6 @@ router.post('/member/account', requireCustomerLogin, member.processAccountEdit);
 router.get('/member/quote-request', requireCustomerLogin, member.showQuoteRequest);
 router.post('/member/quote-request', requireCustomerLogin, member.processQuoteRequest);
 router.get('/member/quote-requests', requireCustomerLogin, member.myQuoteRequests);
+router.get('/member/quote-requests/:id/quotation', requireCustomerLogin, member.myQuoteRequestQuotation);
 
 export default router;

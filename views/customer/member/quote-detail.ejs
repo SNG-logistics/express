@@ -1,0 +1,73 @@
+<section class="portal-shell">
+  <% if (!quote) { %>
+    <div class="empty-state">
+      <i class="fa-solid fa-file-circle-xmark"></i>
+      <p style="font-size: 1.1rem; font-weight: 800; color: var(--portal-text); margin-top: 0.75rem;">ไม่พบใบเสนอราคาที่เปิดดูได้</p>
+      <p style="font-size: 0.85rem;">ใบเสนอราคาอาจยังเป็นฉบับร่าง ยังไม่ได้ส่งให้คุณ หรือไม่มีสิทธิ์เข้าดู</p>
+      <a href="/member/quote-requests" class="btn-gold" style="margin-top: 1rem; text-decoration: none;">
+        <i class="fa-solid fa-arrow-left"></i> กลับไปคำขอเช็คราคา
+      </a>
+    </div>
+  <% } else { %>
+    <%
+      const productThb = Number(quote.product_price_thb) || 0;
+      const shippingThb = Number(quote.shipping_th_thb) || 0;
+      const subtotalThb = Number(quote.subtotal_thb) || (productThb + shippingThb);
+      const rate = Number(quote.exchange_rate) || 0;
+      const spread = Number(quote.fx_spread_pct) || 0;
+      const productLak = Math.ceil(subtotalThb * rate * (1 + spread / 100));
+      const sngShippingLak = Number(quote.sng_shipping_lak) || 0;
+      const serviceFeeLak = Number(quote.service_fee_lak) || 0;
+      const totalLak = Number(quote.total_lak) || 0;
+      const dateLocale = lang === 'lo' ? 'lo-LA' : 'th-TH';
+      const quoteDate = quote.quote_created_at ? new Date(quote.quote_created_at).toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: 'numeric' }) : '–';
+      const statusLabels = { sent: 'ส่งใบเสนอราคาแล้ว', accepted: 'ยืนยันใบเสนอราคาแล้ว', ordered: 'กำลังดำเนินการสั่งซื้อ' };
+    %>
+    <div class="page-heading" style="margin-bottom: 1rem;">
+      <p class="eyebrow">QUOTATION</p>
+      <h1>ใบเสนอราคา</h1>
+      <p>เลขที่ <strong style="color: var(--portal-gold);"><%= quote.quote_no %></strong> · <%= quoteDate %></p>
+    </div>
+
+    <div class="card" style="padding: 1rem; margin-bottom: 0.85rem;">
+      <div style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start;">
+        <div>
+          <div style="font-weight: 800; color: var(--portal-text);"><%= quote.product_name %></div>
+          <% if (quote.desired_qty > 1) { %>
+          <div style="font-size: 0.8rem; color: var(--portal-text-dim); margin-top: 0.25rem;">จำนวน <%= quote.desired_qty %> ชิ้น</div>
+          <% } %>
+          <% if (quote.product_url) { %>
+          <a href="<%= quote.product_url %>" target="_blank" rel="noopener" style="display: inline-block; color: var(--portal-gold); font-size: 0.78rem; margin-top: 0.5rem; text-decoration: none;">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> ดูสินค้าต้นทาง
+          </a>
+          <% } %>
+        </div>
+        <span style="padding: 0.28rem 0.6rem; border-radius: 999px; background: var(--portal-badge-bg); color: var(--portal-success-text); font-size: 0.72rem; font-weight: 700; text-align: right;"><%= statusLabels[quote.status] || 'พร้อมให้ดู' %></span>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div style="font-size: 0.75rem; color: var(--portal-text-dim); font-weight: 800; letter-spacing: 0.06em;">สรุปราคา</div>
+      <div style="margin-top: 0.8rem; display: grid; gap: 0.7rem; font-size: 0.9rem;">
+        <div style="display: flex; justify-content: space-between; gap: 1rem;"><span>สินค้าและค่าส่งในไทย</span><strong><%= subtotalThb.toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> THB</strong></div>
+        <div style="display: flex; justify-content: space-between; gap: 1rem;"><span>ยอดสินค้า (กีบ)</span><strong><%= productLak.toLocaleString('th-TH') %> LAK</strong></div>
+        <div style="display: flex; justify-content: space-between; gap: 1rem;"><span>ค่าขนส่ง SNG</span><strong><%= sngShippingLak.toLocaleString('th-TH') %> LAK</strong></div>
+        <% if (serviceFeeLak > 0) { %>
+        <div style="display: flex; justify-content: space-between; gap: 1rem;"><span>ค่าบริการ</span><strong><%= serviceFeeLak.toLocaleString('th-TH') %> LAK</strong></div>
+        <% } %>
+        <div style="border-top: 1px solid var(--portal-border); padding-top: 0.9rem; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;"><span style="font-weight: 800; color: var(--portal-text);">ยอดรวมที่ต้องชำระ</span><strong style="font-size: 1.25rem; color: var(--portal-gold);"><%= totalLak.toLocaleString('th-TH') %> LAK</strong></div>
+      </div>
+    </div>
+
+    <% if (quote.note) { %>
+    <div class="card" style="padding: 1rem; margin-top: 0.85rem;">
+      <div style="font-size: 0.75rem; color: var(--portal-text-dim); font-weight: 800; letter-spacing: 0.06em;">หมายเหตุจากเจ้าหน้าที่</div>
+      <p style="margin: 0.55rem 0 0; white-space: pre-line;"><%= quote.note %></p>
+    </div>
+    <% } %>
+
+    <a href="/member/quote-requests" style="display: inline-flex; gap: 0.4rem; align-items: center; margin-top: 1rem; color: var(--portal-gold); text-decoration: none; font-size: 0.85rem;">
+      <i class="fa-solid fa-arrow-left"></i> กลับไปคำขอเช็คราคา
+    </a>
+  <% } %>
+</section>

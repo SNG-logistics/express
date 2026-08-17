@@ -251,7 +251,10 @@ const CUSTOMER_DIRECT_PATHS = ['/', '/track', '/calculate', '/shops', '/api/publ
 // Same set minus '/' — used on the main host, where '/' gets its own
 // host-aware handling below instead of a blind bounce (see app.get('/', ...)).
 const MAIN_HOST_BOUNCE_PATHS = CUSTOMER_DIRECT_PATHS.filter(p => p !== '/');
-const MEMBER_BARE_PATHS = ['/register', '/verify', '/verify/resend', '/login', '/logout', '/forgot-password', '/reset-password', '/profile', '/orders', '/account'];
+const MEMBER_BARE_PATHS = [
+  '/register', '/verify', '/verify/resend', '/login', '/logout', '/forgot-password', '/reset-password',
+  '/profile', '/orders', '/account', '/quote-request', '/quote-requests',
+];
 
 function isCustomerDirectPath(path) {
   return CUSTOMER_DIRECT_PATHS.some(p => path === p || (p !== '/' && path.startsWith(p + '/')));

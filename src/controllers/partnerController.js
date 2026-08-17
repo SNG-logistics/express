@@ -1,5 +1,13 @@
 import pool from '../config/db.js';
 
+const QUOTE_STATUSES = new Set(['draft', 'sent', 'accepted', 'ordered', 'cancelled']);
+
+function quoteRequestStatusForQuotation(status) {
+    if (['sent', 'accepted', 'ordered'].includes(status)) return 'quoted';
+    if (status === 'cancelled') return 'closed';
+    return 'in_progress';
+}
+
 // ─── Helper: format date as YYYYMMDD ─────────────────────────────────────────
 function dateStr(d = new Date()) {
     return d.getFullYear().toString()
@@ -96,7 +104,7 @@ export async function create(req, res) {
         branch_id, product_url, product_name, product_price_thb,
         shipping_th_thb, weight_kg, exchange_rate, fx_spread_pct,
         sng_shipping_lak, service_fee_lak,
-        customer_name, customer_phone, customer_address, note, status,
+        customer_name, customer_phone, customer_address, note, status: submittedStatus,
         quote_request_id
     } = req.body;
 
@@ -106,6 +114,7 @@ export async function create(req, res) {
             fx_spread_pct, sng_shipping_lak, service_fee_lak
         });
         const quote_no = await genQuoteNo();
+        const quoteStatus = QUOTE_STATUSES.has(submittedStatus) ? submittedStatus : 'draft';
 
         await pool.query(
             `INSERT INTO partner_quotations
@@ -128,22 +137,22 @@ export async function create(req, res) {
                 subtotalThb, totalLak,
                 customer_name || null, customer_phone || null,
                 customer_address || null, note || null,
-                status || 'draft'
+                quoteStatus
             ]
         );
         const [[inserted]] = await pool.query(
             'SELECT id FROM partner_quotations WHERE quote_no = ? LIMIT 1', [quote_no]
         );
 
-        // If created from a public quote request, link the quotation back
-        // and flip the request to 'quoted' so the member sees it as done.
+        // A request receives a customer-visible quotation only after staff marks
+        // it sent/accepted/ordered. Drafts remain internal work in progress.
         const requestId = Number(quote_request_id) || null;
         if (requestId) {
             await pool.query(
                 `UPDATE product_quote_requests
-                 SET linked_quotation_id = ?, status = 'quoted'
+                 SET linked_quotation_id = ?, status = ?
                  WHERE id = ?`,
-                [inserted.id, requestId]
+                [inserted.id, quoteRequestStatusForQuotation(quoteStatus), requestId]
             );
         }
 
@@ -209,9 +218,18 @@ export async function printQuote(req, res) {
 // ─── UPDATE STATUS ────────────────────────────────────────────────────────────
 export async function updateStatus(req, res) {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status: submittedStatus } = req.body;
+    const status = QUOTE_STATUSES.has(submittedStatus) ? submittedStatus : null;
+    if (!status) return res.status(400).send('Invalid quotation status');
+
     try {
-        await pool.query('UPDATE partner_quotations SET status = ? WHERE id = ?', [status, id]);
+        const [result] = await pool.query('UPDATE partner_quotations SET status = ? WHERE id = ?', [status, id]);
+        if (result.affectedRows === 0) return res.status(404).send('ไม่พบใบเสนอราคา');
+
+        await pool.query(
+            'UPDATE product_quote_requests SET status = ? WHERE linked_quotation_id = ?',
+            [quoteRequestStatusForQuotation(status), id]
+        );
         res.redirect(`/partner/quotes/${id}`);
     } catch (err) {
         console.error(err);
@@ -241,6 +259,28 @@ export async function apiCalc(req, res) {
 }
 
 // ─── Quote Requests Queue (from public member portal) ─────────────────────────
+// Polled by the staff queue page. It intentionally returns only fresh requests:
+// once staff begins a draft or sends a quotation, it no longer alerts.
+export async function pendingQuoteRequestsApi(req, res) {
+    try {
+        const [requests] = await pool.query(
+            `SELECT pqr.id, pqr.product_name, pqr.desired_qty, pqr.note, pqr.created_at,
+                    ca.first_name, ca.last_name, ca.phone, ca.phone_display
+             FROM product_quote_requests pqr
+             LEFT JOIN customer_accounts ca ON ca.id = pqr.customer_account_id
+             WHERE pqr.status = 'new'
+             ORDER BY pqr.created_at DESC
+             LIMIT 50`
+        );
+
+        res.set('Cache-Control', 'no-store');
+        res.json({ requests });
+    } catch (err) {
+        console.error('[Partner Quote Request Alerts]', err);
+        res.status(500).json({ error: 'Unable to load pending quote requests' });
+    }
+}
+
 export async function quoteRequestQueue(req, res) {
     try {
         const [requests] = await pool.query(

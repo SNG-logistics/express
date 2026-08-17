@@ -1,6 +1,6 @@
 <%# Partner — Public Quote Request Queue (จากพอร์ทัลสมาชิก) %>
 <div class="max-w-6xl mx-auto">
-  <div class="flex items-center justify-between mb-6">
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <h1 class="text-2xl font-black text-white flex items-center gap-3">
         <span class="bg-amber-500 w-1.5 h-7 rounded-full"></span>
@@ -8,11 +8,20 @@
       </h1>
       <p class="text-slate-500 text-sm mt-1 ml-5">ลูกค้าสมาชิกส่งคำขอจากเว็บ — กดแปลงเป็นใบเสนอราคา</p>
     </div>
-    <a href="/partner/quote-requests"
-      class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 text-sm hover:text-white transition-colors">
-      <i class="fa-solid fa-rotate"></i> รีเฟรช
-    </a>
+    <div class="flex items-center gap-2">
+      <button id="quoteAlertSoundToggle" type="button"
+        class="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-sm hover:bg-amber-500/20 transition-colors">
+        <i class="fa-solid fa-volume-xmark"></i>
+        <span>เปิดเสียงแจ้งเตือน</span>
+      </button>
+      <a href="/partner/quote-requests"
+        class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 text-sm hover:text-white transition-colors">
+        <i class="fa-solid fa-rotate"></i> รีเฟรช
+      </a>
+    </div>
   </div>
+
+  <section id="quoteRequestAlerts" class="space-y-3 mb-5" aria-live="polite" aria-relevant="additions"></section>
 
   <div class="glass-panel-dark rounded-2xl overflow-hidden border border-white/5">
     <div class="overflow-x-auto">
@@ -88,3 +97,108 @@
     </div>
   </div>
 </div>
+
+<script>
+  (() => {
+    const alerts = document.getElementById('quoteRequestAlerts');
+    const soundToggle = document.getElementById('quoteAlertSoundToggle');
+    const knownRequestIds = new Set(<%- JSON.stringify(requests.map(request => String(request.id))) %>);
+    let soundEnabled = false;
+    let audioContext;
+    let polling = false;
+
+    function playAlertSound() {
+      if (!soundEnabled) return;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioContext ||= new AudioContextClass();
+      const now = audioContext.currentTime;
+
+      [0, 0.22].forEach((delay, index) => {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = index ? 880 : 660;
+        gain.gain.setValueAtTime(0.0001, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.16, now + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.18);
+        oscillator.connect(gain).connect(audioContext.destination);
+        oscillator.start(now + delay);
+        oscillator.stop(now + delay + 0.19);
+      });
+    }
+
+    function customerLabel(request) {
+      const name = [request.first_name, request.last_name].filter(Boolean).join(' ').trim();
+      return name || request.phone_display || request.phone || 'ลูกค้าใหม่';
+    }
+
+    function showRequestAlert(request) {
+      const productName = request.product_name || 'สินค้าไม่ได้ระบุชื่อ';
+      const quantity = Math.max(1, Number(request.desired_qty) || 1);
+      const card = document.createElement('article');
+      card.className = 'rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 shadow-lg shadow-amber-500/5';
+      card.innerHTML = `
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0">
+            <p class="text-xs font-bold tracking-wider text-amber-300">คำขอเช็คราคาใหม่</p>
+            <p class="mt-1 font-bold text-white" data-alert-product></p>
+            <p class="mt-1 text-sm text-slate-300" data-alert-customer></p>
+            <p class="mt-1 text-xs text-slate-400" data-alert-note></p>
+          </div>
+          <a class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-300" data-alert-action>
+            <i class="fa-solid fa-file-invoice-dollar"></i> จัดทำใบเสนอราคา
+          </a>
+        </div>`;
+
+      card.querySelector('[data-alert-product]').textContent = `ลูกค้าต้องการ: ${productName} × ${quantity}`;
+      card.querySelector('[data-alert-customer]').textContent = `ลูกค้า: ${customerLabel(request)}`;
+      const note = card.querySelector('[data-alert-note]');
+      if (request.note) {
+        note.textContent = `หมายเหตุ: ${request.note}`;
+      } else {
+        note.remove();
+      }
+      card.querySelector('[data-alert-action]').href = `/partner/quote-requests/${encodeURIComponent(request.id)}/convert`;
+      alerts.prepend(card);
+    }
+
+    async function pollPendingRequests() {
+      if (polling || document.hidden) return;
+      polling = true;
+      try {
+        const response = await fetch('/partner/api/quote-requests/pending', {
+          headers: { Accept: 'application/json' },
+          credentials: 'same-origin',
+        });
+        if (!response.ok) throw new Error(`Request alert polling failed: ${response.status}`);
+
+        const payload = await response.json();
+        const newRequests = (Array.isArray(payload.requests) ? payload.requests : [])
+          .filter((request) => !knownRequestIds.has(String(request.id)))
+          .sort((first, second) => new Date(first.created_at) - new Date(second.created_at));
+
+        newRequests.forEach((request) => {
+          knownRequestIds.add(String(request.id));
+          showRequestAlert(request);
+        });
+        if (newRequests.length) playAlertSound();
+      } catch (error) {
+        console.warn('[Quote request alerts]', error);
+      } finally {
+        polling = false;
+      }
+    }
+
+    soundToggle.addEventListener('click', () => {
+      soundEnabled = true;
+      soundToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>เปิดเสียงแล้ว</span>';
+      playAlertSound();
+    });
+
+    setInterval(pollPendingRequests, 15000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) pollPendingRequests();
+    });
+  })();
+</script>

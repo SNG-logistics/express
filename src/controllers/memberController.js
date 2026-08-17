@@ -727,7 +727,11 @@ export async function myQuoteRequests(req, res) {
     const [requests] = await pool.query(
       `SELECT pqr.id, pqr.product_url, pqr.product_name, pqr.desired_qty, pqr.note,
               pqr.status, pqr.linked_quotation_id, pqr.created_at,
-              pq.quote_no
+              pq.quote_no,
+              CASE
+                WHEN pq.status IN ('sent', 'accepted', 'ordered') THEN 1
+                ELSE 0
+              END AS quote_available
        FROM product_quote_requests pqr
        LEFT JOIN partner_quotations pq ON pq.id = pqr.linked_quotation_id
        WHERE pqr.customer_account_id = ?
@@ -747,6 +751,60 @@ export async function myQuoteRequests(req, res) {
       layout: 'customer/layout',
       title: 'คำขอเช็คราคาของฉัน | SNG Express',
       requests: [],
+    });
+  }
+}
+
+/**
+ * GET /member/quote-requests/:id/quotation
+ * Shows a customer-facing quotation only to the owner of its quote request.
+ * Draft and cancelled quotations stay visible to staff only.
+ */
+export async function myQuoteRequestQuotation(req, res) {
+  const customer = req.session.customer;
+  const requestId = Number(req.params.id);
+
+  const renderNotFound = () => res.status(404).render('customer/member/quote-detail', {
+    layout: 'customer/layout',
+    title: 'ไม่พบใบเสนอราคา | SNG Express',
+    quote: null,
+  });
+
+  if (!Number.isSafeInteger(requestId) || requestId < 1) {
+    return renderNotFound();
+  }
+
+  try {
+    const [[quote]] = await pool.query(
+      `SELECT pqr.id AS request_id, pqr.desired_qty, pqr.created_at AS request_created_at,
+              pq.id, pq.quote_no, pq.product_url, pq.product_name,
+              pq.product_price_thb, pq.shipping_th_thb, pq.weight_kg,
+              pq.exchange_rate, pq.fx_spread_pct, pq.sng_shipping_lak,
+              pq.service_fee_lak, pq.subtotal_thb, pq.total_lak,
+              pq.note, pq.status, pq.created_at AS quote_created_at
+       FROM product_quote_requests pqr
+       INNER JOIN partner_quotations pq ON pq.id = pqr.linked_quotation_id
+       WHERE pqr.id = ?
+         AND pqr.customer_account_id = ?
+         AND pq.status IN ('sent', 'accepted', 'ordered')
+       LIMIT 1`,
+      [requestId, customer.id]
+    );
+
+    if (!quote) return renderNotFound();
+
+    res.set('Cache-Control', 'no-store');
+    return res.render('customer/member/quote-detail', {
+      layout: 'customer/layout',
+      title: `ใบเสนอราคา ${quote.quote_no} | SNG Express`,
+      quote,
+    });
+  } catch (err) {
+    console.error('[Member Quote Detail]', err);
+    return res.status(500).render('customer/member/quote-detail', {
+      layout: 'customer/layout',
+      title: 'ใบเสนอราคา | SNG Express',
+      quote: null,
     });
   }
 }
