@@ -322,6 +322,20 @@
           จะสร้างออเดอร์ขนส่งได้เมื่อสถานะเป็น <span class="text-purple-400 font-semibold">สั่งซื้อสำเร็จแล้ว</span> (ซื้อของจริงจากร้านค้าแล้วเท่านั้น)
         </p>
       </div>
+      <% } else if (quote.status === 'ordered') { %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-amber-500/30 bg-amber-500/5">
+        <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">ออเดอร์ขนส่ง</div>
+        <% if (quote.linked_order_id) { %>
+        <a href="/orders/<%= quote.linked_order_id %>" class="w-full flex items-center justify-center gap-2 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold transition-colors">
+          <i class="fa-solid fa-truck"></i> ดูออเดอร์ <%= quote.linked_order_job_no || ('#' + quote.linked_order_id) %>
+        </a>
+        <% } else { %>
+        <p class="text-xs text-slate-500">
+          <i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>
+          สถานะเป็น "สร้างออเดอร์ขนส่งแล้ว" แต่ไม่พบออเดอร์ที่เชื่อมไว้ — ลองค้นหาในหน้ารายการออเดอร์ด้วยชื่อ/เบอร์ลูกค้าแทน
+        </p>
+        <% } %>
+      </div>
       <% } %>
 
     </div>

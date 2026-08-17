@@ -369,10 +369,13 @@ export async function create(req, res) {
         // Only a PURCHASED quotation (item actually bought) may bridge into a
         // real shipment order — accepting a quote is not the same moment as
         // having bought the item (plan Phase 3.7 point 1).
+        // order_id was previously never written back here even though the
+        // order-deletion cleanup path already assumed it existed — the only
+        // reliable link back from a quote to its order was orders.quotation_id.
         await conn.query(
-          `UPDATE partner_quotations SET status='ordered'
+          `UPDATE partner_quotations SET status='ordered', order_id=?
            WHERE id=? AND status = 'purchased'`,
-          [payload.quotation_id]
+          [result.insertId, payload.quotation_id]
         );
       }
       return result.insertId;

@@ -241,10 +241,12 @@ export async function detail(req, res) {
     const { id } = req.params;
     try {
         const [[quote]] = await pool.query(
-            `SELECT pq.*, b.name AS branch_name, u.username AS creator
+            `SELECT pq.*, b.name AS branch_name, u.username AS creator,
+                    o.id AS linked_order_id, o.job_no AS linked_order_job_no
              FROM partner_quotations pq
              LEFT JOIN branches b ON b.id = pq.branch_id
              LEFT JOIN users u ON u.id = pq.created_by
+             LEFT JOIN orders o ON o.quotation_id = pq.id
              WHERE pq.id = ?`, [id]
         );
         if (!quote) return res.status(404).send('ไม่พบใบเสนอราคา');
