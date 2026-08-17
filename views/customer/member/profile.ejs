@@ -14,7 +14,7 @@
   <div class="card" style="padding: 1.25rem; margin-bottom: 1rem; border-color: rgba(255, 224, 0, 0.25); background: linear-gradient(135deg, rgba(255, 224, 0, 0.05), rgba(20, 20, 20, 0.8));">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
       <div>
-        <small style="color: var(--portal-gold); font-weight: 800; font-size: 0.75rem; letter-spacing: 0.05em;"><%= t('member.referralCode') %></small>
+        <small style="color: #FFE000; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.05em;"><%= t('member.referralCode') %></small>
         <div style="font-size: 1.4rem; font-weight: 800; color: #fff; letter-spacing: 1px;"><%= account.referral_code || 'SNG-XXXX' %></div>
       </div>
       <button onclick="navigator.clipboard.writeText('<%= account.referral_code %>'); alert('คัดลอกรหัสแนะนำเพื่อนเรียบร้อย!');" class="btn-gold" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">

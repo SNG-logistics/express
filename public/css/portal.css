@@ -2,6 +2,7 @@
   /* Dark (brand default) */
   --portal-gold: #FFE000;
   --portal-gold-dim: rgba(255,224,0,.65);
+  --portal-gold-contrast: #111;
   --portal-bg: #0a0a0a;
   --portal-bg-translucent: #0a0a0af2;
   --portal-surface: #141414;
@@ -24,6 +25,7 @@
      on a white surface fails contrast, so light mode gets its own shade. */
   --portal-gold: #6b4f00;
   --portal-gold-dim: rgba(107,79,0,.75);
+  --portal-gold-contrast: #fff8e6;
   --portal-bg: #faf9f6;
   --portal-bg-translucent: #faf9f6f2;
   --portal-surface: #ffffff;
@@ -126,7 +128,7 @@ body {
 .btn-gold {
   display: inline-flex; justify-content: center; align-items: center; gap: .4rem;
   border: 0; border-radius: .75rem; padding: .82rem 1rem;
-  background: var(--portal-gold); color: #111;
+  background: var(--portal-gold); color: var(--portal-gold-contrast);
   font: 800 .9rem inherit; cursor: pointer; text-decoration: none;
 }
 

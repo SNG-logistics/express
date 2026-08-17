@@ -6,6 +6,7 @@ import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
 import helmet from 'helmet';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import expressLayouts from 'express-ejs-layouts';
 import csrf from 'csurf';
@@ -133,6 +134,17 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(expressLayouts);
 app.set('layout', 'layouts/main');
+
+// Cache-busting query param for /css/portal.css — without this, any browser
+// or intermediate proxy that already cached the file keeps serving stale
+// CSS after an edit, since express.static sends no strong cache-invalidation
+// signal on its own. Derived from the file's own mtime so it updates itself
+// on every edit with no manual version bump required.
+try {
+  app.locals.assetVersion = fs.statSync(path.join(__dirname, '../public/css/portal.css')).mtimeMs.toString(36);
+} catch {
+  app.locals.assetVersion = Date.now().toString(36);
+}
 
 // ─── Force UTF-8 charset on all HTML responses ────────────────────────────────
 app.use((_req, res, next) => {
