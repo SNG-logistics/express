@@ -285,7 +285,7 @@ export function showLogin(req, res) {
   res.render('customer/member/login', {
     layout: 'customer/layout',
     title: `${res.locals.t('portal.login')} | SNG Express`,
-    values: {},
+    values: { country_code: '66' },
     error: null,
   });
 }
@@ -294,24 +294,28 @@ export function showLogin(req, res) {
  * POST /member/login
  */
 export async function processLogin(req, res) {
-  const { phone: rawPhone, password } = req.body;
+  const { phone: rawPhone, password, country_code: countryCode } = req.body;
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const values = {
+    phone: rawPhone,
+    country_code: countryCode === '856' ? '856' : '66',
+  };
 
   if (!rawPhone || !password) {
     return res.render('customer/member/login', {
       layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
-      values: { phone: rawPhone },
+      values,
       error: 'กรุณากรอกเบอร์โทรศัพท์และรหัสผ่าน',
     });
   }
 
-  const phone = toWaPhone(rawPhone);
+  const phone = toWaPhone(rawPhone, countryCode ?? '');
   if (!phone) {
     return res.render('customer/member/login', {
       layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
-      values: { phone: rawPhone },
+      values,
       error: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
     });
   }
@@ -334,7 +338,7 @@ export async function processLogin(req, res) {
       return res.render('customer/member/login', {
         layout: 'customer/layout',
         title: `${res.locals.t('portal.login')} | SNG Express`,
-        values: { phone: rawPhone },
+        values,
         error: 'เบอร์โทรศัพท์หรือรหัสผ่านไม่ถูกต้อง',
       });
     }
@@ -375,7 +379,7 @@ export async function processLogin(req, res) {
     res.render('customer/member/login', {
       layout: 'customer/layout',
       title: `${res.locals.t('portal.login')} | SNG Express`,
-      values: { phone: rawPhone },
+      values,
       error: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่',
     });
   }

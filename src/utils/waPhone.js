@@ -7,9 +7,23 @@
  */
 
 /** Normalise a raw phone string to international digits, e.g. "081.." → "6681..". */
-export function toWaPhone(raw) {
+export const WA_COUNTRY_CODES = new Set(['66', '856']);
+
+export function toWaPhone(raw, countryCode = null) {
   let phone = String(raw || '').replace(/\D/g, '');
   if (!phone) return null;
+
+  if (countryCode !== null && countryCode !== undefined) {
+    const selectedCode = String(countryCode).replace(/\D/g, '');
+    if (!WA_COUNTRY_CODES.has(selectedCode)) return null;
+
+    const otherCode = selectedCode === '66' ? '856' : '66';
+    if (phone.startsWith(otherCode)) return null;
+    if (phone.startsWith(selectedCode)) phone = phone.slice(selectedCode.length);
+    phone = phone.replace(/^0+/, '');
+    return phone ? selectedCode + phone : null;
+  }
+
   if (phone.startsWith('856') || phone.startsWith('66')) return phone;   // already international
   if (phone.startsWith('020') || phone.startsWith('030')) return '856' + phone.slice(1); // Laos local
   if (phone.startsWith('0')) return '66' + phone.slice(1);               // Thai local
