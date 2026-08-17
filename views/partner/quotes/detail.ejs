@@ -1,24 +1,52 @@
 <%# Partner — Quote Detail + Breakdown %>
 <%
-  const statusMap = {
-    draft:     { cls:'text-slate-400 bg-slate-500/10 border-slate-500/20',      label:'Draft',   icon:'fa-pencil' },
-    sent:      { cls:'text-blue-400 bg-blue-500/10 border-blue-500/20',          label:'Sent',    icon:'fa-paper-plane' },
-    accepted:  { cls:'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', label:'Accepted',icon:'fa-circle-check' },
-    ordered:   { cls:'text-amber-400 bg-amber-500/10 border-amber-500/20',       label:'Ordered', icon:'fa-shopping-cart' },
-    cancelled: { cls:'text-red-400 bg-red-500/10 border-red-500/20',             label:'Cancelled',icon:'fa-ban' },
+  const STATUS_META = {
+    draft:      { cls:'text-slate-400 bg-slate-500/10 border-slate-500/20',      label:'ฉบับร่าง',        icon:'fa-pencil' },
+    sent:       { cls:'text-blue-400 bg-blue-500/10 border-blue-500/20',          label:'ส่งแล้ว รอลูกค้ายืนยัน', icon:'fa-paper-plane' },
+    accepted:   { cls:'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', label:'ลูกค้ายืนยันแล้ว',   icon:'fa-circle-check' },
+    rejected:   { cls:'text-red-400 bg-red-500/10 border-red-500/20',             label:'ลูกค้าปฏิเสธ',      icon:'fa-ban' },
+    purchasing: { cls:'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',          label:'กำลังสั่งซื้อ',      icon:'fa-cart-shopping' },
+    purchased:  { cls:'text-purple-400 bg-purple-500/10 border-purple-500/20',    label:'สั่งซื้อสำเร็จแล้ว', icon:'fa-box' },
+    ordered:    { cls:'text-amber-400 bg-amber-500/10 border-amber-500/20',       label:'สร้างออเดอร์ขนส่งแล้ว', icon:'fa-truck' },
+    cancelled:  { cls:'text-red-400 bg-red-500/10 border-red-500/20',             label:'ยกเลิก',           icon:'fa-xmark' },
   };
-  const s = statusMap[quote.status] || statusMap.draft;
+  const PLATFORM_LABELS = {
+    lazada: 'Lazada', shopee: 'Shopee', alibaba: 'Alibaba',
+    tiktok_shop: 'TikTok Shop', makro: 'Makro', other: 'อื่นๆ',
+  };
+  const TRANSITION_LABELS = {
+    sent: 'ส่งใบเสนอราคาให้ลูกค้า',
+    accepted: 'ยืนยันรับ (แทนลูกค้า)',
+    rejected: 'ปฏิเสธ (แทนลูกค้า)',
+    purchasing: 'เริ่มสั่งซื้อ',
+    purchased: 'สั่งซื้อสำเร็จแล้ว',
+    ordered: 'สร้างออเดอร์แล้ว',
+    cancelled: 'ยกเลิกใบเสนอราคา',
+  };
+  const s = STATUS_META[quote.status] || STATUS_META.draft;
+  const nextStatusList = typeof nextStatuses !== 'undefined' ? nextStatuses : [];
+  const statusLogs = typeof logs !== 'undefined' ? logs : [];
 
-  const productThb  = Number(quote.product_price_thb) || 0;
+  const qty         = Math.max(1, Number(quote.desired_qty) || 1);
+  const productThb  = (Number(quote.product_price_thb) || 0) * qty;
   const shippingThb = Number(quote.shipping_th_thb) || 0;
-  const subtotalThb = productThb + shippingThb;
-  const rate        = Number(quote.exchange_rate) || 200;
-  const spread      = Number(quote.fx_spread_pct) || 0;
-  const effectiveRate = rate * (1 + spread / 100);
-  const productLak  = Math.ceil(subtotalThb * effectiveRate);
-  const sngLak      = Number(quote.sng_shipping_lak) || 0;
-  const serviceLak  = Number(quote.service_fee_lak) || 0;
-  const totalLak    = Number(quote.total_lak) || 0;
+  // Stored columns are the source of truth (written by purchaseAgentPricingService
+  // at create time, already qty-aware) — only fall back to recomputing if a quote
+  // predates that column being populated.
+  const subtotalThb   = Number(quote.subtotal_thb) || (productThb + shippingThb);
+  const rate           = Number(quote.exchange_rate) || 0;
+  const spread          = Number(quote.fx_spread_pct) || 0;
+  const effectiveRate  = rate * (1 + spread / 100);
+  const productLak     = Number(quote.deposit_required_lak) || Math.ceil(subtotalThb * effectiveRate);
+  const sngLak          = Number(quote.sng_shipping_lak) || 0;
+  const serviceLak      = Number(quote.service_fee_lak) || 0;
+  const totalLak        = Number(quote.total_lak) || 0;
+  const depositLak      = Number(quote.deposit_required_lak) || 0;
+  const paidLak         = Number(quote.paid_amount_lak) || 0;
+  const remainingDepositLak = Math.max(0, depositLak - paidLak);
+  const payLabels = { UNPAID: 'ยังไม่ชำระ', PARTIAL: 'ชำระบางส่วน', PAID: 'ชำระครบแล้ว' };
+  const payCls = { UNPAID: 'text-red-400', PARTIAL: 'text-amber-400', PAID: 'text-emerald-400' };
+  const canRecordPayment = !['cancelled', 'rejected', 'ordered'].includes(quote.status);
 %>
 
 <div class="max-w-4xl mx-auto">
@@ -33,26 +61,40 @@
         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-bold <%= s.cls %>">
           <i class="fa-solid <%= s.icon %>"></i> <%= s.label %>
         </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 text-xs font-bold">
+          <%= PLATFORM_LABELS[quote.platform] || quote.platform || 'อื่นๆ' %>
+        </span>
       </div>
       <p class="text-slate-500 text-sm mt-0.5">
         สร้างโดย <span class="text-slate-400"><%= quote.creator || '—' %></span>
         · <%= new Date(quote.created_at).toLocaleDateString('th-TH', {weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
       </p>
     </div>
-    <%# Status update form %>
-    <form action="/partner/quotes/<%= quote.id %>/status" method="post" class="flex items-center gap-2">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <select name="status" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm">
-        <option value="draft"    <%= quote.status==='draft'    ?'selected':'' %>>Draft</option>
-        <option value="sent"     <%= quote.status==='sent'     ?'selected':'' %>>Sent</option>
-        <option value="accepted" <%= quote.status==='accepted' ?'selected':'' %>>Accepted</option>
-        <option value="ordered"  <%= quote.status==='ordered'  ?'selected':'' %>>Ordered</option>
-        <option value="cancelled"<%= quote.status==='cancelled'?'selected':'' %>>Cancelled</option>
-      </select>
-      <button type="submit" class="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 text-sm hover:text-white">
-        บันทึก
-      </button>
-    </form>
+  </div>
+
+  <%# Status transition buttons — generated from the guarded transition graph %>
+  <div class="glass-panel-dark rounded-2xl p-4 mb-5 border border-white/5">
+    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">เปลี่ยนสถานะ</div>
+    <div class="flex flex-wrap items-center gap-2">
+      <% nextStatusList.forEach(function (ns) {
+        const depositBlocked = ns === 'purchasing' && quote.payment_status !== 'PAID';
+      %>
+      <form action="/partner/quotes/<%= quote.id %>/transition" method="post" class="inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="status" value="<%= ns %>">
+        <button type="submit" <%= depositBlocked ? 'disabled' : '' %>
+          title="<%= depositBlocked ? 'ต้องบันทึกการชำระมัดจำให้ครบ (PAID) ก่อน' : '' %>"
+          class="<%= depositBlocked
+            ? 'opacity-40 cursor-not-allowed bg-slate-800/50 border-slate-700/50 text-slate-500'
+            : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200 hover:text-white' %> border rounded-xl px-3.5 py-2 text-xs font-bold transition-colors">
+          <%= TRANSITION_LABELS[ns] || ns %>
+        </button>
+      </form>
+      <% }) %>
+      <% if (!nextStatusList.length) { %>
+      <span class="text-slate-600 text-xs">สถานะสุดท้าย — ไม่มีการเปลี่ยนสถานะต่อไปได้</span>
+      <% } %>
+    </div>
   </div>
 
   <div class="grid md:grid-cols-3 gap-5">
@@ -70,10 +112,14 @@
           <span class="underline"><%= quote.product_url.length > 60 ? quote.product_url.substring(0,60)+'…' : quote.product_url %></span>
         </a>
         <% } %>
-        <div class="mt-4 grid grid-cols-3 gap-4 text-sm">
+        <div class="mt-4 grid grid-cols-4 gap-4 text-sm">
           <div>
-            <div class="text-slate-500 text-xs mb-0.5">ราคาสินค้า</div>
-            <div class="font-bold text-white font-mono">฿<%= productThb.toLocaleString('th', {minimumFractionDigits:2}) %></div>
+            <div class="text-slate-500 text-xs mb-0.5">ราคาต่อชิ้น</div>
+            <div class="font-bold text-white font-mono">฿<%= Number(quote.product_price_thb || 0).toLocaleString('th', {minimumFractionDigits:2}) %></div>
+          </div>
+          <div>
+            <div class="text-slate-500 text-xs mb-0.5">จำนวน</div>
+            <div class="font-bold text-white font-mono"><%= qty %> ชิ้น</div>
           </div>
           <div>
             <div class="text-slate-500 text-xs mb-0.5">ค่าส่งในไทย</div>
@@ -91,7 +137,7 @@
         <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-4">Breakdown ราคา</div>
         <div class="space-y-3 text-sm">
           <div class="flex justify-between">
-            <span class="text-slate-400">ราคาสินค้า + ค่าส่งในไทย</span>
+            <span class="text-slate-400">ราคาสินค้า×<%= qty %> + ค่าส่งในไทย</span>
             <span class="font-mono text-white">฿<%= subtotalThb.toLocaleString('th', {minimumFractionDigits:2}) %></span>
           </div>
           <div class="flex justify-between">
@@ -105,7 +151,7 @@
           </div>
           <% } %>
           <div class="flex justify-between bg-slate-900/50 rounded-lg px-3 py-2">
-            <span class="text-white font-semibold">ยอดสินค้า (LAK)</span>
+            <span class="text-white font-semibold">ยอดสินค้า (LAK) = มัดจำที่ต้องชำระ</span>
             <span class="font-mono font-bold text-white"><%= productLak.toLocaleString('th') %> ₭</span>
           </div>
           <div class="flex justify-between">
@@ -123,10 +169,80 @@
         </div>
       </div>
 
+      <%# Deposit / Payment %>
+      <% if (canRecordPayment) { %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5">
+        <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-4">มัดจำ / บันทึกการชำระเงิน</div>
+        <div class="grid grid-cols-4 gap-3 mb-4 text-sm">
+          <div>
+            <div class="text-slate-500 text-xs mb-0.5">ต้องชำระ</div>
+            <div class="font-bold text-white font-mono">₭<%= depositLak.toLocaleString('th') %></div>
+          </div>
+          <div>
+            <div class="text-slate-500 text-xs mb-0.5">ชำระแล้ว</div>
+            <div class="font-bold text-emerald-400 font-mono">₭<%= paidLak.toLocaleString('th') %></div>
+          </div>
+          <div>
+            <div class="text-slate-500 text-xs mb-0.5">คงเหลือ</div>
+            <div class="font-bold font-mono <%= remainingDepositLak > 0 ? 'text-red-400' : 'text-emerald-400' %>">₭<%= remainingDepositLak.toLocaleString('th') %></div>
+          </div>
+          <div>
+            <div class="text-slate-500 text-xs mb-0.5">สถานะ</div>
+            <div class="font-bold <%= payCls[quote.payment_status] || 'text-white' %>"><%= payLabels[quote.payment_status] || quote.payment_status %></div>
+          </div>
+        </div>
+        <form action="/partner/quotes/<%= quote.id %>/payment" method="post" class="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="flex-1 min-w-[140px]">
+            <label class="block text-[11px] text-slate-500 mb-1">จำนวนเงินที่รับ (₭)</label>
+            <input type="number" name="paid_amount" step="1" min="1" required
+              class="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:border-amber-500/50">
+          </div>
+          <div class="flex-1 min-w-[140px]">
+            <label class="block text-[11px] text-slate-500 mb-1">เลขอ้างอิง / หมายเหตุ</label>
+            <input type="text" name="payment_ref" maxlength="100"
+              class="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:border-amber-500/50">
+          </div>
+          <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-sm transition-colors">
+            <i class="fa-solid fa-check"></i> บันทึก
+          </button>
+        </form>
+        <% if (quote.payment_ref || quote.paid_at) { %>
+        <p class="text-[11px] text-slate-500 mt-2.5">
+          <% if (quote.paid_at) { %>ชำระล่าสุด: <%= new Date(quote.paid_at).toLocaleString('th-TH') %><% } %>
+          <% if (quote.payment_ref) { %> · อ้างอิงล่าสุด: <%= quote.payment_ref %><% } %>
+        </p>
+        <% } %>
+      </div>
+      <% } %>
+
       <% if (quote.note) { %>
       <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
         <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ</div>
         <p class="text-slate-300 text-sm"><%= quote.note %></p>
+      </div>
+      <% } %>
+
+      <%# Status history %>
+      <% if (statusLogs.length) { %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">ประวัติสถานะ</div>
+        <div class="space-y-2.5 text-xs">
+          <% statusLogs.forEach(function (log) {
+            const actorLabel = log.username
+              ? log.username
+              : (log.customer_first_name ? `${log.customer_first_name} ${log.customer_last_name || ''}`.trim() + ' (ลูกค้า)' : 'ระบบ');
+          %>
+          <div class="flex items-start gap-2 text-slate-400">
+            <i class="fa-solid fa-circle text-[5px] mt-1.5 text-slate-600 flex-shrink-0"></i>
+            <div class="min-w-0">
+              <span class="text-slate-300"><%= STATUS_META[log.from_status]?.label || log.from_status || 'เริ่มต้น' %> → <%= STATUS_META[log.to_status]?.label || log.to_status %></span>
+              <span class="text-slate-600"> · <%= actorLabel %> · <%= new Date(log.action_at).toLocaleString('th-TH') %></span>
+              <% if (log.note) { %><div class="text-slate-500 break-words"><%= log.note %></div><% } %>
+            </div>
+          </div>
+          <% }) %>
+        </div>
       </div>
       <% } %>
     </div>
@@ -190,14 +306,21 @@
         </div>
       </div>
 
-      <%# Part 1 -> Part 2 Trigger %>
-      <% if (quote.status === 'ordered' || quote.status === 'accepted') { %>
+      <%# Bridge to a real shipment order — only once the item is actually purchased %>
+      <% if (quote.status === 'purchased') { %>
       <div class="glass-panel-dark rounded-2xl p-5 border border-emerald-500/30 bg-emerald-500/5">
         <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">รับของเข้าโกดัง (สร้างบิลขนส่ง)</div>
         <p class="text-xs text-slate-400 mb-4">ดึงข้อมูลลูกค้าและสินค้าไปสร้างออเดอร์ขนส่งไทย-ลาว (ต้องระบุน้ำหนักจริง)</p>
         <a href="/orders/new?quote_id=<%= quote.id %>" class="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-colors">
           <i class="fa-solid fa-box-open"></i> สร้างออเดอร์ขนส่ง
         </a>
+      </div>
+      <% } else if (['accepted', 'purchasing'].includes(quote.status)) { %>
+      <div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+        <p class="text-xs text-slate-500">
+          <i class="fa-solid fa-circle-info mr-1"></i>
+          จะสร้างออเดอร์ขนส่งได้เมื่อสถานะเป็น <span class="text-purple-400 font-semibold">สั่งซื้อสำเร็จแล้ว</span> (ซื้อของจริงจากร้านค้าแล้วเท่านั้น)
+        </p>
       </div>
       <% } %>
 
@@ -208,13 +331,14 @@
 <script>
 function copyQuote() {
   const text = `ใบเสนอราคา <%= quote.quote_no %>
-สินค้า: <%= quote.product_name %>
+สินค้า: <%= quote.product_name %><%= qty > 1 ? ` ×${qty}` : '' %>
 -------------------------------
 ยอดรวม: <%= Math.ceil(totalLak).toLocaleString('th') %> ₭ (ກີບ)
   - ยอดสินค้า: <%= productLak.toLocaleString('th') %> ₭
   - ค่าขนส่ง:  <%= sngLak.toLocaleString('th') %> ₭
   - ค่าบริการ: <%= serviceLak.toLocaleString('th') %> ₭
 -------------------------------
+มัดจำที่ต้องชำระ: <%= depositLak.toLocaleString('th') %> ₭ (ส่วนที่เหลือเก็บปลายทาง)
 SNG Express — ขนส่งไทย-ลาว`;
   navigator.clipboard.writeText(text).then(() => alert('คัดลอกสำเร็จ!'));
 }

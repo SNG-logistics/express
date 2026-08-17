@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   canTransitionOrder,
   canTransitionTrip,
+  canTransitionQuotation,
+  getNextQuotationStatuses,
   resolveStatus,
 } from '../../src/constants/transitions.js';
 
@@ -49,4 +51,35 @@ test('trip workflow is sequential', () => {
   assert.equal(canTransitionTrip('LOADING', 'DEPARTED'), true);
   assert.equal(canTransitionTrip('DEPARTED', 'COMPLETED'), false);
   assert.equal(canTransitionTrip('UNLOADING', 'COMPLETED'), true);
+});
+
+test('purchase-agent quotation workflow cannot skip the purchase before shipping', () => {
+  const allowed = [
+    ['draft', 'sent'],
+    ['sent', 'accepted'],
+    ['sent', 'rejected'],
+    ['accepted', 'purchasing'],
+    ['purchasing', 'purchased'],
+    ['purchased', 'ordered'],
+  ];
+  for (const [from, to] of allowed) assert.equal(canTransitionQuotation(from, to), true, `${from} -> ${to}`);
+
+  // cancellable from every non-terminal state
+  for (const from of ['draft', 'sent', 'accepted', 'purchasing', 'purchased']) {
+    assert.equal(canTransitionQuotation(from, 'cancelled'), true, `${from} -> cancelled`);
+  }
+
+  // cannot skip straight to purchased/ordered, and cannot go backwards
+  assert.equal(canTransitionQuotation('draft', 'purchased'), false);
+  assert.equal(canTransitionQuotation('accepted', 'ordered'), false);
+  assert.equal(canTransitionQuotation('sent', 'draft'), false);
+  assert.equal(canTransitionQuotation('purchasing', 'accepted'), false);
+
+  // terminal states have no way out
+  for (const terminal of ['rejected', 'ordered', 'cancelled']) {
+    assert.equal(canTransitionQuotation(terminal, 'draft'), false, `${terminal} is terminal`);
+    assert.deepEqual(getNextQuotationStatuses(terminal), []);
+  }
+
+  assert.deepEqual(getNextQuotationStatuses('accepted'), ['purchasing', 'cancelled']);
 });

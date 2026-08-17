@@ -366,9 +366,12 @@ export async function create(req, res) {
         );
       }
       if (payload.quotation_id) {
+        // Only a PURCHASED quotation (item actually bought) may bridge into a
+        // real shipment order — accepting a quote is not the same moment as
+        // having bought the item (plan Phase 3.7 point 1).
         await conn.query(
           `UPDATE partner_quotations SET status='ordered'
-           WHERE id=? AND status IN ('draft','sent','accepted')`,
+           WHERE id=? AND status = 'purchased'`,
           [payload.quotation_id]
         );
       }

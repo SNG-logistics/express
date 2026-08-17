@@ -18,7 +18,7 @@ test('member quotation route is customer-authenticated and ownership-scoped', ()
   );
   assert.match(memberController, /export async function myQuoteRequestQuotation/);
   assert.match(memberController, /AND pqr\.customer_account_id = \?/);
-  assert.match(memberController, /pq\.status IN \('sent', 'accepted', 'ordered'\)/);
+  assert.match(memberController, /pq\.status IN \('sent', 'accepted', 'purchasing', 'purchased', 'ordered'\)/);
   assert.match(memberController, /res\.set\('Cache-Control', 'no-store'\)/);
 });
 
@@ -51,6 +51,9 @@ test('member request history exposes a link only for a sent customer-visible quo
 test('customer detail renders published prices without staff-only customer contact data', () => {
   const html = ejs.render(detailView, {
     lang: 'th',
+    t: (key) => key,
+    csrfToken: 'test-csrf-token',
+    paymentInfo: null,
     quote: {
       quote_no: 'PQ-20260817-0001',
       product_name: 'Test product',
@@ -77,10 +80,10 @@ test('customer detail renders published prices without staff-only customer conta
 
 test('staff publication state controls whether a linked request is visible to its customer', () => {
   assert.match(partnerController, /function quoteRequestStatusForQuotation\(status\)/);
-  assert.match(partnerController, /if \(\['sent', 'accepted', 'ordered'\]\.includes\(status\)\) return 'quoted';/);
-  assert.match(partnerController, /if \(status === 'cancelled'\) return 'closed';/);
+  assert.match(partnerController, /if \(\['sent', 'accepted', 'purchasing', 'purchased', 'ordered'\]\.includes\(status\)\) return 'quoted';/);
+  assert.match(partnerController, /if \(\['cancelled', 'rejected'\]\.includes\(status\)\) return 'closed';/);
   assert.match(
     partnerController,
-    /UPDATE product_quote_requests SET status = \? WHERE linked_quotation_id = \?/,
+    /'UPDATE product_quote_requests SET status = \? WHERE id = \?',\s*\r?\n\s*\[quoteRequestStatusForQuotation\(toStatus\), request\.id\]/,
   );
 });

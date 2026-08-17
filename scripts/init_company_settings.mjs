@@ -19,8 +19,12 @@ const defaults = [
   ['purchase_agent_bank_account_no', ''],
   ['purchase_agent_promptpay_no', ''],
   ['purchase_agent_whatsapp_contact', ''],
-  ['purchase_agent_policy_text_th', ''],
-  ['purchase_agent_policy_text_lo', ''],
+  // Starting policy template — reflects the deposit-covers-item-cost-only,
+  // balance-on-COD policy already agreed on. Review/edit via Settings before
+  // launch; bank/PromptPay/WhatsApp fields above are deliberately left blank
+  // since only the owner can supply real account details.
+  ['purchase_agent_policy_text_th', 'มัดจำที่ชำระคือค่าสินค้าที่ SNG ต้องจ่ายให้ร้านค้าล่วงหน้า ส่วนค่าขนส่งและค่าบริการเก็บปลายทางแบบ COD ตอนรับสินค้า หากสินค้าหมดหรือร้านค้ายกเลิกออเดอร์หลังชำระมัดจำแล้ว SNG จะคืนเงินมัดจำเต็มจำนวน'],
+  ['purchase_agent_policy_text_lo', 'ຍອດມັດຈຳທີ່ຊຳລະແມ່ນຄ່າສິນຄ້າທີ່ SNG ຕ້ອງຈ່າຍໃຫ້ຮ້ານລ່ວງໜ້າ ສ່ວນຄ່າຂົນສົ່ງ ແລະ ຄ່າບໍລິການເກັບປາຍທາງແບບ COD ຕອນຮັບເຄື່ອງ ຫາກສິນຄ້າໝົດ ຫຼືຮ້ານຍົກເລີກອອເດີຫຼັງຊຳລະມັດຈຳແລ້ວ SNG ຈະຄືນເງິນມັດຈຳເຕັມຈຳນວນ'],
 ];
 
 try {

@@ -29,6 +29,7 @@
         <thead class="text-xs text-slate-500 uppercase bg-black/20 border-b border-white/5">
           <tr>
             <th class="px-5 py-3">สินค้า</th>
+            <th class="px-5 py-3">แพลตฟอร์ม</th>
             <th class="px-5 py-3">ลูกค้า</th>
             <th class="px-5 py-3 text-center">จำนวน</th>
             <th class="px-5 py-3">สถานะ</th>
@@ -38,7 +39,7 @@
         </thead>
         <tbody class="divide-y divide-white/5 text-slate-300">
           <% if (requests.length === 0) { %>
-          <tr><td colspan="6" class="py-12 text-center text-slate-600">
+          <tr><td colspan="7" class="py-12 text-center text-slate-600">
             <i class="fa-solid fa-inbox text-3xl mb-2 opacity-20"></i><p>ยังไม่มีคำขอเช็คราคา</p>
           </td></tr>
           <% } %>
@@ -49,11 +50,17 @@
               quoted:      { cls:'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', label:'มีใบเสนอราคา' },
               closed:      { cls:'bg-slate-500/10 text-slate-400 border-slate-500/20',  label:'ปิด' },
             };
+            const platformLabels = {
+              lazada: 'Lazada', shopee: 'Shopee', alibaba: 'Alibaba',
+              tiktok_shop: 'TikTok Shop', makro: 'Makro', other: 'อื่นๆ',
+            };
             const st = statusMap[request.status] || statusMap.new;
             const memberName = request.first_name
               ? `${request.first_name} ${request.last_name || ''}`.trim()
               : '—';
             const memberPhone = request.phone_display || request.phone || '—';
+            const canAcknowledge = request.status === 'new';
+            const canDecline = request.status === 'new' || request.status === 'in_progress';
           %>
           <tr class="hover:bg-white/5 transition-colors">
             <td class="px-5 py-3">
@@ -66,6 +73,16 @@
               <% if (request.note) { %>
               <div class="text-[11px] text-slate-500 max-w-[260px] truncate mt-0.5"><%= request.note %></div>
               <% } %>
+              <% if (request.status === 'closed' && request.decline_reason) { %>
+              <div class="text-[11px] text-red-400/80 max-w-[260px] truncate mt-0.5">
+                <i class="fa-solid fa-ban"></i> เหตุผลที่ปฏิเสธ: <%= request.decline_reason %>
+              </div>
+              <% } %>
+            </td>
+            <td class="px-5 py-3">
+              <span class="inline-flex px-2 py-0.5 rounded-lg border border-white/10 bg-white/5 text-slate-300 text-[11px] font-bold">
+                <%= platformLabels[request.platform] || request.platform || 'อื่นๆ' %>
+              </span>
             </td>
             <td class="px-5 py-3">
               <div class="text-slate-300"><%= memberName %></div>
@@ -79,16 +96,44 @@
               <%= new Date(request.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit'}) %>
             </td>
             <td class="px-5 py-3 text-right whitespace-nowrap">
-              <% if (request.status === 'quoted' && request.linked_quotation_id) { %>
-              <a href="/partner/quotes/<%= request.linked_quotation_id %>" class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold mr-3">
-                <i class="fa-solid fa-file-invoice"></i> ดูใบเสนอราคา
-              </a>
-              <% } else { %>
-              <a href="/partner/quote-requests/<%= request.id %>/convert"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold rounded-lg text-xs hover:shadow-amber-500/30 transition-all">
-                <i class="fa-solid fa-calculator"></i> สร้างใบเสนอราคา
-              </a>
-              <% } %>
+              <div class="flex items-center justify-end gap-2 flex-wrap">
+                <% if (canAcknowledge) { %>
+                <form action="/partner/quote-requests/<%= request.id %>/acknowledge" method="post" class="inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="text-blue-400 hover:text-blue-300 text-xs font-semibold">
+                    <i class="fa-solid fa-inbox-in"></i> รับเข้างาน
+                  </button>
+                </form>
+                <% } %>
+
+                <% if (request.status === 'quoted' && request.linked_quotation_id) { %>
+                <a href="/partner/quotes/<%= request.linked_quotation_id %>" class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold">
+                  <i class="fa-solid fa-file-invoice"></i> ดูใบเสนอราคา
+                </a>
+                <% } else if (request.status !== 'closed') { %>
+                <a href="/partner/quote-requests/<%= request.id %>/convert"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold rounded-lg text-xs hover:shadow-amber-500/30 transition-all">
+                  <i class="fa-solid fa-calculator"></i> สร้างใบเสนอราคา
+                </a>
+                <% } %>
+
+                <% if (canDecline) { %>
+                <details class="relative inline-block text-left">
+                  <summary class="list-none cursor-pointer text-red-400 hover:text-red-300 text-xs font-semibold">
+                    <i class="fa-solid fa-ban"></i> ปฏิเสธ
+                  </summary>
+                  <form action="/partner/quote-requests/<%= request.id %>/decline" method="post"
+                    class="absolute right-0 z-20 mt-2 w-64 p-3 rounded-xl border border-white/10 bg-slate-900 shadow-xl space-y-2">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <textarea name="reason" required rows="2" placeholder="ระบุเหตุผลที่ปฏิเสธ (จำเป็น)"
+                      class="w-full px-2.5 py-2 rounded-lg border border-white/10 bg-white/5 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-red-500/50"></textarea>
+                    <button type="submit" class="w-full py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-bold hover:bg-red-500/25">
+                      ยืนยันการปฏิเสธ
+                    </button>
+                  </form>
+                </details>
+                <% } %>
+              </div>
             </td>
           </tr>
           <% }) %>
