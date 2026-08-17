@@ -9,6 +9,7 @@ router.use((req, res, next) => {
   next();
 });
 
+router.get('/home', publicController.home);
 router.get('/calculate', publicController.calculatePage);
 router.get('/api/public/shipping-quote',
   publicRateLimit({ max: 60, windowMs: 15 * 60 * 1000 }),

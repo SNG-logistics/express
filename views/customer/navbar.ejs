@@ -1,6 +1,6 @@
 <% const member = portalCurrentUser || null; %>
 <header class="portal-topbar">
-  <a class="portal-brand" href="/">
+  <a class="portal-brand" href="/home?lang=<%= lang %>">
     <img src="/images/sng-logo-nav.png" alt="SNG Express">
     <span>SNG <b>EXPRESS</b></span>
   </a>
@@ -16,7 +16,7 @@
   </div>
 </header>
 <nav class="bottom-nav" aria-label="Public navigation">
-  <a class="<%= currentPath === '/' ? 'active' : '' %>" href="/"><i class="fa-solid fa-house"></i><span><%= t('portal.home') %></span></a>
+  <a class="<%= currentPath === '/' || currentPath === '/home' ? 'active' : '' %>" href="/home?lang=<%= lang %>"><i class="fa-solid fa-house"></i><span><%= t('portal.home') %></span></a>
   <a class="<%= currentPath.startsWith('/track') ? 'active' : '' %>" href="/track"><i class="fa-solid fa-location-dot"></i><span><%= t('portal.track') %></span></a>
   <a class="<%= currentPath.startsWith('/calculate') ? 'active' : '' %>" href="/calculate"><i class="fa-solid fa-calculator"></i><span><%= t('portal.calculate') %></span></a>
   <a class="<%= currentPath.startsWith('/shops') ? 'active' : '' %>" href="/shops"><i class="fa-solid fa-store"></i><span><%= t('portal.shops') %></span></a>

@@ -38,7 +38,6 @@ import { startNotificationWorker } from './services/notificationService.js';
 import { createServer } from 'http';                // ─ Socket.io needs raw http server
 import { Server as SocketIO } from 'socket.io';    // ─ Real-time CRM inbox
 import * as tracking from './controllers/trackingController.js';
-import * as publicController from './controllers/publicController.js';
 import publicRoutes from './routes/public.js';
 import memberRoutes from './routes/member.js';
 import shopsDirectoryRoutes from './routes/shopsDirectory.js';
@@ -224,7 +223,7 @@ app.use(themeMiddleware);
 // instead of merely "separate when logged out."
 // Paths that pass through unprefixed on the subdomain — includes '/', the
 // customer home page, which IS a valid direct route there.
-const CUSTOMER_DIRECT_PATHS = ['/', '/track', '/calculate', '/shops', '/api/public', '/member'];
+const CUSTOMER_DIRECT_PATHS = ['/', '/home', '/track', '/calculate', '/shops', '/api/public', '/member'];
 // Same set minus '/' — used on the main host, where '/' gets its own
 // host-aware handling below instead of a blind bounce (see app.get('/', ...)).
 const MAIN_HOST_BOUNCE_PATHS = CUSTOMER_DIRECT_PATHS.filter(p => p !== '/');
@@ -463,7 +462,7 @@ app.use(publicRoutes);
 // matter what this route does.
 app.get('/', (req, res) => {
   if (req.session?.user) return res.redirect('/dashboard');
-  if (res.locals.isMemberSubdomain) return publicController.home(req, res);
+  if (res.locals.isMemberSubdomain) return res.redirect('/home?lang=lo');
   return res.redirect(`//${res.locals.memberHost}/`);
 });
 
