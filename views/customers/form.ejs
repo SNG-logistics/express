@@ -164,6 +164,87 @@
                 </form>
             </div>
 
+            <% if (mode === 'edit') { %>
+            <div id="member-link" class="glass-panel-dark rounded-3xl shadow-2xl border border-white/5 overflow-hidden mt-8">
+                <div class="p-6 border-b border-white/5 bg-black/20">
+                    <h3 class="font-bold text-white flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+                            <i class="fa-solid fa-user-check"></i>
+                        </span>
+                        บัญชีสมาชิก (Member Portal)
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <% if (memberLink.state === 'linked') { %>
+                        <div class="flex items-center gap-3 text-emerald-400">
+                            <i class="fa-solid fa-circle-check text-xl"></i>
+                            <div>
+                                <div class="font-bold">สมาชิกแล้ว ✓</div>
+                                <div class="text-xs text-slate-400">
+                                    <%= memberLink.account.first_name %> <%= memberLink.account.last_name || '' %>
+                                    — สถานะ: <%= memberLink.account.status %>
+                                </div>
+                            </div>
+                        </div>
+                        <% if (!Number(customer.active)) { %>
+                        <p class="text-xs text-amber-400 mt-3">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            ลูกค้ารายนี้ถูกปิดใช้งานแล้ว แต่ยังเชื่อมกับบัญชีสมาชิกอยู่ (เก็บประวัติไว้เผื่อกู้คืน)
+                        </p>
+                        <% } %>
+                        <% if (user && ['owner', 'admin', 'manager'].includes(user.role)) { %>
+                        <details class="mt-4">
+                            <summary class="cursor-pointer text-sm text-red-300 hover:text-red-200">ยกเลิกการเชื่อมบัญชี</summary>
+                            <form action="/customers/<%= customer.id %>/unlink-member" method="post"
+                                onsubmit="return confirm('ยืนยันยกเลิกการเชื่อมบัญชีสมาชิกนี้กับลูกค้ารายนี้? บัญชีสมาชิกและข้อมูลลูกค้าจะไม่ถูกลบ');"
+                                class="mt-2 space-y-2">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <textarea name="reason" required rows="2" placeholder="ระบุเหตุผลที่ยกเลิกการเชื่อม (จำเป็น)"
+                                    class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:ring-red-500 focus:border-red-500"></textarea>
+                                <button type="submit" class="px-5 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-sm font-bold hover:bg-red-500/25">
+                                    ยืนยันยกเลิกการเชื่อม
+                                </button>
+                            </form>
+                        </details>
+                        <% } %>
+                    <% } else if (memberLink.state === 'linkable') { %>
+                        <p class="text-sm text-slate-300 mb-4">
+                            พบบัญชีสมาชิกที่ใช้เบอร์นี้แล้ว (<%= memberLink.account.first_name %> <%= memberLink.account.last_name || '' %>)
+                            แต่ยังไม่ได้เชื่อมกับลูกค้ารายนี้
+                        </p>
+                        <form action="/customers/<%= customer.id %>/link-member" method="post"
+                            onsubmit="return confirm('ยืนยันเชื่อมบัญชีสมาชิกนี้กับลูกค้ารายนี้?');">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                            <button type="submit" class="cta-primary px-6 py-2.5 text-sm">เชื่อมบัญชีที่มีอยู่</button>
+                        </form>
+                    <% } else if (memberLink.state === 'pending') { %>
+                        <p class="text-sm text-amber-300 mb-4">
+                            ลูกค้าเริ่มสมัครสมาชิกแล้วแต่ยังไม่ยืนยัน OTP ด้วยตนเอง
+                            (พนักงานไม่สามารถยืนยันแทนได้ — ส่งลิงก์ให้ลูกค้ายืนยันเองอีกครั้ง)
+                        </p>
+                        <form action="/customers/<%= customer.id %>/invite-member" method="post">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                            <button type="submit" class="cta-primary px-6 py-2.5 text-sm">ส่งลิงก์ยืนยันตัวตนอีกครั้ง</button>
+                        </form>
+                    <% } else if (memberLink.state === 'invitable') { %>
+                        <p class="text-sm text-slate-400 mb-4">ลูกค้ารายนี้ยังไม่ได้เป็นสมาชิก ส่งคำเชิญสมัครสมาชิกผ่าน WhatsApp ได้</p>
+                        <form action="/customers/<%= customer.id %>/invite-member" method="post">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                            <button type="submit" class="cta-primary px-6 py-2.5 text-sm">
+                                <i class="fa-brands fa-whatsapp mr-2"></i>เชิญสมัครสมาชิกทาง WhatsApp
+                            </button>
+                        </form>
+                    <% } else if (memberLink.state === 'linked_elsewhere') { %>
+                        <p class="text-sm text-red-300">เบอร์นี้เชื่อมกับลูกค้ารายอื่นในระบบสมาชิกแล้ว ไม่สามารถเชื่อมซ้ำได้ — กรุณาตรวจสอบข้อมูลลูกค้าซ้ำ</p>
+                    <% } else if (memberLink.state === 'no_phone') { %>
+                        <p class="text-sm text-slate-500">กรุณาระบุเบอร์โทรศัพท์ก่อน จึงจะสามารถเชิญ/เชื่อมบัญชีสมาชิกได้</p>
+                    <% } else { %>
+                        <p class="text-sm text-slate-500">บัญชีสมาชิกของเบอร์นี้ถูกปิดใช้งานอยู่</p>
+                    <% } %>
+                </div>
+            </div>
+            <% } %>
+
             <% if (mode==='edit' ) { %>
                 <form id="deleteForm-<%= customer.id %>" action="/customers/<%= customer.id %>/delete" method="post"
                     class="hidden">

@@ -43,3 +43,13 @@ export function sameWaPhone(a, b) {
   const nb = toWaPhone(b);
   return Boolean(na) && na === nb;
 }
+
+/**
+ * True when an already-normalized (toWaPhone) phone is a Laos number.
+ * Shared language-resolution fallback: prefer an explicit country field
+ * where one is available (e.g. customers.country), fall back to this when
+ * it isn't (e.g. customer_accounts has no country column at all).
+ */
+export function isLaoPhone(normalizedPhone) {
+  return String(normalizedPhone || '').startsWith('856');
+}

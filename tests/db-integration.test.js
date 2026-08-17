@@ -4,6 +4,7 @@ import pool from '../src/config/db.js';
 import { transitionOrder } from '../src/services/orderWorkflowService.js';
 import { CRM_ROLES, OPERATIONAL_ROLES } from '../src/middleware/auth.js';
 import { CUSTOMER_NOTIFICATION_STATUSES } from '../src/services/notificationService.js';
+import { findAccountByPhone, findSoleCustomerMatch } from '../src/services/memberLinkService.js';
 
 test('database accepts every application role', async () => {
   const conn = await pool.getConnection();
@@ -80,6 +81,51 @@ test('scanner transition and notification outbox commit atomically', async () =>
     // notificationService.js), not one notification per status in the chain.
     const expectedNotifications = chain.filter(([status]) => CUSTOMER_NOTIFICATION_STATUSES.has(status)).length;
     assert.equal(Number(queued.count), expectedNotifications);
+  } finally {
+    await conn.rollback();
+    conn.release();
+  }
+});
+
+test('member linkage lookups are backed by the legacy-customer FK and reject ambiguous phones', async () => {
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+  try {
+    const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const phone = `669${suffix.slice(-8)}`;
+    const [customer] = await conn.query(
+      `INSERT INTO customers (name, phone, phone_normalized, address, active)
+       VALUES (?, ?, ?, 'Database integration test', 1)`,
+      [`Member linkage ${suffix}`, phone, phone]
+    );
+    const [account] = await conn.query(
+      `INSERT INTO customer_accounts
+         (phone, phone_display, password_hash, first_name, last_name, referral_code, status)
+       VALUES (?, ?, 'test-only', 'Member', 'Linkage', ?, 'active')`,
+      [phone, phone, `DBL-${suffix}`]
+    );
+
+    assert.equal(await findSoleCustomerMatch(phone, conn), customer.insertId);
+    const matchedAccount = await findAccountByPhone(phone, conn);
+    assert.equal(matchedAccount?.id, account.insertId);
+    assert.equal(matchedAccount?.legacy_customer_id, null);
+
+    const [[foreignKey]] = await conn.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.table_constraints
+       WHERE constraint_schema = DATABASE()
+         AND table_name = 'customer_accounts'
+         AND constraint_name = 'fk_ca_legacy_customer'
+         AND constraint_type = 'FOREIGN KEY'`
+    );
+    assert.equal(Number(foreignKey.count), 1);
+
+    await conn.query(
+      `INSERT INTO customers (name, phone, phone_normalized, address, active)
+       VALUES (?, ?, ?, 'Ambiguous database integration test', 1)`,
+      [`Member linkage duplicate ${suffix}`, phone, phone]
+    );
+    assert.equal(await findSoleCustomerMatch(phone, conn), null);
   } finally {
     await conn.rollback();
     conn.release();

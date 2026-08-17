@@ -118,7 +118,7 @@ export async function newForm(req, res) {
 async function insertQuotation(conn, req, calc) {
     const {
         branch_id, product_url, product_name, product_price_thb,
-        shipping_th_thb, weight_kg, exchange_rate, fx_spread_pct,
+        shipping_th_thb, weight_kg, fx_spread_pct,
         sng_shipping_lak,
         customer_name, customer_phone, customer_address, note,
         quote_request_id, platform, desired_qty
@@ -126,14 +126,28 @@ async function insertQuotation(conn, req, calc) {
 
     const quote_no = await genQuoteNo();
 
+    // Resolve the owning member (if any) from the source request row —
+    // closes customer_accounts → product_quote_requests → partner_quotations
+    // end to end. Re-derived from quote_request_id server-side, not trusted
+    // from a separate client-supplied field.
+    const requestId = Number(quote_request_id) || null;
+    let customerAccountId = null;
+    if (requestId) {
+        const [[requestRow]] = await conn.query(
+            `SELECT customer_account_id FROM product_quote_requests WHERE id = ?`,
+            [requestId]
+        );
+        customerAccountId = requestRow?.customer_account_id || null;
+    }
+
     const [result] = await conn.query(
         `INSERT INTO partner_quotations
          (branch_id, created_by, quote_no, product_url, platform, product_name, desired_qty,
           product_price_thb, shipping_th_thb, weight_kg,
           exchange_rate, fx_spread_pct, sng_shipping_lak, service_fee_lak,
           subtotal_thb, total_lak, deposit_required_lak,
-          customer_name, customer_phone, customer_address, note, status)
-         VALUES (?,?,?,?,?,?,?, ?,?,?, ?,?,?,?, ?,?,?, ?,?,?,?,?)`,
+          customer_account_id, customer_name, customer_phone, customer_address, note, status)
+         VALUES (?,?,?,?,?,?,?, ?,?,?, ?,?,?,?, ?,?,?, ?,?,?,?,?,?)`,
         [
             branch_id || null, req.session.user?.id, quote_no,
             product_url || null, platform || 'other', product_name,
@@ -146,14 +160,13 @@ async function insertQuotation(conn, req, calc) {
             parseFloat(sng_shipping_lak) || 0, // SNG shipping fee in LAK from form
             calc.serviceFeeLak,
             calc.subtotalThb, calc.totalLak, calc.productLak,
-            customer_name || null, customer_phone || null,
+            customerAccountId, customer_name || null, customer_phone || null,
             customer_address || null, note || null,
             'draft' // always insert as draft; non-draft statuses go through transitionQuotation below
         ]
     );
 
     // Link + mirror the request row.
-    const requestId = Number(quote_request_id) || null;
     if (requestId) {
         await conn.query(
             `UPDATE product_quote_requests

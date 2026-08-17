@@ -101,6 +101,12 @@
                                                             <%= c.phone || '-' %>
                                                         </span>
                                                     </div>
+                                                    <% if (c.linked_account_id) { %>
+                                                        <a href="/customers/<%= c.id %>/edit#member-link"
+                                                            class="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                            <i class="fa-solid fa-circle-check"></i> สมาชิกแล้ว
+                                                        </a>
+                                                    <% } %>
                                                     <% if(c.email) { %>
                                                         <div class="text-xs text-slate-500 flex items-center gap-2">
                                                             <i

@@ -9,9 +9,11 @@ import pool from '../config/db.js';
 import { toWaPhone } from '../utils/waPhone.js';
 import { createAndSendOtp, verifyOtp } from '../services/otpService.js';
 import { regenerateCustomerSession, recordMemberLoginAttempt } from '../middleware/customerAuth.js';
+import { resolveInviteToken } from '../services/inviteTokenService.js';
 
 // Constant-time login even when the phone isn't registered (resist enumeration).
 const DUMMY_PASSWORD_HASH = '$2b$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const CUSTOMER_HOME = '/home?lang=lo';
 
 function generateReferralCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -26,19 +28,40 @@ function generateReferralCode() {
  * GET /member — bare root, mainly hit via the member.<host> subdomain.
  */
 export function memberRoot(req, res) {
-  if (req.session?.customer) return res.redirect('/member/profile');
+  if (req.session?.customer) return res.redirect(CUSTOMER_HOME);
   return res.redirect('/member/login');
 }
 
 /**
  * GET /member/register
  */
-export function showRegister(req, res) {
-  if (req.session?.customer) return res.redirect('/member/profile');
+export async function showRegister(req, res) {
+  if (req.session?.customer) return res.redirect(CUSTOMER_HOME);
+
+  // Staff-sent invite link (?invite=<token>) — pre-fills phone/country from
+  // a server-side lookup, never from the URL itself, so a customer's phone
+  // number never has to sit in a query string.
+  let values = { country_code: '66' };
+  if (typeof req.query.invite === 'string') {
+    try {
+      const invite = await resolveInviteToken(req.query.invite);
+      if (invite) {
+        const localPhone = invite.phone.startsWith(invite.countryCode)
+          ? '0' + invite.phone.slice(invite.countryCode.length)
+          : invite.phone;
+        values = { country_code: invite.countryCode, phone: localPhone };
+      }
+    } catch (err) {
+      // A broken/expired invite link degrades to a blank form — never blocks
+      // registration itself.
+      console.error('[Member] invite token resolve failed:', err.message);
+    }
+  }
+
   res.render('customer/member/register', {
     layout: 'customer/layout',
     title: `${res.locals.t('portal.register')} | SNG Express`,
-    values: { country_code: '66' },
+    values,
     error: null,
   });
 }
@@ -238,7 +261,7 @@ export async function processVerify(req, res) {
 
     regenerateCustomerSession(req, account, () => {
       req.session.flash = { type: 'success', message: 'สมัครสมาชิกและยืนยันตัวตนสำเร็จ!' };
-      res.redirect('/member/profile');
+      res.redirect(CUSTOMER_HOME);
     });
   } catch (err) {
     console.error('[Member Verify]', err);
@@ -291,7 +314,7 @@ export async function resendOtp(req, res) {
  * GET /member/login
  */
 export function showLogin(req, res) {
-  if (req.session?.customer) return res.redirect('/member/profile');
+  if (req.session?.customer) return res.redirect(CUSTOMER_HOME);
   res.render('customer/member/login', {
     layout: 'customer/layout',
     title: `${res.locals.t('portal.login')} | SNG Express`,
@@ -380,7 +403,7 @@ export async function processLogin(req, res) {
       referral_code: account.referral_code,
     };
 
-    const returnTo = req.session.returnTo || '/member/profile';
+    const returnTo = req.session.returnTo || CUSTOMER_HOME;
     regenerateCustomerSession(req, customerPayload, () => {
       res.redirect(returnTo);
     });
@@ -402,7 +425,7 @@ export function logout(req, res) {
   if (req.session) {
     delete req.session.customer;
   }
-  res.redirect('/');
+  res.redirect(CUSTOMER_HOME);
 }
 
 /**

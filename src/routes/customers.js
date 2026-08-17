@@ -9,6 +9,11 @@
  *   - Create customer   : all order-writing roles
  *   - Edit customer     : dispatcher + above
  *   - Delete customer   : admin + manager only (destructive — may break order history)
+ *   - Invite to member portal : dispatcher + above (customer-service task, low risk —
+ *     only sends a WhatsApp link, doesn't change any relationship)
+ *   - Link / unlink member account : admin + manager only (changes which member
+ *     account a customer's identity/history resolves to — tighter than a plain
+ *     address edit)
  */
 import { Router } from 'express';
 import * as customersController from '../controllers/customersController.js';
@@ -29,6 +34,9 @@ router.get('/customers/new',         requireLogin, requireRole(ROLES_ORDER_WRITE
 router.post('/customers',            requireLogin, requireRole(ROLES_ORDER_WRITE),     customersController.create);
 router.get('/customers/:id/edit',    requireLogin, requireRole(ROLES_CUSTOMER_EDIT),   customersController.showEdit);
 router.post('/customers/:id',        requireLogin, requireRole(ROLES_CUSTOMER_EDIT),   customersController.update);
+router.post('/customers/:id/invite-member', requireLogin, requireRole(ROLES_CUSTOMER_EDIT), customersController.inviteMember);
+router.post('/customers/:id/link-member',   requireLogin, requireRole(ROLES_MANAGE),   customersController.linkMember);
+router.post('/customers/:id/unlink-member', requireLogin, requireRole(ROLES_MANAGE),   customersController.unlinkMember);
 router.post('/customers/:id/delete', requireLogin, requireRole(ROLES_MANAGE),         customersController.remove);
 
 export default router;

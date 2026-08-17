@@ -6,7 +6,8 @@
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
 import { sendTextMessage } from './whatsappService.js';
-import { toWaPhone } from '../utils/waPhone.js';
+import { toWaPhone, isLaoPhone } from '../utils/waPhone.js';
+import { findSoleCustomerMatch } from './memberLinkService.js';
 
 const OTP_EXPIRY_MINUTES = 5;
 const COOLDOWN_SECONDS = 60;
@@ -79,10 +80,16 @@ export async function createAndSendOtp({ accountId, phoneRaw, purpose = 'REGISTE
     [accountId, phone, purpose, codeHash, expiresAt, ip]
   );
 
-  // 6. Send via WhatsApp
-  const msgBody = purpose === 'RESET_PASSWORD'
-    ? `🔐 *SNG EXPRESS*\nรหัสรีเซ็ตรหัสผ่าน (OTP) ของคุณคือ: *${code}*\n(รหัสมีอายุ 5 นาที และห้ามแจ้งรหัสนี้แก่ผู้อื่น)`
-    : `🔐 *SNG EXPRESS*\nรหัสยืนยัน (OTP) สมัครสมาชิกของคุณคือ: *${code}*\n(รหัสมีอายุ 5 นาที และห้ามแจ้งรหัสนี้แก่ผู้อื่น)`;
+  // 6. Send via WhatsApp — same country-code-driven language choice as the
+  // rest of the member portal (no `customer.country` available here, only
+  // the phone, so this is always the phone-prefix fallback).
+  const msgBody = isLaoPhone(phone)
+    ? (purpose === 'RESET_PASSWORD'
+        ? `🔐 *SNG EXPRESS*\nລະຫັດຣີເຊັດລະຫັດຜ່ານ (OTP) ຂອງທ່ານແມ່ນ: *${code}*\n(ລະຫັດມີອາຍຸ 5 ນາທີ ແລະ ຫ້າມບອກລະຫັດນີ້ໃຫ້ຜູ້ອື່ນ)`
+        : `🔐 *SNG EXPRESS*\nລະຫັດຢືນຢັນ (OTP) ສະໝັກສະມາຊິກຂອງທ່ານແມ່ນ: *${code}*\n(ລະຫັດມີອາຍຸ 5 ນາທີ ແລະ ຫ້າມບອກລະຫັດນີ້ໃຫ້ຜູ້ອື່ນ)`)
+    : (purpose === 'RESET_PASSWORD'
+        ? `🔐 *SNG EXPRESS*\nรหัสรีเซ็ตรหัสผ่าน (OTP) ของคุณคือ: *${code}*\n(รหัสมีอายุ 5 นาที และห้ามแจ้งรหัสนี้แก่ผู้อื่น)`
+        : `🔐 *SNG EXPRESS*\nรหัสยืนยัน (OTP) สมัครสมาชิกของคุณคือ: *${code}*\n(รหัสมีอายุ 5 นาที และห้ามแจ้งรหัสนี้แก่ผู้อื่น)`);
 
   try {
     await sendTextMessage(phone, msgBody);
@@ -151,6 +158,28 @@ export async function verifyOtp({ accountId, _phoneRaw, purpose = 'REGISTER', co
        WHERE id = ?`,
       [accountId]
     );
+
+    // Best-effort legacy linkage (PUBLIC_PORTAL_PLAN.md §4.2, never actually
+    // wired up before this). Only auto-link when exactly ONE customers row
+    // shares this phone — ambiguous (0 or 2+ matches) is left unlinked, and
+    // a failure here must never block the registration itself.
+    try {
+      const [[account]] = await pool.query(
+        `SELECT phone, legacy_customer_id FROM customer_accounts WHERE id = ?`,
+        [accountId]
+      );
+      if (account && !account.legacy_customer_id) {
+        const legacyId = await findSoleCustomerMatch(account.phone);
+        if (legacyId) {
+          await pool.query(
+            `UPDATE customer_accounts SET legacy_customer_id = ? WHERE id = ? AND legacy_customer_id IS NULL`,
+            [legacyId, accountId]
+          );
+        }
+      }
+    } catch (linkErr) {
+      console.error('[OTP] legacy_customer_id auto-link failed:', linkErr.message);
+    }
   }
 
   return { success: true };
