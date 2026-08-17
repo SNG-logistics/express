@@ -26,10 +26,11 @@ test('member login provides explicit Thai and Lao country choices', async () => 
 
   assert.match(template, /name="country_code"/);
   assert.match(template, /data-country-flag/);
-  assert.match(template, /ไทย \(Thailand\) \+66/);
-  assert.match(template, /ลาว \(Laos\) \+856/);
+  assert.match(template, />TH \+66</);
+  assert.match(template, />LA \+856</);
   assert.doesNotMatch(template, /🇹🇭|🇱🇦/);
   assert.match(template, /autocomplete="tel-national"/);
+  assert.match(template, /data-phone-input/);
 
   const render = (countryCode) => ejs.render(template, {
     t: () => 'Login',
@@ -40,6 +41,8 @@ test('member login provides explicit Thai and Lao country choices', async () => 
   assert.match(render('66'), /<option value="66"\s+selected\s*>/);
   assert.match(render('856'), /<option value="856"\s+selected\s*>/);
   assert.match(render('856'), /class="country-flag is-laos"/);
+  assert.match(render('66'), /placeholder="09xxxxxxxx"/);
+  assert.match(render('856'), /placeholder="020xxxxxxxx"/);
 });
 
 test('member registration provides the same explicit country choices', async () => {
@@ -56,12 +59,15 @@ test('member registration provides the same explicit country choices', async () 
 
   assert.match(template, /name="country_code"/);
   assert.match(template, /data-country-flag/);
-  assert.match(template, /ไทย \(Thailand\) \+66/);
-  assert.match(template, /ลาว \(Laos\) \+856/);
+  assert.match(template, />TH \+66</);
+  assert.match(template, />LA \+856</);
   assert.doesNotMatch(template, /🇹🇭|🇱🇦/);
+  assert.match(template, /data-phone-input/);
   assert.match(render('66'), /<option value="66"\s+selected\s*>/);
   assert.match(render('856'), /<option value="856"\s+selected\s*>/);
   assert.match(render('856'), /class="country-flag is-laos"/);
+  assert.match(render('66'), /placeholder="09xxxxxxxx"/);
+  assert.match(render('856'), /placeholder="020xxxxxxxx"/);
 });
 
 test('country flag is a CSS graphic that follows the selected country', async () => {
@@ -70,8 +76,15 @@ test('country flag is a CSS graphic that follows the selected country', async ()
     readFile(new URL('../../public/css/portal.css', import.meta.url), 'utf8'),
   ]);
 
-  assert.match(layout, /select\.addEventListener\('change', updateFlag\)/);
+  assert.match(layout, /select\.addEventListener\('change', update\)/);
   assert.match(layout, /classList\.toggle\('is-laos', select\.value === '856'\)/);
   assert.match(styles, /\.country-flag\.is-laos/);
   assert.match(styles, /\.country-flag\.is-laos::after/);
+});
+
+test('layout script switches the phone placeholder with the selected country', async () => {
+  const layout = await readFile(new URL('../../views/customer/layout.ejs', import.meta.url), 'utf8');
+  assert.match(layout, /data-phone-input/);
+  assert.match(layout, /'66': '09xxxxxxxx', '856': '020xxxxxxxx'/);
+  assert.match(layout, /phoneInput\.placeholder = placeholders\[select\.value\]/);
 });

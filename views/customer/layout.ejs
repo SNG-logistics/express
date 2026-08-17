@@ -31,11 +31,16 @@
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
     document.querySelectorAll('[data-country-code]').forEach((select) => {
-      const flag = select.closest('[data-country-picker]')?.querySelector('[data-country-flag]');
-      if (!flag) return;
-      const updateFlag = () => flag.classList.toggle('is-laos', select.value === '856');
-      updateFlag();
-      select.addEventListener('change', updateFlag);
+      const picker = select.closest('[data-country-picker]');
+      const flag = picker?.querySelector('[data-country-flag]');
+      const phoneInput = picker?.querySelector('[data-phone-input]');
+      const placeholders = { '66': '09xxxxxxxx', '856': '020xxxxxxxx' };
+      const update = () => {
+        if (flag) flag.classList.toggle('is-laos', select.value === '856');
+        if (phoneInput) phoneInput.placeholder = placeholders[select.value] || placeholders['66'];
+      };
+      update();
+      select.addEventListener('change', update);
     });
   </script>
 </body>
