@@ -1438,17 +1438,92 @@ main:has(.crm-inbox-layout) {
   scrollbar-color: rgba(255,255,255,0.08) transparent;
 }
 
-/* ── Responsive adjustments ─────────────────────────────────────────────────── */
+/* ── Mobile Navigation Bar & Responsive Controls ────────────────────────────── */
+.crm-mobile-nav-bar {
+  display: none;
+}
+
+/* Responsive adjustments */
 @media (max-width: 1200px) {
   .crm-inbox-layout {
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 280px 1fr;
   }
   .crm-context-panel { display: none; }
   .crm-360-grid { grid-template-columns: 1fr; }
   .crm-charts-grid { grid-template-columns: 1fr; }
 }
+
 @media (max-width: 768px) {
-  .crm-inbox-layout { grid-template-columns: 1fr; }
-  .crm-conv-list-panel { display: none; }
+  .crm-mobile-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--crm-border);
+    position: relative;
+    z-index: 50;
+    flex-shrink: 0;
+  }
+  .crm-mobile-nav-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--crm-border);
+    color: var(--crm-accent);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.18s ease;
+  }
+  .crm-mobile-nav-btn:hover:not(:disabled) {
+    background: var(--crm-accent-glow);
+    border-color: var(--crm-accent);
+  }
+  .crm-mobile-nav-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    color: var(--crm-text-muted);
+  }
+  .crm-mobile-nav-title {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--crm-text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .crm-inbox-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 48px);
+    overflow: hidden;
+  }
+  .crm-conv-list-panel,
+  .crm-chat-panel,
+  .crm-context-panel {
+    display: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+  }
+
+  /* Show active mobile panel driven by data-mobile-view attribute */
+  .crm-inbox-layout[data-mobile-view="list"] .crm-conv-list-panel {
+    display: flex !important;
+  }
+  .crm-inbox-layout[data-mobile-view="chat"] .crm-chat-panel {
+    display: flex !important;
+  }
+  .crm-inbox-layout[data-mobile-view="info"] .crm-context-panel {
+    display: flex !important;
+  }
+
   .crm-kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
+

@@ -10,7 +10,24 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
 %>
 
 <div class="crm-page" data-crm-conv-id="<%= activeConversation ? activeConversation.id : '' %>">
-  <div class="crm-inbox-layout">
+  
+  <!-- Mobile Panel Navigation Bar (visible only on <= 768px screens) -->
+  <div class="crm-mobile-nav-bar">
+    <button type="button" class="crm-mobile-nav-btn" id="mobileNavPrev" onclick="navigateMobilePanel(-1)">
+      <i class="fa-solid fa-chevron-left"></i> <span id="mobilePrevLabel">รายการ</span>
+    </button>
+
+    <div class="crm-mobile-nav-title" id="mobilePanelTitle">
+      <i class="fa-solid fa-comments" id="mobileTitleIcon"></i>
+      <span id="mobileTitleText">รายการแชท (1/3)</span>
+    </div>
+
+    <button type="button" class="crm-mobile-nav-btn" id="mobileNavNext" onclick="navigateMobilePanel(1)">
+      <span id="mobileNextLabel">ห้องแชท</span> <i class="fa-solid fa-chevron-right"></i>
+    </button>
+  </div>
+
+  <div class="crm-inbox-layout" id="crmInboxLayout" data-mobile-view="<%= activeConversation ? 'chat' : 'list' %>">
 
     <%# ─── LEFT: Conversation List Panel ────────────────────────────────── %>
     <div class="crm-conv-list-panel">
@@ -464,6 +481,67 @@ function setChannelFilter(channel) {
   document.getElementById('inboxFilterForm').submit();
 }
 
+// Mobile Panel Navigation (List <-> Chat <-> Info)
+const mobilePanels = ['list', 'chat', 'info'];
+const mobilePanelMeta = {
+  list: { title: 'รายการแชท (1/3)', icon: 'fa-comments', prev: null, next: 'chat', nextLabel: 'ห้องแชท' },
+  chat: { title: 'ห้องแชท (2/3)', icon: 'fa-paper-plane', prev: 'list', prevLabel: 'รายการ', next: 'info', nextLabel: 'ลูกค้า' },
+  info: { title: 'ข้อมูลลูกค้า (3/3)', icon: 'fa-id-card', prev: 'chat', prevLabel: 'ห้องแชท', next: null, nextLabel: null }
+};
+
+let currentMobilePanel = '<%= activeConversation ? "chat" : "list" %>';
+
+function updateMobileNavUI() {
+  const layout = document.getElementById('crmInboxLayout');
+  if (layout) {
+    layout.setAttribute('data-mobile-view', currentMobilePanel);
+  }
+
+  const meta = mobilePanelMeta[currentMobilePanel] || mobilePanelMeta.list;
+  
+  const titleText = document.getElementById('mobileTitleText');
+  const titleIcon = document.getElementById('mobileTitleIcon');
+  if (titleText) titleText.textContent = meta.title;
+  if (titleIcon) titleIcon.className = 'fa-solid ' + meta.icon;
+
+  const prevBtn = document.getElementById('mobileNavPrev');
+  const prevLabel = document.getElementById('mobilePrevLabel');
+  if (prevBtn) {
+    if (meta.prev) {
+      prevBtn.disabled = false;
+      if (prevLabel) prevLabel.textContent = meta.prevLabel;
+    } else {
+      prevBtn.disabled = true;
+      if (prevLabel) prevLabel.textContent = '—';
+    }
+  }
+
+  const nextBtn = document.getElementById('mobileNavNext');
+  const nextLabel = document.getElementById('mobileNextLabel');
+  if (nextBtn) {
+    if (meta.next) {
+      nextBtn.disabled = false;
+      if (nextLabel) nextLabel.textContent = meta.nextLabel;
+    } else {
+      nextBtn.disabled = true;
+      if (nextLabel) nextLabel.textContent = '—';
+    }
+  }
+}
+
+function navigateMobilePanel(dir) {
+  const currentIndex = mobilePanels.indexOf(currentMobilePanel);
+  let newIndex = currentIndex + dir;
+  if (newIndex < 0) newIndex = 0;
+  if (newIndex >= mobilePanels.length) newIndex = mobilePanels.length - 1;
+  currentMobilePanel = mobilePanels[newIndex];
+  updateMobileNavUI();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateMobileNavUI();
+});
+
 const msgContainer = document.getElementById('chatMessages');
 if (msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
 
@@ -578,109 +656,3 @@ function useSuggestion(text) {
   }
 </script>
 
-
-<script>
-const msgContainer = document.getElementById('chatMessages');
-if (msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
-
-function switchTab(tab) {
-  const r=document.getElementById('replySection'),n=document.getElementById('noteSection');
-  const tr=document.getElementById('tabReply'),tn=document.getElementById('tabNote');
-  if(tab==='reply'){r.style.display='block';n.style.display='none';tr.className='btn-crm btn-crm-primary btn-crm-sm';tn.className='btn-crm btn-crm-secondary btn-crm-sm';}
-  else{r.style.display='none';n.style.display='block';tr.className='btn-crm btn-crm-secondary btn-crm-sm';tn.className='btn-crm btn-crm-primary btn-crm-sm';tn.style.opacity='1';}
-}
-function useQuickReply(text){
-  const ta=document.getElementById('messageTextarea');
-  if(ta){ta.value=text;ta.focus();}
-  document.getElementById('qrPanel').style.display='none';
-  switchTab('reply');
-}
-function handleReplyKeydown(e){
-  if(e.key==='/'&&e.target.value===''){e.preventDefault();toggleQrPanel();}
-  if(e.key==='Escape'){document.getElementById('qrPanel').style.display='none';document.getElementById('suggestPanel').style.display='none';}
-  if(e.ctrlKey&&e.key==='Enter')document.getElementById('replyForm')?.submit();
-}
-function pollUnread(){
-  fetch('/api/crm/inbox/unread',{credentials:'same-origin'})
-    .then(r=>r.json()).then(data=>{
-      const badge=document.getElementById('crm-unread-badge');
-      if(badge){badge.textContent=data.count>0?data.count:'';badge.style.display=data.count>0?'inline-block':'none';}
-    }).catch(()=>{});
-}
-pollUnread();setInterval(pollUnread,30000);
-
-function toggleQrPanel(){
-  const p=document.getElementById('qrPanel');
-  p.style.display=p.style.display==='none'?'block':'none';
-}
-
-const CONV_ID=(document.querySelector('[data-crm-conv-id]')||{}).dataset?.crmConvId||'';
-
-let replyLanguage = 'TH';
-function setReplyLanguage(lang) {
-  replyLanguage = lang;
-  const btnTh = document.getElementById('btnReplyLangTh');
-  const btnLa = document.getElementById('btnReplyLangLa');
-  if (lang === 'TH') {
-    btnTh.style.background = 'rgba(129, 140, 248, 0.2)';
-    btnTh.style.color = '#818cf8';
-    btnLa.style.background = 'transparent';
-    btnLa.style.color = '#94a3b8';
-  } else {
-    btnTh.style.background = 'transparent';
-    btnTh.style.color = '#94a3b8';
-    btnLa.style.background = 'rgba(129, 140, 248, 0.2)';
-    btnLa.style.color = '#818cf8';
-  }
-  const panel = document.getElementById('suggestPanel');
-  if (panel && panel.style.display !== 'none') {
-    loadSuggestions();
-  }
-}
-
-async function loadSuggestions(){
-  if(!CONV_ID)return;
-  const panel=document.getElementById('suggestPanel'),list=document.getElementById('suggestList');
-  panel.style.display='block';
-  list.innerHTML='<div style="color:#64748b;font-size:0.78rem;">กำลังโหลดคำแนะนำ...</div>';
-  try{
-    const res=await fetch('/api/crm/inbox/'+CONV_ID+'/suggestions?lang='+replyLanguage,{credentials:'same-origin'});
-    const data=await res.json();
-    if(!data.ok||!data.suggestions.length){
-      list.innerHTML='<div style="color:#64748b;font-size:0.78rem;">ไม่พบคำแนะนำ</div>';return;
-    }
-    list.innerHTML=data.suggestions.map(s=>{
-      const preview=s.content_text.length>100?s.content_text.substring(0,100)+'...':s.content_text;
-      return '<div class="_sug" style="cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid rgba(167,139,250,0.15);background:rgba(30,41,59,0.8);margin-bottom:4px;">'
-        +'<div style="font-size:0.72rem;font-weight:700;color:#a78bfa;margin-bottom:3px;">'+s.title+'</div>'
-        +'<div style="font-size:0.78rem;color:#cbd5e1;line-height:1.5;">'+preview+'</div></div>';
-    }).join('');
-    document.querySelectorAll('._sug').forEach((el,i)=>{
-      const text=data.suggestions[i].content_text;
-      el.addEventListener('click',()=>useSuggestion(text));
-      el.addEventListener('mouseover',()=>el.style.borderColor='rgba(167,139,250,0.4)');
-      el.addEventListener('mouseout', ()=>el.style.borderColor='rgba(167,139,250,0.15)');
-    });
-  }catch(err){
-    list.innerHTML='<div style="color:#f87171;font-size:0.78rem;">โหลดล้มเหลว: '+err.message+'</div>';
-  }
-}
-function useSuggestion(text){
-  const ta=document.getElementById('messageTextarea');
-  if(ta){ta.value=text;ta.focus();}
-  document.getElementById('suggestPanel').style.display='none';
-  switchTab('reply');
-}
-</script>
-<script src="/socket.io/socket.io.js"></script>
-<script src="/js/crm-realtime.js"></script>
-<script>
-  if (typeof CrmRealtime !== 'undefined') {
-    CrmRealtime.init({
-      role: '<%= currentUser ? currentUser.role : "" %>',
-      userId: '<%= currentUser ? currentUser.id : "" %>',
-      conversationId: '<%= activeConversation ? activeConversation.id : "" %>',
-      agentName: '<%= currentUser ? (currentUser.name || currentUser.username) : "" %>'
-    });
-  }
-</script>
