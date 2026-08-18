@@ -41,6 +41,7 @@ import { Server as SocketIO } from 'socket.io';    // ─ Real-time CRM inbox
 import * as tracking from './controllers/trackingController.js';
 import publicRoutes from './routes/public.js';
 import memberRoutes from './routes/member.js';
+import { memberRoot } from './controllers/memberController.js';
 import shopsDirectoryRoutes from './routes/shopsDirectory.js';
 import onlineProductsRoutes from './routes/onlineProducts.js';
 
@@ -471,14 +472,30 @@ app.use(publicRoutes);
 
 // '/' needs its own host-aware handler rather than the blind bounce list
 // above: staff get the dashboard on either host; on the subdomain everyone
-// else gets the customer home page; on the main host everyone else (regular
-// customers who typed the bare domain, or anyone probing it) gets bounced to
-// the customer subdomain instead of ever seeing a login form there — staff
-// sign in via /login directly, which stays reachable on the main host no
-// matter what this route does.
+// else gets forced into the member area (memberRoot sends a logged-in
+// customer on to their account, a logged-out one to /member/login) rather
+// than the public home page — the bare subdomain root should read as "you
+// need to be a member here," not a browsable marketing page; /home is still
+// reachable via the navbar/bottom-nav for anyone who wants the public
+// tools (track/calculate/shops) without logging in. On the main host
+// everyone else (regular customers who typed the bare domain, or anyone
+// probing it) gets bounced to the customer subdomain instead of ever seeing
+// a login form there — staff sign in via /login directly, which stays
+// reachable on the main host no matter what this route does.
 app.get('/', (req, res) => {
   if (req.session?.user) return res.redirect('/dashboard');
-  if (res.locals.isMemberSubdomain) return res.redirect('/home?lang=lo');
+  if (res.locals.isMemberSubdomain) {
+    // Call memberRoot directly rather than res.redirect('/member?lang=lo') —
+    // the isMemberSubdomain res.redirect override above strips any target
+    // starting with '/member' down to whatever follows it (so clean
+    // /member/login-style URLs work), but '/member' alone has nothing after
+    // it but the query string, which would strip to a bare '?lang=lo' and
+    // redirect-loop back to '/'. Setting session.lang here (rather than a
+    // ?lang=lo query param) keeps every fresh bare-root visit defaulting to
+    // Lao the same way the old direct-to-/home redirect did.
+    if (req.session) req.session.lang = 'lo';
+    return memberRoot(req, res);
+  }
   return res.redirect(`//${res.locals.memberHost}/`);
 });
 
