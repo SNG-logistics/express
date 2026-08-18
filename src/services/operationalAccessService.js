@@ -63,5 +63,11 @@ export function canAutoScanTarget({ role, targetStatus, order, sessionBranchId }
 export function canUnloadAtDestination({ role, orderDirection, tripDirection }) {
   if (!orderDirection || orderDirection !== tripDirection) return false;
   if (MANAGEMENT_ROLES.has(role) || role === 'dispatcher') return true;
+  // A branch sitting on the truck's route can take its parcels off there
+  // instead of the truck driving past to the main warehouse and back.
+  // canAutoScanTarget already allows branch_operator to reach the same
+  // AT_DEST_WH status via the auto-scan screen; without this the two doors
+  // into that status disagree on who may open them.
+  if (role === 'branch_operator') return true;
   return role === expectedWarehouseRole(orderDirection, 'destination');
 }

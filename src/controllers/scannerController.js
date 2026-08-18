@@ -8,7 +8,7 @@ import pool from '../config/db.js';
 import { SCANNER_ALLOWED_STATUSES } from '../constants/statuses.js';
 import { canTransitionOrder } from '../constants/transitions.js';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
-import { assignBranchToOrder } from './branchesController.js';
+import { assignBranchToOrder, takeBranchCustody } from './branchesController.js';
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
 import { canAutoScanTarget, canUnloadAtDestination } from '../services/operationalAccessService.js';
 
@@ -334,6 +334,21 @@ export async function showUnload(req, res) {
   }
 }
 
+/**
+ * Route an order that has just come off the truck at the destination.
+ *
+ * A branch_operator doing the scan means the box was unloaded AT their branch,
+ * so that branch takes custody of it — the parcel is really there, and its
+ * riders can be offered the job right away. Anyone else is unloading at the
+ * main warehouse, where the destination branch is still only a routing
+ * decision, so fall back to matching the receiver's GPS.
+ */
+async function routeUnloadedOrder(orderId, sessionUser, conn) {
+  const branchId = sessionUser?.role === 'branch_operator' ? sessionUser?.branch_id : null;
+  if (branchId) return takeBranchCustody(orderId, branchId, conn);
+  return assignBranchToOrder(orderId, conn);
+}
+
 // ─── POST /scanner/unload/:tripId/confirm/:orderId ───────────────────────────
 export async function confirmUnload(req, res) {
   try {
@@ -371,7 +386,7 @@ export async function confirmUnload(req, res) {
           'UPDATE trip_orders SET unloaded_at=NOW() WHERE trip_id=? AND order_id=?',
           [tripId, orderId]
         );
-        await assignBranchToOrder(orderId, conn);
+        await routeUnloadedOrder(orderId, req.session.user, conn);
       },
     });
 
@@ -653,7 +668,12 @@ export async function processAutoScan(req, res) {
       note,
       source: 'SCANNER_AUTO',
       updates: target_status === 'ON_TRUCK' ? { trip_id: Number(trip_id) } : {},
-      afterTransition: target_status === 'ON_TRUCK'
+      afterTransition: target_status === 'AT_DEST_WH'
+        // Same routing the trip-unload screen does — without this, a parcel
+        // taken off the truck through the auto-scan screen never got a
+        // destination branch at all.
+        ? async (conn) => { await routeUnloadedOrder(order.id, req.session.user, conn); }
+        : target_status === 'ON_TRUCK'
         ? async (conn) => {
           const [[trip]] = await conn.query('SELECT * FROM trips WHERE id=? FOR UPDATE', [trip_id]);
           if (!trip || !['PLANNED','LOADING'].includes(trip.status)) {

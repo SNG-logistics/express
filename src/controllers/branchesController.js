@@ -327,6 +327,25 @@ export async function assignBranchToOrder(orderId, conn = pool) {
   return assignOrderToBranch(orderId, result.branch.id, conn, result);
 }
 
+/**
+ * takeBranchCustody — a branch physically unloaded the parcel off the truck.
+ *
+ * Unlike assignBranchToOrder, which guesses the branch from the RECEIVER's GPS,
+ * this pins the order to the branch that actually has the box in hand. Stamping
+ * received_at is what tells riderDispatchService the goods are really there, so
+ * the job can open to that branch's riders straight away instead of waiting for
+ * the BRANCH_RECEIVED scan (which only applies to parcels forwarded on from the
+ * main warehouse).
+ */
+export async function takeBranchCustody(orderId, branchId, conn = pool) {
+  const result = await assignOrderToBranch(orderId, branchId, conn);
+  await conn.query(
+    'UPDATE branch_deliveries SET received_at=NOW() WHERE order_id=? AND branch_id=?',
+    [orderId, branchId]
+  );
+  return result;
+}
+
 export async function assignOrderToBranch(orderId, branchId, conn = pool, precomputed = null) {
   const [[order]] = await conn.query('SELECT * FROM orders WHERE id=?', [orderId]);
   const [[branch]] = await conn.query("SELECT * FROM branches WHERE id=? AND status='active'", [branchId]);
