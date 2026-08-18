@@ -42,6 +42,7 @@ import * as tracking from './controllers/trackingController.js';
 import publicRoutes from './routes/public.js';
 import memberRoutes from './routes/member.js';
 import shopsDirectoryRoutes from './routes/shopsDirectory.js';
+import onlineProductsRoutes from './routes/onlineProducts.js';
 
 import { i18nMiddleware } from './middleware/i18n.js';
 import { themeMiddleware } from './middleware/theme.js';
@@ -416,6 +417,8 @@ app.use((req, res, next) => {
                            'finance','staff','customs','customer_service'),
     // Partner / quotation — aligns with partner route guard
     viewPartner:       has('admin','manager','staff','branch_operator'),
+    // Online products catalog — aligns with /admin/products route guard
+    manageProducts:    has('admin','manager','staff'),
   };
 
   next();
@@ -462,6 +465,7 @@ app.use(crmRoutes);          // ─ Omnichannel CRM
 
 
 app.use(shopsDirectoryRoutes);
+app.use(onlineProductsRoutes);
 app.use(memberRoutes);
 app.use(publicRoutes);
 

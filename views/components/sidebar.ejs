@@ -239,6 +239,15 @@
     </a>
     <% } %>
 
+    <% if (can.manageProducts) { %>
+    <a href="/admin/products"
+       class="sidebar-link <%= currentPath.startsWith('/admin/products') ? 'active' : '' %>"
+       title="จัดการสินค้าออนไลน์">
+      <i class="fa-solid fa-bag-shopping text-amber-400"></i>
+      <span><%= lang === 'lo' ? 'ສິນຄ້າອອນລາຍ' : 'สินค้าออนไลน์' %></span>
+    </a>
+    <% } %>
+
     <% if (can.manageUsers) { %>
     <a href="/users"
        class="sidebar-link <%= currentPath.startsWith('/users') ? 'active' : '' %>">

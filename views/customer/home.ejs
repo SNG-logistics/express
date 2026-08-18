@@ -3,32 +3,177 @@
   // language code is 'th'/'lo' — 'lo' never matches '_la', so this mapping
   // is needed or the Lao view silently falls back to Thai company data.
   const companySuffix = lang === 'lo' ? 'la' : 'th';
+  const homeMember = typeof portalCurrentUser !== 'undefined' ? portalCurrentUser : null;
+  const companyName = company['company_name_' + companySuffix] || company.company_name_th || 'SNG Express';
+  const companyAddress = company['company_address_' + companySuffix] || company.company_address_th || '';
+  const companyPhone = company.company_phone || '';
+  const companyEmail = company.company_email || '';
 %>
 <section class="portal-shell home-page">
-  <div class="hero-card">
+  <header class="home-hero">
     <p class="eyebrow">SNG EXPRESS</p>
     <h1><%= t('portal.heroTitle') %></h1>
-    <p><%= t('portal.heroSubtitle') %></p>
-    <form class="portal-search" action="/track" method="get">
-      <label for="job-search"><%= t('portal.trackLabel') %></label>
-      <div>
-        <input id="job-search" name="q" autocomplete="off" placeholder="SNG-XXXXXX" required>
-        <button class="btn-gold" type="submit"><i class="fa-solid fa-magnifying-glass"></i> <%= t('common.search') %></button>
-      </div>
-    </form>
+    <p class="home-hero-sub"><%= t('portal.heroSubtitle') %></p>
+    <ul class="home-lanes" aria-label="<%= t('portal.laneTitle') %>">
+      <li><span class="lane-flag" aria-hidden="true"></span> → <span class="lane-flag is-laos" aria-hidden="true"></span> <%= t('order.thToLa') %></li>
+      <li><span class="lane-flag is-laos" aria-hidden="true"></span> → <span class="lane-flag" aria-hidden="true"></span> <%= t('order.laToTh') %></li>
+    </ul>
+  </header>
+
+  <form class="home-track" action="/track" method="get" data-track-form>
+    <label for="home-track-q"><%= t('portal.trackLabel') %></label>
+    <div class="home-track-row">
+      <input
+        id="home-track-q"
+        class="input-portal"
+        type="text"
+        name="q"
+        placeholder="SNG-XXXXXX"
+        autocomplete="off"
+        inputmode="search"
+        required
+      >
+      <button class="home-track-button" type="submit">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <span><%= t('common.search') %></span>
+      </button>
+    </div>
+    <div class="home-recent" data-recent hidden>
+      <span class="home-recent-label"><%= t('portal.recentSearches') %></span>
+      <div class="home-recent-list" data-recent-list></div>
+      <button class="home-recent-clear" type="button" data-recent-clear><%= t('portal.clearRecent') %></button>
+    </div>
+  </form>
+
+  <div class="home-section-heading">
+    <h2><%= t('portal.servicesTitle') %></h2>
   </div>
 
-  <section class="shortcut-grid" aria-label="Services">
-    <a class="card shortcut" href="/track"><i class="fa-solid fa-location-dot"></i><strong><%= t('portal.track') %></strong><small><%= t('portal.trackHint') %></small></a>
-    <a class="card shortcut" href="/calculate"><i class="fa-solid fa-calculator"></i><strong><%= t('portal.calculate') %></strong><small><%= t('portal.calculateHint') %></small></a>
-    <a class="card shortcut" href="/shops"><i class="fa-solid fa-store"></i><strong><%= t('portal.shops') %></strong><small><%= t('portal.shopsHint') %></small></a>
-    <a class="card shortcut" href="<%= portalCurrentUser ? '/member/profile' : '/member/register' %>"><i class="fa-solid fa-user-plus"></i><strong><%= portalCurrentUser ? t('portal.account') : t('portal.register') %></strong><small><%= t('portal.memberHint') %></small></a>
+  <nav class="home-services" aria-label="<%= t('portal.servicesTitle') %>">
+    <a class="home-service" href="/track">
+      <span class="home-service-icon"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></span>
+      <span><strong><%= t('portal.track') %></strong><small><%= t('portal.trackHint') %></small></span>
+    </a>
+    <a class="home-service" href="/calculate">
+      <span class="home-service-icon"><i class="fa-solid fa-calculator" aria-hidden="true"></i></span>
+      <span><strong><%= t('portal.calculate') %></strong><small><%= t('portal.calculateHint') %></small></span>
+    </a>
+    <a class="home-service" href="/shops">
+      <span class="home-service-icon"><i class="fa-solid fa-store" aria-hidden="true"></i></span>
+      <span><strong><%= t('portal.shops') %></strong><small><%= t('portal.shopsHint') %></small></span>
+    </a>
+    <a class="home-service" href="/member/online">
+      <span class="home-service-icon"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i></span>
+      <span><strong><%= t('portal.online') %></strong><small><%= t('portal.onlineHint') %></small></span>
+    </a>
+    <a class="home-service" href="<%= homeMember ? '/member/orders' : '/member/register' %>">
+      <span class="home-service-icon"><i class="fa-solid <%= homeMember ? 'fa-boxes-stacked' : 'fa-user-plus' %>" aria-hidden="true"></i></span>
+      <span>
+        <strong><%= homeMember ? t('member.myOrders') : t('portal.register') %></strong>
+        <small><%= homeMember ? t('member.orderHistoryHint') : t('portal.memberHint') %></small>
+      </span>
+    </a>
+  </nav>
+
+  <section class="home-member" aria-labelledby="home-member-title">
+    <div class="home-member-copy">
+      <strong id="home-member-title">
+        <% if (homeMember) { %>
+          <%= t('member.greeting') %>, <%= homeMember.first_name || '' %>
+        <% } else { %>
+          <%= t('portal.memberCtaTitle') %>
+        <% } %>
+      </strong>
+      <small><%= homeMember ? t('portal.memberBackHint') : t('portal.memberCtaHint') %></small>
+    </div>
+    <div class="home-member-actions">
+      <% if (homeMember) { %>
+        <a class="btn-gold" href="/member/profile"><%= t('portal.goToAccount') %></a>
+      <% } else { %>
+        <a class="btn-gold" href="/member/register"><%= t('portal.register') %></a>
+        <a class="btn-outline" href="/member/login"><%= t('portal.login') %></a>
+      <% } %>
+    </div>
   </section>
 
-  <footer class="portal-footer">
-    <strong><%= company['company_name_' + companySuffix] || company.company_name_th || 'SNG Express' %></strong>
-    <span><%= company['company_address_' + companySuffix] || company.company_address_th || '' %></span>
-    <a href="tel:<%= company.company_phone || '' %>"><%= company.company_phone || '' %></a>
-    <a href="mailto:<%= company.company_email || '' %>"><%= company.company_email || '' %></a>
-  </footer>
+  <section class="home-contact" aria-labelledby="home-contact-title">
+    <span class="home-contact-label" id="home-contact-title"><%= t('portal.contactTitle') %></span>
+    <strong><%= companyName %></strong>
+    <% if (companyAddress) { %><span class="home-contact-address"><%= companyAddress %></span><% } %>
+    <div class="home-contact-actions">
+      <% if (companyPhone) { %>
+        <a href="tel:<%= companyPhone.replace(/\s+/g, '') %>">
+          <i class="fa-solid fa-phone" aria-hidden="true"></i>
+          <span><%= companyPhone %></span>
+        </a>
+      <% } %>
+      <% if (companyEmail) { %>
+        <a href="mailto:<%= companyEmail %>">
+          <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+          <span><%= companyEmail %></span>
+        </a>
+      <% } %>
+    </div>
+  </section>
 </section>
+
+<script>
+  (() => {
+    const STORAGE_KEY = 'sng.recentTracking';
+    const MAX_ITEMS = 4;
+    const form = document.querySelector('[data-track-form]');
+    if (!form) return;
+
+    const input = form.querySelector('input[name="q"]');
+    const box = form.querySelector('[data-recent]');
+    const list = form.querySelector('[data-recent-list]');
+    const clearButton = form.querySelector('[data-recent-clear]');
+
+    // localStorage is unavailable in private mode on some mobile browsers —
+    // the whole feature degrades to "no chips" instead of throwing.
+    const read = () => {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter(v => typeof v === 'string') : [];
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const write = (items) => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch (error) {
+        /* ignore quota / disabled storage */
+      }
+    };
+
+    const render = () => {
+      const items = read();
+      list.textContent = '';
+      items.forEach((item) => {
+        const link = document.createElement('a');
+        link.className = 'home-recent-chip';
+        link.href = '/track?q=' + encodeURIComponent(item);
+        link.textContent = item;
+        list.appendChild(link);
+      });
+      box.hidden = items.length === 0;
+    };
+
+    form.addEventListener('submit', () => {
+      const value = (input.value || '').trim();
+      if (!value) return;
+      const items = [value, ...read().filter(item => item !== value)].slice(0, MAX_ITEMS);
+      write(items);
+    });
+
+    clearButton.addEventListener('click', () => {
+      write([]);
+      render();
+    });
+
+    render();
+  })();
+</script>

@@ -175,6 +175,8 @@
     "calculateHint": "ประเมินค่าส่งไทย-ลาวล่วงหน้า",
     "shops": "ร้านค้าเข้าร่วม",
     "shopsHint": "ร้านค้าพันธมิตรที่ SNG เป็นตัวแทนส่งให้",
+    "online": "สินค้าออนไลน์",
+    "onlineHint": "รวมดีลเด็ดจากทุกแพลตฟอร์ม",
     "account": "บัญชีของฉัน",
     "login": "เข้าสู่ระบบ",
     "register": "สมัครสมาชิก",
@@ -189,7 +191,19 @@
     "chargeable": "น้ำหนักคิดค่าส่ง",
     "notFound": "ไม่พบหน้านี้",
     "notFoundHint": "หน้าที่คุณค้นหาอาจถูกย้ายหรือไม่มีอยู่แล้ว",
-    "backHome": "กลับหน้าแรก"
+    "backHome": "กลับหน้าแรก",
+    "recentSearches": "ค้นหาล่าสุด",
+    "clearRecent": "ล้าง",
+    "servicesTitle": "บริการของเรา",
+    "laneTitle": "เส้นทางให้บริการ",
+    "memberCtaTitle": "สมัครสมาชิกฟรี",
+    "memberCtaHint": "ดูพัสดุทั้งหมด ขอใบเสนอราคา และรับเครดิตแนะนำเพื่อน",
+    "memberBackTitle": "กลับเข้าบัญชีของคุณ",
+    "memberBackHint": "ดูพัสดุล่าสุดและเครดิตแนะนำเพื่อน",
+    "goToAccount": "ไปที่บัญชีของฉัน",
+    "contactTitle": "ติดต่อเรา",
+    "callNow": "โทรหาเรา",
+    "emailUs": "ส่งอีเมล"
   },
 
   "tracking": {
@@ -210,6 +224,8 @@
 
   "member": {
     "welcome": "ยินดีต้อนรับ",
+    "greeting": "สวัสดี",
+    "verified": "ยืนยันตัวตนแล้ว",
     "myProfile": "ข้อมูลส่วนตัว",
     "myOrders": "พัสดุของฉัน",
     "points": "แต้มสะสม",
@@ -223,8 +239,34 @@
     "otpSentTo": "ส่งรหัสไปยังเบอร์",
     "noOrders": "ยังไม่มีรายการพัสดุ",
     "viewTracking": "ดูสถานะ",
-    "viewSticker": "ใบปะหน้า",
-    "quoteRequest": "เช็คราคาสินค้า"
+    "viewSticker": "ใบบิล",
+    "quoteRequest": "เช็คราคาสินค้า",
+    "trackParcel": "ติดตามพัสดุ",
+    "trackPlaceholder": "กรอกเลข SNG",
+    "latestOrder": "พัสดุล่าสุด",
+    "viewAll": "ดูทั้งหมด",
+    "viewJourney": "ดูการเดินทาง",
+    "noRecentOrder": "ยังไม่มีพัสดุในบัญชีนี้",
+    "noRecentOrderHint": "เมื่อเบอร์ผู้ส่งหรือผู้รับตรงกับบัญชี รายการจะปรากฏที่นี่",
+    "orderUnavailable": "โหลดข้อมูลพัสดุไม่ได้",
+    "progressCreated": "สร้างรายการ",
+    "progressTransit": "ระหว่างทาง",
+    "progressDestination": "ถึงปลายทาง",
+    "progressDelivered": "ส่งสำเร็จ",
+    "yourServices": "บริการของคุณ",
+    "manageAccount": "จัดการบัญชี",
+    "orderHistoryHint": "ประวัติและใบบิล",
+    "quoteRequestHint": "ส่งลิงก์สินค้าจากไทย",
+    "quoteHistory": "คำขอเช็คราคา",
+    "quoteHistoryHint": "ติดตามคำขอและใบเสนอราคา",
+    "profileHint": "ชื่อ เบอร์โทร และรหัสผ่าน",
+    "creditUnavailable": "โหลดเครดิตไม่ได้",
+    "lak": "กีบ",
+    "noReferralCode": "ยังไม่มีรหัสแนะนำเพื่อน",
+    "copyCode": "คัดลอกรหัส",
+    "copied": "คัดลอกแล้ว",
+    "copyFailed": "คัดลอกไม่สำเร็จ",
+    "logout": "ออกจากระบบ"
   },
 
   "quoteRequest": {
@@ -306,5 +348,13 @@
     "loginToReview": "กรุณาเข้าสู่ระบบสมาชิกเพื่อเขียนรีวิว",
     "reviewPendingNote": "รีวิวของคุณอยู่ระหว่างรอเจ้าหน้าที่อนุมัติ",
     "averageRating": "คะแนนเฉลี่ย"
+  },
+
+  "online": {
+    "title": "สินค้าออนไลน์",
+    "subtitle": "รวมสินค้าจากทุกแพลตฟอร์ม กดเข้าไปเช็คราคาและซื้อได้เลย",
+    "noProductsFound": "ยังไม่มีสินค้าแนะนำตอนนี้",
+    "discountPrefix": "ลด",
+    "otherPlatform": "อื่นๆ"
   }
 }

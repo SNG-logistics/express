@@ -175,6 +175,8 @@
     "calculateHint": "ປະເມີນຄ່າສົ່ງໄທ-ລາວລ່ວງໜ້າ",
     "shops": "ຮ້ານຄ້າເຂົ້າຮ່ວມ",
     "shopsHint": "ຮ້ານຄ້າພັນທະມິດທີ່ SNG ເປັນຕົວແທນສົ່ງໃຫ້",
+    "online": "ສິນຄ້າອອນລາຍ",
+    "onlineHint": "ລວມດີນເດັດຈາກທຸກແພລດຟອມ",
     "account": "ບັນຊີຂອງຂ້ອຍ",
     "login": "ເຂົ້າສູ່ລະບົບ",
     "register": "ສະໝັກສະມາຊິກ",
@@ -189,7 +191,19 @@
     "chargeable": "ນ້ຳໜັກຄິດຄ່າສົ່ງ",
     "notFound": "ບໍ່ພົບໜ້ານີ້",
     "notFoundHint": "ໜ້າທີ່ທ່ານຄົ້ນຫາອາດຖືກຍ້າຍ ຫຼືບໍ່ມີແລ້ວ",
-    "backHome": "ກັບໜ້າຫຼັກ"
+    "backHome": "ກັບໜ້າຫຼັກ",
+    "recentSearches": "ຄົ້ນຫາຫຼ້າສຸດ",
+    "clearRecent": "ລຶບ",
+    "servicesTitle": "ບໍລິການຂອງພວກເຮົາ",
+    "laneTitle": "ເສັ້ນທາງໃຫ້ບໍລິການ",
+    "memberCtaTitle": "ສະໝັກສະມາຊິກຟຣີ",
+    "memberCtaHint": "ເບິ່ງພັດສະດຸທັງໝົດ ຂໍໃບສະເໜີລາຄາ ແລະ ຮັບເຄຣດິດແນະນຳໝູ່",
+    "memberBackTitle": "ກັບເຂົ້າບັນຊີຂອງທ່ານ",
+    "memberBackHint": "ເບິ່ງພັດສະດຸຫຼ້າສຸດ ແລະ ເຄຣດິດແນະນຳໝູ່",
+    "goToAccount": "ໄປທີ່ບັນຊີຂອງຂ້ອຍ",
+    "contactTitle": "ຕິດຕໍ່ພວກເຮົາ",
+    "callNow": "ໂທຫາພວກເຮົາ",
+    "emailUs": "ສົ່ງອີເມວ"
   },
 
   "tracking": {
@@ -210,6 +224,8 @@
 
   "member": {
     "welcome": "ຍິນດີຕ້ອນຮັບ",
+    "greeting": "ສະບາຍດີ",
+    "verified": "ຢືນຢັນຕົວຕົນແລ້ວ",
     "myProfile": "ຂໍ້ມູນສ່ວນຕົວ",
     "myOrders": "ພັດສະດຸຂອງຂ້ອຍ",
     "points": "ຄະແນນສະສົມ",
@@ -223,8 +239,34 @@
     "otpSentTo": "ສົ່ງລະຫັດໄປຫາເບີ",
     "noOrders": "ຍັງບໍ່ມີລາຍການພັດສະດຸ",
     "viewTracking": "ເບິ່ງສະຖານະ",
-    "viewSticker": "ໃບປະໜ້າ",
-    "quoteRequest": "ກວດລາຄາສິນຄ້າ"
+    "viewSticker": "ໃບບິນ",
+    "quoteRequest": "ກວດລາຄາສິນຄ້າ",
+    "trackParcel": "ຕິດຕາມພັດສະດຸ",
+    "trackPlaceholder": "ປ້ອນເລກ SNG",
+    "latestOrder": "ພັດສະດຸລ່າສຸດ",
+    "viewAll": "ເບິ່ງທັງໝົດ",
+    "viewJourney": "ເບິ່ງການເດີນທາງ",
+    "noRecentOrder": "ຍັງບໍ່ມີພັດສະດຸໃນບັນຊີນີ້",
+    "noRecentOrderHint": "ເມື່ອເບີຜູ້ສົ່ງ ຫຼື ຜູ້ຮັບກົງກັບບັນຊີ ລາຍການຈະສະແດງຢູ່ບ່ອນນີ້",
+    "orderUnavailable": "ໂຫຼດຂໍ້ມູນພັດສະດຸບໍ່ໄດ້",
+    "progressCreated": "ສ້າງລາຍການ",
+    "progressTransit": "ລະຫວ່າງທາງ",
+    "progressDestination": "ຮອດປາຍທາງ",
+    "progressDelivered": "ສົ່ງສຳເລັດ",
+    "yourServices": "ບໍລິການຂອງທ່ານ",
+    "manageAccount": "ຈັດການບັນຊີ",
+    "orderHistoryHint": "ປະຫວັດ ແລະ ໃບບິນ",
+    "quoteRequestHint": "ສົ່ງລິ້ງສິນຄ້າຈາກໄທ",
+    "quoteHistory": "ຄຳຂໍກວດລາຄາ",
+    "quoteHistoryHint": "ຕິດຕາມຄຳຂໍ ແລະ ໃບສະເໜີລາຄາ",
+    "profileHint": "ຊື່ ເບີໂທ ແລະ ລະຫັດຜ່ານ",
+    "creditUnavailable": "ໂຫຼດເຄຣດິດບໍ່ໄດ້",
+    "lak": "ກີບ",
+    "noReferralCode": "ຍັງບໍ່ມີລະຫັດແນະນຳໝູ່",
+    "copyCode": "ສຳເນົາລະຫັດ",
+    "copied": "ສຳເນົາແລ້ວ",
+    "copyFailed": "ສຳເນົາບໍ່ສຳເລັດ",
+    "logout": "ອອກຈາກລະບົບ"
   },
 
   "quoteRequest": {
@@ -306,5 +348,13 @@
     "loginToReview": "ກະລຸນາເຂົ້າສູ່ລະບົບສະມາຊິກເພື່ອຂຽນຣີວິວ",
     "reviewPendingNote": "ຣີວິວຂອງທ່ານຢູ່ລະຫວ່າງລໍຖ້າພະນັກງານອະນຸມັດ",
     "averageRating": "ຄະແນນສະເລ່ຍ"
+  },
+
+  "online": {
+    "title": "ສິນຄ້າອອນລາຍ",
+    "subtitle": "ລວມສິນຄ້າຈາກທຸກແພລດຟອມ ກົດເຂົ້າໄປເບິ່ງລາຄາ ແລະ ຊື້ໄດ້ເລີຍ",
+    "noProductsFound": "ຍັງບໍ່ມີສິນຄ້າແນະນຳຕອນນີ້",
+    "discountPrefix": "ຫຼຸດ",
+    "otherPlatform": "ອື່ນໆ"
   }
 }

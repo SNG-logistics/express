@@ -1,0 +1,58 @@
+<%
+  const PLATFORM_LABELS = {
+    lazada: 'Lazada',
+    shopee: 'Shopee',
+    alibaba: 'Alibaba',
+    tiktok_shop: 'TikTok Shop',
+    makro: 'Makro',
+    other: t('online.otherPlatform'),
+  };
+%>
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">ONLINE DEALS</p>
+    <h1><%= t('online.title') %></h1>
+    <p><%= t('online.subtitle') %></p>
+  </div>
+
+  <% if (products && products.length > 0) { %>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;">
+      <% products.forEach(product => {
+        const badgeText = product.discount_pct
+          ? `${t('online.discountPrefix')} ${Number(product.discount_pct)}%`
+          : (product.badge_label || null);
+      %>
+      <a href="<%= product.product_url %>" target="_blank" rel="noopener" class="card" style="text-decoration: none; color: inherit; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--portal-surface-2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <% if (product.photo_path) { %>
+            <img src="<%= product.photo_path %>" alt="<%= product.name %>" style="width: 100%; height: 100%; object-fit: cover;">
+          <% } else { %>
+            <i class="fa-solid fa-bag-shopping" style="font-size: 3rem; color: var(--portal-text-faint);"></i>
+          <% } %>
+          <% if (badgeText) { %>
+          <span style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(10, 10, 10, 0.8); border: 1px solid var(--portal-border); padding: 0.2rem 0.5rem; border-radius: 0.5rem; font-size: 0.75rem; color: var(--portal-gold); font-weight: 700;">
+            <i class="fa-solid fa-tag" style="color: var(--portal-gold); font-size: 0.7rem;"></i> <%= badgeText %>
+          </span>
+          <% } %>
+        </div>
+        <div style="padding: 1rem; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <strong style="font-size: 1.1rem; color: var(--portal-gold); display: block;"><%= product.name %></strong>
+          </div>
+          <% if (product.platform) { %>
+          <div style="font-size: 0.78rem; color: var(--portal-text-faint); margin-top: 0.75rem; border-top: 1px solid var(--portal-border); padding-top: 0.5rem;">
+            <i class="fa-solid fa-store" style="color: var(--portal-gold);"></i>
+            <span><%= PLATFORM_LABELS[product.platform] || product.platform %></span>
+          </div>
+          <% } %>
+        </div>
+      </a>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <i class="fa-solid fa-bag-shopping"></i>
+      <p style="font-size: 1.1rem; font-weight: 700; color: var(--portal-text); margin-top: 0.75rem;"><%= t('online.noProductsFound') %></p>
+    </div>
+  <% } %>
+</section>
