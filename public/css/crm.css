@@ -1462,11 +1462,20 @@ main:has(.crm-inbox-layout) {
 }
 
 @media (max-width: 768px) {
+  main:has(.crm-inbox-layout) {
+    height: calc(100dvh - 60px - 56px) !important;
+    overflow: hidden !important;
+  }
+  .crm-page {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
   .crm-mobile-nav-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: 8px 12px;
     background: rgba(30, 41, 59, 0.95);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--crm-border);
@@ -1478,14 +1487,14 @@ main:has(.crm-inbox-layout) {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--crm-border);
     color: var(--crm-accent);
-    padding: 6px 12px;
+    padding: 5px 10px;
     border-radius: 8px;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     transition: all 0.18s ease;
   }
   .crm-mobile-nav-btn:hover:not(:disabled) {
@@ -1498,7 +1507,7 @@ main:has(.crm-inbox-layout) {
     color: var(--crm-text-muted);
   }
   .crm-mobile-nav-title {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 800;
     color: var(--crm-text);
     display: flex;
@@ -1509,8 +1518,8 @@ main:has(.crm-inbox-layout) {
   .crm-inbox-layout {
     display: flex;
     flex-direction: column;
-    height: calc(100% - 48px);
-    overflow: hidden;
+    height: calc(100% - 42px) !important;
+    overflow: hidden !important;
   }
   .crm-conv-list-panel,
   .crm-chat-panel,
@@ -1527,11 +1536,38 @@ main:has(.crm-inbox-layout) {
   }
   .crm-inbox-layout[data-mobile-view="chat"] .crm-chat-panel {
     display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    overflow: hidden !important;
   }
   .crm-inbox-layout[data-mobile-view="info"] .crm-context-panel {
     display: flex !important;
   }
 
+  /* Chat Messages Feed — internal scroll */
+  .crm-chat-messages {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 14px 16px !important;
+  }
+
+  /* Sticky Reply Bar pinned at bottom of mobile view */
+  .crm-reply-bar {
+    position: sticky !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    background: rgba(15, 23, 42, 0.98) !important;
+    backdrop-filter: blur(16px) !important;
+    border-top: 1px solid var(--crm-border-strong) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5) !important;
+    padding: 10px 12px !important;
+    flex-shrink: 0 !important;
+  }
+
   .crm-kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
 
