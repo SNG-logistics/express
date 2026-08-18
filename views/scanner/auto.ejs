@@ -60,7 +60,7 @@
             </optgroup>
           <% } %>
 
-          <% if (role === 'branch_operator') { %>
+          <% if (isAdmin || role === 'branch_operator') { %>
             <optgroup label="สาขา">
               <option value="BRANCH_RECEIVED">รับเข้าสาขา (BRANCH RECEIVED)</option>
             </optgroup>
