@@ -9,6 +9,8 @@ const router = Router();
 router.get('/branches',          requireLogin, requireRole(['admin','manager']),      branches.list);
 router.get('/branches/new',      requireLogin, requireRole(['admin','manager']),      branches.showCreate);
 router.post('/branches',         requireLogin, requireRole(['admin','manager']),      branches.create);
+router.get('/branches/:id/edit', requireLogin, requireRole(['admin','manager']),      branches.showEdit);
+router.post('/branches/:id/edit', requireLogin, requireRole(['admin','manager']),     branches.update);
 router.get('/branches/:id',      requireLogin, requireRole(['admin','manager']),      branches.detail);
 router.post('/branches/:id/status', requireLogin, requireRole(['admin','manager']),   branches.updateStatus);
 

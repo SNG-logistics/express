@@ -13,6 +13,10 @@
        : 'bg-red-500/15 text-red-400 border border-red-500/20' %>">
       <%= branch.status %>
     </span>
+    <a href="/branches/<%= branch.id %>/edit"
+      class="ml-auto px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:border-amber-500/40 text-sm font-semibold transition-all">
+      <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขสาขา
+    </a>
   </div>
   <p class="text-slate-400 text-sm">
     <i class="fa-solid fa-barcode mr-1.5"></i><%= branch.branch_code %>

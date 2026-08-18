@@ -63,6 +63,20 @@ export async function showCreate(req, res) {
   delete req.session.branchDraft;
 }
 
+/**
+ * Read a numeric form field, falling back only when it is genuinely absent.
+ *
+ * `Number(x) || fallback` cannot express a zero, because 0 is falsy — which
+ * made a free delivery zone impossible to save: entering 0 silently stored the
+ * default fee instead. Zone A is now the free launch-promotion tier, so zero
+ * has to survive the round trip.
+ */
+function numField(raw, fallback) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 export async function create(req, res) {
   const {
     branch_code, name, operator_name, phone, email, address,
@@ -78,8 +92,8 @@ export async function create(req, res) {
   if (!name?.trim())        errors.push('ต้องระบุชื่อสาขา');
   if (!operator_name?.trim()) errors.push('ต้องระบุชื่อเจ้าของ');
 
-  const hubPct    = Number(split_hub_pct)    || 30;
-  const branchPct = Number(split_branch_pct) || 70;
+  const hubPct    = numField(split_hub_pct, 30);
+  const branchPct = numField(split_branch_pct, 70);
   if (Math.abs(hubPct + branchPct - 100) > 0.01) {
     errors.push(`Hub% + Branch% ต้องรวมเป็น 100 (ปัจจุบัน ${hubPct + branchPct})`);
   }
@@ -104,8 +118,8 @@ export async function create(req, res) {
         phone || null, email || null, address || null,
         province || null, district || null,
         lat ? Number(lat) : null, lng ? Number(lng) : null,
-        Number(zone_a_km) || 5, Number(zone_b_km) || 10, Number(zone_c_km) || 15,
-        Number(fee_zone_a) || 15000, Number(fee_zone_b) || 25000, Number(fee_zone_c) || 40000,
+        numField(zone_a_km, 5), numField(zone_b_km, 10), numField(zone_c_km, 15),
+        numField(fee_zone_a, 0), numField(fee_zone_b, 25000), numField(fee_zone_c, 40000),
         split_plan || 'A', hubPct, branchPct,
         notes || null,
       ]
@@ -121,6 +135,98 @@ export async function create(req, res) {
     req.session.flash = { type: 'error', message: err.message };
     res.redirect('/branches/new');
   }
+}
+
+/**
+ * Update a branch's delivery zones, fees and revenue split.
+ *
+ * There was previously no way to change any of this after creation — only
+ * status could be toggled — so a branch created with the wrong radius or fee
+ * was stuck with it, and a company-wide pricing change (such as making Zone A
+ * a free launch zone) could not be applied to branches that already existed.
+ */
+export async function update(req, res) {
+  const { id } = req.params;
+  const {
+    name, operator_name, phone, email, address,
+    province, district, lat, lng,
+    zone_a_km, zone_b_km, zone_c_km,
+    fee_zone_a, fee_zone_b, fee_zone_c,
+    split_plan, split_hub_pct, split_branch_pct,
+    notes,
+  } = req.body;
+
+  const errors = [];
+  if (!name?.trim()) errors.push('ต้องระบุชื่อสาขา');
+  if (!operator_name?.trim()) errors.push('ต้องระบุชื่อเจ้าของ');
+
+  const zoneA = numField(zone_a_km, 5);
+  const zoneB = numField(zone_b_km, 10);
+  const zoneC = numField(zone_c_km, 15);
+  // The bands are read as "A up to zoneA, B up to zoneB, C up to zoneC", so an
+  // out-of-order set would silently make a band unreachable rather than fail.
+  if (!(zoneA < zoneB && zoneB < zoneC)) {
+    errors.push(`รัศมีโซนต้องเรียงจากน้อยไปมาก: A (${zoneA}) < B (${zoneB}) < C (${zoneC})`);
+  }
+
+  const hubPct    = numField(split_hub_pct, 30);
+  const branchPct = numField(split_branch_pct, 70);
+  if (Math.abs(hubPct + branchPct - 100) > 0.01) {
+    errors.push(`Hub% + Branch% ต้องรวมเป็น 100 (ปัจจุบัน ${hubPct + branchPct})`);
+  }
+
+  if (errors.length > 0) {
+    req.session.flash = { type: 'error', message: errors.join(' | ') };
+    return res.redirect(`/branches/${id}/edit`);
+  }
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE branches SET
+         name=?, operator_name=?, phone=?, email=?, address=?,
+         province=?, district=?, lat=?, lng=?,
+         zone_a_km=?, zone_b_km=?, zone_c_km=?,
+         fee_zone_a=?, fee_zone_b=?, fee_zone_c=?,
+         split_plan=?, split_hub_pct=?, split_branch_pct=?, notes=?
+       WHERE id=?`,
+      [
+        name.trim(), operator_name.trim(),
+        phone || null, email || null, address || null,
+        province || null, district || null,
+        lat ? Number(lat) : null, lng ? Number(lng) : null,
+        zoneA, zoneB, zoneC,
+        numField(fee_zone_a, 0), numField(fee_zone_b, 25000), numField(fee_zone_c, 40000),
+        split_plan || 'A', hubPct, branchPct,
+        notes || null,
+        id,
+      ]
+    );
+    if (result.affectedRows === 0) {
+      req.session.flash = { type: 'error', message: 'ไม่พบสาขานี้' };
+      return res.redirect('/branches');
+    }
+    // Existing deliveries keep the fee they were quoted at — repricing parcels
+    // already in flight would change what a rider and branch were promised
+    // after the fact. New zone settings apply to parcels assigned from now on.
+    req.session.flash = { type: 'success', message: 'บันทึกการแก้ไขสาขาแล้ว (มีผลกับงานที่รับเข้ามาใหม่)' };
+    res.redirect(`/branches/${id}`);
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+    res.redirect(`/branches/${id}/edit`);
+  }
+}
+
+export async function showEdit(req, res) {
+  const [[branch]] = await pool.query('SELECT * FROM branches WHERE id=?', [req.params.id]);
+  if (!branch) {
+    req.session.flash = { type: 'error', message: 'ไม่พบสาขานี้' };
+    return res.redirect('/branches');
+  }
+  res.render('branches/edit', {
+    user: req.session.user,
+    title: `แก้ไขสาขา ${branch.name}`,
+    branch,
+  });
 }
 
 export async function detail(req, res) {
@@ -280,6 +386,40 @@ export async function updateRiderStatus(req, res) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Which zone a delivery falls in, and what it costs.
+ *
+ * Zone A is the launch-promotion tier — the short hop a branch will make to win
+ * a new customer — so it doubles as the fallback when the distance cannot be
+ * measured at all (a receiver who has never sent a location pin and never had a
+ * parcel delivered). Quoting the cheapest tier is the only defensible guess
+ * there: the alternative was zone 'X' at a zero fee, which read as a broken
+ * record on the branch screen and priced the delivery at nothing anyway.
+ *
+ * 'X' now means one specific thing — measured, and beyond the branch's Zone C
+ * radius, so it needs a human to quote it. That is deliberately NOT folded into
+ * the Zone A fallback: a receiver known to be 40km out must not be handed the
+ * promotional rate just because the promotion is cheap.
+ *
+ * @param {number|null} distKm  null/NaN when the distance is unknown
+ * @param {object} branch       row from `branches` carrying the zone radii and fees
+ * @returns {{zone:'A'|'B'|'C'|'X', fee:number, measured:boolean}}
+ */
+export function resolveDeliveryZone(distKm, branch) {
+  const km = Number(distKm);
+  // '' must be caught before Number() sees it: Number('') is 0, which would
+  // otherwise read as "measured, and standing on the branch's doorstep".
+  const unknown = distKm === null || distKm === undefined || distKm === ''
+    || !Number.isFinite(km);
+  if (unknown) {
+    return { zone: 'A', fee: Number(branch.fee_zone_a), measured: false };
+  }
+  if (km <= Number(branch.zone_a_km)) return { zone: 'A', fee: Number(branch.fee_zone_a), measured: true };
+  if (km <= Number(branch.zone_b_km)) return { zone: 'B', fee: Number(branch.fee_zone_b), measured: true };
+  if (km <= Number(branch.zone_c_km)) return { zone: 'C', fee: Number(branch.fee_zone_c), measured: true };
+  return { zone: 'X', fee: 0, measured: true };
+}
+
+/**
  * findNearestBranch — คำนวณสาขาที่ใกล้ที่สุดสำหรับ receiver GPS
  * Returns { branch, zone, fee } หรือ null ถ้าไม่มีสาขาในรัศมี
  */
@@ -304,10 +444,7 @@ export async function findNearestBranch(receiverLat, receiverLng, conn = pool) {
   if (!nearest) return null;
 
   const { branch, distKm } = nearest;
-  let zone = 'X', fee = 0;
-  if (distKm <= branch.zone_a_km)      { zone = 'A'; fee = branch.fee_zone_a; }
-  else if (distKm <= branch.zone_b_km) { zone = 'B'; fee = branch.fee_zone_b; }
-  else if (distKm <= branch.zone_c_km) { zone = 'C'; fee = branch.fee_zone_c; }
+  const { zone, fee } = resolveDeliveryZone(distKm, branch);
 
   return { branch, zone, fee, distKm: distKm.toFixed(2) };
 }
@@ -351,13 +488,18 @@ export async function assignOrderToBranch(orderId, branchId, conn = pool, precom
   const [[branch]] = await conn.query("SELECT * FROM branches WHERE id=? AND status='active'", [branchId]);
   if (!order || !branch) throw new WorkflowError('Order or active branch not found', 404);
 
-  let zone = precomputed?.zone || 'X';
-  let fee = Number(precomputed?.fee || 0);
-  if (!precomputed && order.receiver_lat && order.receiver_lng && branch.lat && branch.lng) {
-    const distKm = haversineKm(order.receiver_lat, order.receiver_lng, branch.lat, branch.lng);
-    if (distKm <= Number(branch.zone_a_km)) { zone = 'A'; fee = Number(branch.fee_zone_a); }
-    else if (distKm <= Number(branch.zone_b_km)) { zone = 'B'; fee = Number(branch.fee_zone_b); }
-    else if (distKm <= Number(branch.zone_c_km)) { zone = 'C'; fee = Number(branch.fee_zone_c); }
+  // findNearestBranch already measured the distance when it picked this branch,
+  // so trust its answer; otherwise measure against the branch we were handed,
+  // and let resolveDeliveryZone decide what an unmeasurable one costs.
+  let zone, fee;
+  if (precomputed) {
+    ({ zone, fee } = { zone: precomputed.zone, fee: Number(precomputed.fee) || 0 });
+  } else {
+    const canMeasure = order.receiver_lat && order.receiver_lng && branch.lat && branch.lng;
+    const distKm = canMeasure
+      ? haversineKm(order.receiver_lat, order.receiver_lng, branch.lat, branch.lng)
+      : null;
+    ({ zone, fee } = resolveDeliveryZone(distKm, branch));
   }
 
   const hubAmt = fee * (Number(branch.split_hub_pct) / 100);
