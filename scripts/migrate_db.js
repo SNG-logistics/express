@@ -16,6 +16,13 @@ import { createHash } from 'crypto';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const dbDir = join(scriptDir, '..', 'database');
 
+const CRM_TABLES = [
+  'crm_channels', 'crm_customers', 'crm_customer_identities',
+  'crm_conversations', 'crm_messages', 'crm_tags', 'crm_conversation_tags',
+  'crm_queues', 'crm_cases', 'crm_internal_notes', 'crm_quick_replies',
+  'crm_assignments', 'crm_sla_rules', 'crm_automation_rules',
+];
+
 const SQL_FILES = [
   'schema.sql',
   'migrate_001.sql',
@@ -145,6 +152,27 @@ async function main() {
       );
       console.log(`OK   ${file}`);
     }
+
+    // ── CRM table verification (replaces scripts/run_crm_migration.mjs's
+    //    checkTables() + insertDefaultData() step — runs the seed INSIDE
+    //    migrate_crm_001.sql automatically, which is what that script also
+    //    ends up doing via runMigration). migrate_021 re-asserts the role
+    //    enum AFTER migrate_crm_001, so owner/accounting are preserved. ──
+    const missingCrm = [];
+    for (const table of CRM_TABLES) {
+      const [[row]] = await conn.query(
+        `SELECT COUNT(*) AS count FROM information_schema.tables
+         WHERE table_schema=DATABASE() AND table_name=?`, [table]
+      );
+      if (Number(row.count) === 0) missingCrm.push(table);
+    }
+    if (missingCrm.length > 0) {
+      console.log(`⚠️ CRM tables missing: ${missingCrm.join(', ')}`);
+      console.log('   Run npm run migrate-crm to apply migrate_crm_001.sql');
+    } else {
+      console.log('✓ CRM tables verified (14/14)');
+    }
+
     console.log('Database migrations complete.');
   } finally {
     await conn.end();

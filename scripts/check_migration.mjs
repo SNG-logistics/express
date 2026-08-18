@@ -93,13 +93,13 @@ async function run() {
   }
 
   // ────────────────────────────────────────────────────────────────
-  HEAD('SECTION 2: Branch Hub Tables (migrate_003.sql)');
+  HEAD('SECTION 2: Branch Hub Tables (migrate_003b.sql)');
   // ────────────────────────────────────────────────────────────────
   const branchTables = [
-    ['branches',         'migrate_003.sql'],
-    ['riders',           'migrate_003.sql'],
-    ['branch_deliveries','migrate_003.sql'],
-    ['branch_revenue',   'migrate_003.sql'],
+    ['branches',         'migrate_003b.sql'],
+    ['riders',           'migrate_003b.sql'],
+    ['branch_deliveries','migrate_003b.sql'],
+    ['branch_revenue',   'migrate_003b.sql'],
   ];
   for (const [t, mig] of branchTables) {
     const exists = await hasTable(t);
@@ -113,14 +113,14 @@ async function run() {
     }
   }
 
-  SUB('orders — branch columns (migrate_003.sql)');
+  SUB('orders — branch columns (migrate_003b.sql)');
   const branchOrderCols = ['dest_branch_id','delivery_zone','last_mile_fee','receiver_lat','receiver_lng'];
   for (const col of branchOrderCols) {
-    check(`orders.${col}`, await hasColumn('orders', col), 'รัน migrate_003.sql');
+    check(`orders.${col}`, await hasColumn('orders', col), 'รัน migrate_003b.sql');
   }
 
-  SUB('users — branch_id FK (migrate_003.sql)');
-  check('users.branch_id', await hasColumn('users','branch_id'), 'รัน migrate_003.sql');
+  SUB('users — branch_id FK (migrate_003b.sql)');
+  check('users.branch_id', await hasColumn('users','branch_id'), 'รัน migrate_003b.sql');
 
   // ────────────────────────────────────────────────────────────────
   HEAD('SECTION 3: Operational Workflow Tables (migrate_004.sql)');
@@ -199,9 +199,9 @@ async function run() {
   }
 
   // ────────────────────────────────────────────────────────────────
-  HEAD('SECTION 6: Security Hardening (migrate_security_001.sql)');
+  HEAD('SECTION 6: Security Hardening (migrate_017_security_compat.sql)');
   // ────────────────────────────────────────────────────────────────
-  check('users.deactivated_at', await hasColumn('users','deactivated_at'), 'รัน migrate_security_001.sql');
+  check('users.deactivated_at', await hasColumn('users','deactivated_at'), 'รัน migrate_017_security_compat.sql');
   // branch_id ครอบคลุมแล้วใน section 2
 
   SUB('users.role ENUM — ต้องมี roles ใหม่ทั้งหมด');
@@ -213,12 +213,12 @@ async function run() {
     'crm_admin','crm_supervisor','crm_agent','sales_agent','logistics_support','finance_support'
   ];
   for (const r of requiredRoles) {
-    check(`users.role includes '${r}'`, usersRoleEnum.includes(r), 'รัน migrate_003.sql + migrate_security_001.sql');
+    check(`users.role includes '${r}'`, usersRoleEnum.includes(r), 'รัน migrate_003b.sql + migrate_017_security_compat.sql');
   }
 
   SUB('users.status ENUM — inactive (ไม่ใช่ deleted)');
   const usersStatusEnum = await getEnumValues('users','status');
-  check("users.status has 'inactive'", usersStatusEnum.includes('inactive'), 'รัน migrate_security_001.sql');
+  check("users.status has 'inactive'", usersStatusEnum.includes('inactive'), 'รัน migrate_017_security_compat.sql');
   if (usersStatusEnum.includes('disabled') && !usersStatusEnum.includes('inactive')) {
     WARN("users.status ยังใช้ 'disabled' — controller อาจใช้ 'inactive' แทน — ตรวจ usersController.js");
   }
@@ -262,7 +262,7 @@ async function run() {
     ['orders',    'idx_orders_source_type',      'migrate_004.sql'],
     ['orders',    'idx_orders_screening_status',  'migrate_004.sql'],
     ['customers', 'idx_customers_phone',          'migrate_004.sql'],
-    ['users',     'idx_users_branch_id',          'migrate_security_001.sql'],
+    ['users',     'idx_users_branch_id',          'migrate_017_security_compat.sql'],
   ];
   for (const [t, idx, mig] of indexes) {
     check(`${t}.${idx}`, await hasIndex(t, idx), `รัน ${mig}`);
