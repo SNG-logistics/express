@@ -1,0 +1,870 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SNG Express — หน้า HOME ดีไซน์ใหม่</title><style>:root {
+  /* Dark (brand default) */
+  --portal-gold: #FFE000;
+  --portal-gold-dim: rgba(255,224,0,.65);
+  --portal-gold-contrast: #111;
+  --portal-bg: #0a0a0a;
+  --portal-bg-translucent: #0a0a0af2;
+  --portal-surface: #141414;
+  --portal-surface-2: #1c1c1c;
+  --portal-border: rgba(255,255,255,.1);
+  --portal-text: #f5f5f5;
+  --portal-text-dim: rgba(255,255,255,.65);
+  --portal-text-faint: rgba(255,255,255,.38);
+  --portal-input-bg: #080808;
+  --portal-badge-bg: #ffe0001f;
+  --portal-success-bg: #22c55e22;
+  --portal-success-text: #bbf7d0;
+  --portal-danger-bg: #ef444422;
+  --portal-danger-text: #fecaca;
+  --portal-radius: 1rem;
+  --member-accent-surface: #171714;
+  --member-accent-border: #3a382e;
+  --member-icon-surface: #2a2817;
+  --member-track-button-bg: var(--portal-gold);
+  --member-track-button-text: var(--portal-gold-contrast);
+  --member-active-bg: #ffe0001f;
+  --member-active-text: #ffe866;
+  --member-warning-bg: #f59e0b24;
+  --member-warning-text: #fcd34d;
+  --member-success-bg: #22c55e20;
+  --member-success-text: #86efac;
+  --member-danger-bg: #ef444420;
+  --member-danger-text: #fca5a5;
+}
+
+[data-theme="light"] {
+  /* Deep bronze-gold, not the neon dark-mode gold — #FFE000 as text/accent
+     on a white surface fails contrast, so light mode gets its own shade. */
+  --portal-gold: #6b4f00;
+  --portal-gold-dim: rgba(107,79,0,.75);
+  --portal-gold-contrast: #fff8e6;
+  --portal-bg: #faf9f6;
+  --portal-bg-translucent: #faf9f6f2;
+  --portal-surface: #ffffff;
+  --portal-surface-2: #f0ede4;
+  --portal-border: rgba(0,0,0,.1);
+  --portal-text: #1a1712;
+  --portal-text-dim: rgba(23,20,15,.65);
+  --portal-text-faint: rgba(23,20,15,.4);
+  --portal-input-bg: #ffffff;
+  --portal-badge-bg: rgba(107,79,0,.14);
+  --portal-success-bg: #22c55e1a;
+  --portal-success-text: #15803d;
+  --portal-danger-bg: #ef44441a;
+  --portal-danger-text: #b91c1c;
+  --member-accent-surface: #fffdf2;
+  --member-accent-border: #ddd6ad;
+  --member-icon-surface: #f5f2df;
+  --member-track-button-bg: #1a1915;
+  --member-track-button-text: #fff;
+  --member-active-bg: #fff5b8;
+  --member-active-text: #625300;
+  --member-warning-bg: #fef3c7;
+  --member-warning-text: #92400e;
+  --member-success-bg: #dcfce7;
+  --member-success-text: #166534;
+  --member-danger-bg: #fee2e2;
+  --member-danger-text: #991b1b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--portal-bg);
+  color: var(--portal-text);
+  font-family: "Noto Sans Thai", "Noto Sans Lao", Prompt, sans-serif;
+}
+
+.portal-main { min-height: 100vh; padding: 5.75rem 1rem 6.5rem; }
+.portal-shell { max-width: 760px; margin: auto; }
+
+.portal-topbar {
+  height: 4.4rem;
+  position: fixed;
+  z-index: 30;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .7rem 1rem;
+  background: var(--portal-bg-translucent);
+  border-bottom: 1px solid var(--portal-border);
+  backdrop-filter: blur(12px);
+}
+.portal-brand { display: flex; gap: .55rem; align-items: center; white-space: nowrap; color: var(--portal-text); font-weight: 800; text-decoration: none; letter-spacing: .04em; }
+.portal-brand b { color: var(--portal-gold); }
+.portal-brand img { height: 2.4rem; width: 2.4rem; object-fit: contain; }
+.portal-top-actions { display: flex; gap: .4rem; }
+.portal-top-actions a { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; color: var(--portal-text-dim); text-decoration: none; padding: .45rem .6rem; border: 1px solid var(--portal-border); border-radius: .6rem; font-size: .8rem; }
+
+.bottom-nav {
+  position: fixed;
+  z-index: 30;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-around;
+  padding: .55rem .25rem max(.55rem, env(safe-area-inset-bottom));
+  background: var(--portal-surface-2);
+  border-top: 1px solid var(--portal-border);
+}
+.bottom-nav a { display: grid; gap: .18rem; justify-items: center; min-width: 3.5rem; color: var(--portal-text-faint); font-size: .67rem; text-decoration: none; }
+.bottom-nav i { font-size: 1rem; }
+.bottom-nav a.active { color: var(--portal-gold); }
+
+.hero-card, .card { background: var(--portal-surface); border: 1px solid var(--portal-border); border-radius: var(--portal-radius); }
+.hero-card { padding: 2rem 1.25rem; }
+.hero-card h1, .page-heading h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); line-height: 1.15; margin: .35rem 0 .65rem; }
+.hero-card > p, .page-heading > p { color: var(--portal-text-dim); margin: 0; }
+.eyebrow { margin: 0; color: var(--portal-gold); font-size: .75rem; letter-spacing: .14em; font-weight: 800; }
+
+.portal-search { margin-top: 1.5rem; }
+.portal-search label, .portal-form label span { display: block; margin: 0 0 .45rem; color: var(--portal-text-dim); font-size: .85rem; }
+.portal-search div { display: flex; gap: .5rem; }
+.portal-search input, .input-portal {
+  width: 100%; min-width: 0;
+  border: 1px solid var(--portal-border);
+  border-radius: .75rem;
+  background: var(--portal-input-bg);
+  color: var(--portal-text);
+  padding: .8rem .9rem;
+  font: inherit;
+}
+.portal-search input:focus, .input-portal:focus { outline: 2px solid var(--portal-gold); outline-offset: 1px; }
+
+.country-phone-row { display: flex; align-items: stretch; gap: .55rem; }
+.country-flag {
+  position: relative; flex: 0 0 2.6rem; min-height: 3rem; overflow: hidden;
+  border: 1px solid var(--portal-border); border-radius: .75rem;
+  background: linear-gradient(to bottom,
+    #a51931 0 16.67%, #f8f8f8 16.67% 33.33%, #2d2a4a 33.33% 66.67%,
+    #f8f8f8 66.67% 83.33%, #a51931 83.33% 100%);
+}
+.country-flag.is-laos {
+  background: linear-gradient(to bottom, #ce1126 0 25%, #002868 25% 75%, #ce1126 75% 100%);
+}
+.country-flag.is-laos::after {
+  content: ''; position: absolute; top: 50%; left: 50%; width: 1.25rem; height: 1.25rem;
+  transform: translate(-50%, -50%); border-radius: 50%; background: #fff;
+}
+.country-code-select { flex: 0 0 10rem; width: auto; padding-right: .4rem; }
+.country-phone-input { min-width: 0; }
+
+.btn-gold {
+  display: inline-flex; justify-content: center; align-items: center; gap: .4rem;
+  border: 0; border-radius: .75rem; padding: .82rem 1rem;
+  background: var(--portal-gold); color: var(--portal-gold-contrast);
+  font: 800 .9rem inherit; cursor: pointer; text-decoration: none;
+}
+
+.btn-outline {
+  display: inline-flex; justify-content: center; align-items: center; gap: .4rem;
+  border: 1px solid var(--portal-border); border-radius: .75rem; padding: .82rem 1rem;
+  background: transparent; color: var(--portal-text);
+  font: 800 .9rem inherit; cursor: pointer; text-decoration: none;
+}
+.btn-outline:hover { border-color: var(--portal-gold); color: var(--portal-gold); }
+
+.shortcut-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .75rem; margin: 1rem 0; }
+.shortcut { padding: 1rem; color: var(--portal-text); text-decoration: none; }
+.shortcut i { display: block; color: var(--portal-gold); font-size: 1.35rem; margin-bottom: .7rem; }
+.shortcut strong, .shortcut small { display: block; }
+.shortcut small { color: var(--portal-text-faint); font-size: .75rem; margin-top: .25rem; }
+
+.portal-footer { display: grid; gap: .25rem; padding: 1.25rem 0; color: var(--portal-text-dim); font-size: .8rem; }
+.portal-footer a { color: var(--portal-gold-dim); }
+
+.page-heading { margin: .75rem 0 1.25rem; }
+.portal-form { padding: 1rem; display: grid; gap: 1rem; }
+.form-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .75rem; }
+
+.quote-result { margin-top: 1rem; padding: 1.25rem; }
+.quote-result strong { display: block; font-size: 2rem; margin: .3rem 0; color: var(--portal-gold); }
+.quote-result p, .quote-result small { color: var(--portal-text-dim); }
+.is-hidden { display: none; }
+
+.empty-state { text-align: center; padding: 5rem 1rem; }
+.empty-state i { font-size: 3rem; color: var(--portal-gold); }
+.empty-state p { color: var(--portal-text-dim); margin-bottom: 1.5rem; }
+
+.portal-flash { max-width: 760px; margin: .5rem auto 1rem; padding: .75rem 1rem; border-radius: .75rem; }
+.portal-flash.is-error { background: var(--portal-danger-bg); color: var(--portal-danger-text); }
+.portal-flash.is-success { background: var(--portal-success-bg); color: var(--portal-success-text); }
+
+.tracking-card { overflow: hidden; }
+.tracking-card-header { padding: 1rem; background: var(--portal-surface-2); }
+.tracking-job { font-size: 1.5rem; color: var(--portal-gold); font-weight: 800; }
+.status-badge { display: inline-block; border-radius: 999px; padding: .35rem .65rem; margin-top: .6rem; background: var(--portal-badge-bg); color: var(--portal-gold); font-size: .8rem; }
+.tracking-details { display: grid; grid-template-columns: repeat(2,1fr); }
+.tracking-details div { padding: .85rem; border-top: 1px solid var(--portal-border); }
+.tracking-details small { display: block; color: var(--portal-text-faint); }
+
+.timeline { padding: 1rem 1rem 1rem 1.5rem; }
+.timeline-item { position: relative; border-left: 2px solid var(--portal-border); padding: 0 0 1rem 1rem; }
+.timeline-item:before { content: ""; position: absolute; width: .65rem; height: .65rem; left: -.42rem; top: .2rem; border-radius: 50%; background: var(--portal-gold); }
+.timeline-item small { color: var(--portal-text-faint); }
+
+/* ── Member dashboard — operational, shipment-first account home ─────────── */
+.member-dashboard { max-width: 760px; }
+
+.member-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: .35rem 0 1.2rem;
+}
+
+.member-identity { min-width: 0; }
+.member-identity h1 {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+.member-identity p { margin: .28rem 0 0; color: var(--portal-text-dim); font-size: .84rem; }
+.member-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .42rem;
+  color: var(--portal-success-text);
+  font-size: .74rem;
+  font-weight: 700;
+}
+.member-verified i {
+  display: inline-grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--portal-success-bg);
+  font-size: .56rem;
+}
+
+.member-credit {
+  flex: 0 0 auto;
+  min-width: 8.8rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--portal-border);
+  text-align: right;
+}
+.member-credit > span { display: block; color: var(--portal-text-dim); font-size: .7rem; }
+.member-credit > strong { display: block; margin-top: .18rem; color: var(--portal-text); font-size: 1.05rem; line-height: 1.25; }
+.member-credit > strong small { color: var(--portal-text-dim); font-size: .67rem; font-weight: 600; }
+.member-credit .member-credit-error { display: block; margin-top: .15rem; color: var(--portal-danger-text); font-size: .66rem; }
+
+.member-track {
+  margin: 0 0 1.35rem;
+  padding: .95rem;
+  border: 1px solid var(--member-accent-border);
+  border-radius: .85rem;
+  background: var(--member-accent-surface);
+}
+.member-track label { display: block; margin-bottom: .55rem; color: var(--portal-text); font-size: .8rem; font-weight: 800; }
+.member-track-row { display: flex; gap: .55rem; }
+.member-track-row .input-portal { flex: 1 1 auto; background: var(--portal-input-bg); }
+.member-track-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-width: 5.6rem;
+  border: 0;
+  border-radius: .68rem;
+  padding: .7rem .95rem;
+  background: var(--member-track-button-bg);
+  color: var(--member-track-button-text);
+  font-family: inherit;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.member-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 .62rem;
+}
+.member-section-heading h2 { margin: 0; color: var(--portal-text); font-size: .96rem; line-height: 1.3; }
+.member-section-heading a {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  color: var(--portal-text-dim);
+  font-size: .72rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.member-section-heading a:hover { color: var(--portal-gold); }
+
+.member-latest-order {
+  padding: 1rem;
+  border: 1px solid var(--portal-border);
+  border-radius: .85rem;
+  background: var(--portal-surface);
+}
+.member-order-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.member-order-title { min-width: 0; }
+.member-order-title strong { display: block; color: var(--portal-text); font: 900 1rem/1.2 Arial, sans-serif; letter-spacing: .025em; }
+.member-order-title span { display: block; margin-top: .28rem; color: var(--portal-text-dim); font-size: .72rem; }
+.member-order-title span + span { color: var(--portal-text-dim); font-size: .68rem; }
+
+.member-order-status {
+  flex: 0 0 auto;
+  border-radius: .45rem;
+  padding: .34rem .48rem;
+  background: var(--member-active-bg);
+  color: var(--member-active-text);
+  font-size: .68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.member-order-status.is-warning { background: var(--member-warning-bg); color: var(--member-warning-text); }
+.member-order-status.is-success { background: var(--member-success-bg); color: var(--member-success-text); }
+.member-order-status.is-danger { background: var(--member-danger-bg); color: var(--member-danger-text); }
+
+.member-order-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 1.15rem 0 .85rem;
+  padding: 0;
+  list-style: none;
+}
+.member-order-progress li { position: relative; min-width: 0; text-align: center; }
+.member-order-progress li::before {
+  content: '';
+  position: absolute;
+  top: .28rem;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--portal-border);
+}
+.member-order-progress li:first-child::before { content: none; }
+.member-order-progress li > span {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: .66rem;
+  height: .66rem;
+  margin: 0 auto .42rem;
+  border: 2px solid var(--portal-border);
+  border-radius: 50%;
+  background: var(--portal-surface);
+}
+.member-order-progress li small {
+  display: block;
+  overflow: hidden;
+  padding: 0 .12rem;
+  color: var(--portal-text-dim);
+  font-size: .66rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-order-progress li.is-complete::before { background: var(--portal-gold); }
+.member-order-progress li.is-complete > span { border-color: var(--portal-gold); background: var(--portal-gold); }
+.member-order-progress li.is-complete small { color: var(--portal-text-dim); }
+.member-order-progress.is-danger li.is-current > span { border-color: var(--member-danger-text); background: var(--member-danger-text); }
+.member-order-progress.is-warning li.is-current > span { border-color: var(--member-warning-text); background: var(--member-warning-text); }
+
+.member-order-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--portal-text);
+  font-size: .72rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+.member-order-link:hover { color: var(--portal-gold); }
+
+.member-inline-state {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  min-height: 5.1rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--portal-border);
+  border-radius: .85rem;
+  background: var(--portal-surface);
+  color: var(--portal-text-dim);
+}
+.member-inline-state > i { color: var(--portal-gold); font-size: 1.15rem; }
+.member-inline-state strong, .member-inline-state span { display: block; }
+.member-inline-state strong { color: var(--portal-text); font-size: .82rem; }
+.member-inline-state div span { margin-top: .18rem; color: var(--portal-text-dim); font-size: .7rem; line-height: 1.45; }
+.member-inline-state.is-error { border-color: var(--member-danger-bg); color: var(--member-danger-text); }
+.member-inline-state.is-error > i { color: var(--member-danger-text); }
+
+.member-services-heading { margin-top: 1.25rem; }
+.member-services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+.member-service {
+  display: flex;
+  align-items: center;
+  gap: .68rem;
+  min-width: 0;
+  min-height: 4.1rem;
+  padding: .7rem;
+  border: 1px solid var(--portal-border);
+  border-radius: .78rem;
+  background: var(--portal-surface);
+  color: var(--portal-text);
+  text-decoration: none;
+  transition: border-color .16s ease, transform .16s ease;
+}
+.member-service:hover { border-color: var(--portal-gold-dim); transform: translateY(-1px); }
+.member-service-icon {
+  display: inline-grid;
+  flex: 0 0 2.1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: .62rem;
+  background: var(--member-icon-surface);
+  color: var(--portal-gold);
+  font-size: .85rem;
+}
+[data-theme="light"] .member-service-icon { color: #615300; }
+.member-service > span:last-child { min-width: 0; }
+.member-service strong, .member-service small { display: block; }
+.member-service strong { overflow: hidden; font-size: .78rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.member-service small { margin-top: .2rem; color: var(--portal-text-dim); font-size: .68rem; line-height: 1.3; }
+
+.member-referral {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem 1rem;
+  margin-top: 1rem;
+  padding: .85rem 1rem .65rem;
+  border: 1px dashed var(--member-accent-border);
+  border-radius: .78rem;
+  background: var(--member-accent-surface);
+}
+.member-referral > div { min-width: 0; }
+.member-referral > div > span { display: block; color: var(--portal-text-dim); font-size: .68rem; }
+.member-referral > div > strong { display: block; overflow: hidden; margin-top: .18rem; color: var(--portal-text); font: 900 .96rem/1.2 Arial, sans-serif; letter-spacing: .025em; text-overflow: ellipsis; white-space: nowrap; }
+.member-referral > div > strong.is-empty { font-family: inherit; font-size: .76rem; font-weight: 600; letter-spacing: 0; }
+.member-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  border: 1px solid var(--member-accent-border);
+  border-radius: .58rem;
+  padding: .48rem .65rem;
+  background: transparent;
+  color: var(--portal-text);
+  font-family: inherit;
+  font-size: .68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.member-copy-button:hover, .member-copy-button.is-copied { border-color: var(--portal-gold); color: var(--portal-gold); }
+.member-copy-feedback { grid-column: 1 / -1; min-height: .8rem; color: var(--portal-success-text); font-size: .62rem; text-align: right; }
+
+.member-logout {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: .4rem;
+  margin: 1.2rem auto 0;
+  color: var(--portal-danger-text);
+  font-size: .72rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.member-logout:hover { text-decoration: underline; }
+
+
+/* ── Public home — utility-first landing, tracking above everything ──────── */
+.home-page { max-width: 760px; }
+
+.home-hero { padding: .35rem 0 1.15rem; }
+.home-hero h1 {
+  margin: .45rem 0 .5rem;
+  color: var(--portal-text);
+  font-size: clamp(1.45rem, 5.6vw, 2.1rem);
+  line-height: 1.25;
+}
+.home-hero-sub { margin: 0; color: var(--portal-text-dim); font-size: .84rem; line-height: 1.5; }
+.home-lanes { display: flex; flex-wrap: wrap; gap: .4rem; margin: .85rem 0 0; padding: 0; list-style: none; }
+.home-lanes li {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  border: 1px solid var(--portal-border);
+  border-radius: 999px;
+  padding: .3rem .6rem;
+  background: var(--portal-surface);
+  color: var(--portal-text-dim);
+  font-size: .68rem;
+  font-weight: 700;
+}
+.home-lanes li span { font-size: .72rem; letter-spacing: .02em; }
+
+.home-track {
+  padding: .9rem 1rem 1rem;
+  border: 1px solid var(--member-accent-border);
+  border-radius: var(--portal-radius);
+  background: var(--member-accent-surface);
+}
+.home-track label { display: block; margin-bottom: .55rem; color: var(--portal-text); font-size: .8rem; font-weight: 800; }
+.home-track-row { display: flex; gap: .55rem; }
+.home-track-row .input-portal { flex: 1 1 auto; background: var(--portal-input-bg); }
+.home-track-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-width: 5.4rem;
+  border: 0;
+  border-radius: .75rem;
+  padding: .8rem 1rem;
+  background: var(--member-track-button-bg);
+  color: var(--member-track-button-text);
+  font: 800 .84rem inherit;
+  cursor: pointer;
+}
+.home-track-button:hover { filter: brightness(1.08); }
+
+.home-recent { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .75rem; }
+.home-recent[hidden] { display: none; }
+.home-recent-label { color: var(--portal-text-dim); font-size: .66rem; font-weight: 700; }
+.home-recent-list { display: flex; flex-wrap: wrap; gap: .35rem; min-width: 0; }
+.home-recent-chip {
+  display: inline-block;
+  max-width: 11rem;
+  overflow: hidden;
+  border: 1px solid var(--portal-border);
+  border-radius: 999px;
+  padding: .28rem .6rem;
+  background: var(--portal-surface);
+  color: var(--portal-text);
+  font: 700 .66rem/1.3 Arial, sans-serif;
+  letter-spacing: .02em;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-recent-chip:hover { border-color: var(--portal-gold); color: var(--portal-gold); }
+.home-recent-clear {
+  margin-left: auto;
+  border: 0;
+  padding: .2rem .1rem;
+  background: none;
+  color: var(--portal-text-faint);
+  font: 700 .64rem inherit;
+  cursor: pointer;
+}
+.home-recent-clear:hover { color: var(--portal-danger-text); }
+
+.home-section-heading { margin: 1.35rem 0 .6rem; }
+.home-section-heading h2 { margin: 0; color: var(--portal-text); font-size: .96rem; line-height: 1.3; }
+
+.home-services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+.home-service {
+  display: flex;
+  align-items: center;
+  gap: .68rem;
+  min-width: 0;
+  min-height: 4.1rem;
+  padding: .7rem;
+  border: 1px solid var(--portal-border);
+  border-radius: .78rem;
+  background: var(--portal-surface);
+  color: var(--portal-text);
+  text-decoration: none;
+  transition: border-color .16s ease, transform .16s ease;
+}
+.home-service:hover { border-color: var(--portal-gold-dim); transform: translateY(-1px); }
+.home-service-icon {
+  display: inline-grid;
+  flex: 0 0 2.1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: .62rem;
+  background: var(--member-icon-surface);
+  color: var(--portal-gold);
+  font-size: .85rem;
+}
+[data-theme="light"] .home-service-icon { color: #615300; }
+.home-service > span:last-child { min-width: 0; }
+.home-service strong, .home-service small { display: block; }
+.home-service strong { overflow: hidden; font-size: .78rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.home-service small { margin-top: .2rem; color: var(--portal-text-dim); font-size: .68rem; line-height: 1.3; }
+
+.home-member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem 1rem;
+  margin-top: 1rem;
+  padding: .95rem 1rem;
+  border: 1px dashed var(--member-accent-border);
+  border-radius: .78rem;
+  background: var(--member-accent-surface);
+}
+.home-member-copy { min-width: 0; flex: 1 1 12rem; }
+.home-member-copy strong { display: block; color: var(--portal-text); font-size: .92rem; line-height: 1.3; }
+.home-member-copy small { display: block; margin-top: .22rem; color: var(--portal-text-dim); font-size: .7rem; line-height: 1.45; }
+.home-member-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.home-member-actions .btn-gold, .home-member-actions .btn-outline { padding: .6rem .95rem; font-size: .78rem; }
+
+.home-contact {
+  margin-top: 1.1rem;
+  padding: .95rem 1rem;
+  border: 1px solid var(--portal-border);
+  border-radius: .78rem;
+  background: var(--portal-surface);
+}
+.home-contact-label { display: block; color: var(--portal-text-dim); font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.home-contact > strong { display: block; margin-top: .3rem; color: var(--portal-text); font-size: .88rem; line-height: 1.35; }
+.home-contact-address { display: block; margin-top: .22rem; color: var(--portal-text-dim); font-size: .72rem; line-height: 1.5; }
+.home-contact-actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; }
+.home-contact-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border: 1px solid var(--portal-border);
+  border-radius: .6rem;
+  padding: .45rem .7rem;
+  color: var(--portal-text);
+  font-size: .72rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.home-contact-actions a:hover { border-color: var(--portal-gold); color: var(--portal-gold); }
+.home-contact-actions i { color: var(--portal-gold); font-size: .75rem; }
+
+@media (min-width: 640px) {
+  .portal-main { padding-top: 6.5rem; padding-bottom: 1rem; }
+  .portal-topbar { padding-inline: max(2rem, calc((100vw - 900px) / 2)); }
+  .bottom-nav { position: static; max-width: 760px; margin: 0 auto 1rem; border: 1px solid var(--portal-border); border-radius: 1rem; }
+}
+/* 430–480px phones: keep the topbar on one line by dropping the action labels */
+@media (max-width: 480px) {
+  .portal-top-actions span { display: none; }
+}
+
+@media (max-width: 420px) {
+  .portal-top-actions span { display: none; }
+  .portal-search div { display: block; }
+  .portal-search button { width: 100%; margin-top: .5rem; }
+  .member-summary { gap: .65rem; }
+  .member-credit { min-width: 7.7rem; padding-left: .65rem; }
+  .member-credit > span { font-size: .62rem; }
+  .member-credit > strong { font-size: .9rem; }
+  .member-track-button { min-width: 3rem; padding-inline: .78rem; }
+  .member-track-button span { display: none; }
+  .member-services { gap: .45rem; }
+  .member-service { gap: .5rem; padding: .58rem; }
+  .member-service-icon { flex-basis: 1.85rem; width: 1.85rem; height: 1.85rem; }
+  .member-service small { font-size: .64rem; }
+  .member-order-progress li small { font-size: .6rem; }
+  .home-track-button { min-width: 3rem; padding-inline: .78rem; }
+  .home-track-button span { display: none; }
+  .home-services { gap: .45rem; }
+  .home-service { gap: .5rem; padding: .58rem; }
+  .home-service-icon { flex-basis: 1.85rem; width: 1.85rem; height: 1.85rem; }
+  .home-service small { font-size: .64rem; }
+  .home-member-actions { width: 100%; }
+  .home-member-actions .btn-gold, .home-member-actions .btn-outline { flex: 1 1 8rem; }
+  .home-contact-actions a { flex: 1 1 100%; justify-content: center; }
+}
+
+
+i { display: inline-flex; align-items: center; justify-content: center; }
+i svg { width: 1em; height: 1em; }
+.bottom-nav i svg { width: 1.05rem; height: 1.05rem; }
+.home-service-icon svg { width: 1.05rem; height: 1.05rem; }
+.home-contact-actions svg { width: .95rem; height: .95rem; }
+.portal-top-actions a { display: inline-flex; align-items: center; gap: .3rem; }
+.portal-top-actions svg { width: .85rem; height: .85rem; }
+.logo-dot {
+  display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem;
+  border-radius: .55rem; background: var(--portal-gold); color: #111;
+  font: 900 .6rem/1 Arial, sans-serif; letter-spacing: .02em;
+}
+[data-theme="light"] .logo-dot { background: #FFE000; color: #111; }
+body { font-family: "Loma", "Noto Sans Thai", sans-serif; }
+
+
+body { margin: 0; background: #101010; padding: 2.2rem 1.2rem 3rem; font-family: "Loma","Noto Sans Thai",sans-serif; }
+.pv-head { max-width: 1180px; margin: 0 auto 1.6rem; color: #f5f5f5; }
+.pv-head p { margin: 0; color: #FFE000; font-size: .72rem; font-weight: 800; letter-spacing: .14em; }
+.pv-head h1 { margin: .3rem 0 .35rem; font-size: 1.5rem; }
+.pv-head small { color: rgba(255,255,255,.6); font-size: .82rem; }
+.pv-row { display: flex; flex-wrap: wrap; gap: 1.6rem; justify-content: center; }
+.pv-col { width: 430px; }
+.pv-label { margin: 0 0 .5rem; color: rgba(255,255,255,.75); font-size: .78rem; font-weight: 700; }
+.frame {
+  width: 430px; border-radius: 1.6rem; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.16);
+  background: var(--portal-bg); color: var(--portal-text);
+}
+.frame .portal-topbar { position: static; height: auto; backdrop-filter: none; }
+.frame .portal-main { min-height: 0; padding: 1.25rem 1rem 1.5rem; }
+.frame .bottom-nav { position: static; }
+/* frames are 430px wide but the viewport is not — mirror the mobile topbar rule */
+.frame .portal-top-actions span { display: none; }
+</style></head><body><div class="pv-head"><p>SNG EXPRESS · PORTAL</p><h1>หน้า HOME — ดีไซน์ใหม่ (Utility First)</h1><small>ติดตามพัสดุมาก่อนทุกอย่าง · การ์ดบริการแบบเดียวกับหน้าสมาชิก · ธีมสว่าง/มืดใช้โทเคนสีชุดเดียวกัน</small></div><div class="pv-row"><div class="pv-col"><p class="pv-label">A · ธีมมืด (ค่าเริ่มต้น)</p><div class="frame" data-theme="dark">
+<header class="portal-topbar">
+  <a class="portal-brand" href="#"><span class="logo-dot">SNG</span><span>SNG <b>EXPRESS</b></span></a>
+  <div class="portal-top-actions">
+    <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg></i><span>โหมดสว่าง</span></a>
+    <a href="#">🇱🇦 <span>ลาว</span></a>
+    <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></i><span>เข้าสู่ระบบ</span></a>
+  </div>
+</header>
+<main class="portal-main">
+<section class="portal-shell home-page">
+  <header class="home-hero">
+    <p class="eyebrow">SNG EXPRESS</p>
+    <h1>ส่งพัสดุไทย-ลาว ง่าย รวดเร็ว ไว้ใจได้</h1>
+    <p class="home-hero-sub">ติดตามพัสดุ คำนวณค่าส่ง และบริการอื่นๆ ของ SNG Express</p>
+    <ul class="home-lanes">
+      <li><span>🇹🇭 → 🇱🇦</span>ไทย → ลาว</li>
+      <li><span>🇱🇦 → 🇹🇭</span>ลาว → ไทย</li>
+    </ul>
+  </header>
+
+  <form class="home-track">
+    <label>ค้นหาด้วยเลขพัสดุ</label>
+    <div class="home-track-row">
+      <input class="input-portal" placeholder="SNG-XXXXXX">
+      <button class="home-track-button" type="button"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></i><span>ค้นหา</span></button>
+    </div>
+    <div class="home-recent">
+      <span class="home-recent-label">ค้นหาล่าสุด</span>
+      <div class="home-recent-list">
+        <a class="home-recent-chip" href="#">SNG-260818-041</a>
+        <a class="home-recent-chip" href="#">SNG-260729-018</a>
+      </div>
+      <button class="home-recent-clear" type="button">ล้าง</button>
+    </div>
+  </form>
+
+  <div class="home-section-heading"><h2>บริการของเรา</h2></div>
+
+  <nav class="home-services">
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></i></span><span><strong>ติดตามพัสดุ</strong><small>เช็คสถานะพัสดุของคุณ</small></span></a>
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg></i></span><span><strong>คำนวณค่าส่ง</strong><small>ประเมินค่าส่งไทย-ลาวล่วงหน้า</small></span></a>
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3.5 9 5 4h14l1.5 5a3 3 0 0 1-5.7 1 3 3 0 0 1-5.6 0 3 3 0 0 1-5.7-1z"/></svg></i></span><span><strong>ร้านค้าเข้าร่วม</strong><small>ร้านค้าพันธมิตรที่ SNG ส่งให้</small></span></a>
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M22 11h-6"/></svg></i></span><span><strong>สมัครสมาชิก</strong><small>แต้มสะสม คูปอง และสิทธิพิเศษ</small></span></a>
+  </nav>
+
+  <section class="home-member">
+    <div class="home-member-copy">
+      <strong>สมัครสมาชิกฟรี</strong>
+      <small>ดูพัสดุทั้งหมด ขอใบเสนอราคา และรับเครดิตแนะนำเพื่อน</small>
+    </div>
+    <div class="home-member-actions">
+      <a class="btn-gold" href="#">สมัครสมาชิก</a>
+      <a class="btn-outline" href="#">เข้าสู่ระบบ</a>
+    </div>
+  </section>
+
+  <section class="home-contact">
+    <span class="home-contact-label">ติดต่อเรา</span>
+    <strong>SNG Express ขนส่งไทย-ลาว</strong>
+    <span class="home-contact-address">99 ถ.มิตรภาพ อ.เมือง จ.หนองคาย 43000</span>
+    <div class="home-contact-actions">
+      <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h3l1.5 4.5-2 1.5a12 12 0 0 0 6.5 6.5l1.5-2L21 15v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4 5.2 2 2 0 0 1 6 3z"/></svg></i><span>042 000 000</span></a>
+      <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.8 7 8.2 6 8.2-6"/></svg></i><span>info@sngexpress.com</span></a>
+    </div>
+  </section>
+</section>
+</main>
+<nav class="bottom-nav">
+  <a class="active" href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/></svg></i><span>หน้าแรก</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></i><span>ติดตามพัสดุ</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg></i><span>คำนวณค่าส่ง</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3.5 9 5 4h14l1.5 5a3 3 0 0 1-5.7 1 3 3 0 0 1-5.6 0 3 3 0 0 1-5.7-1z"/></svg></i><span>ร้านค้า</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></i><span>บัญชีของฉัน</span></a>
+</nav>
+</div></div><div class="pv-col"><p class="pv-label">B · ธีมสว่าง</p><div class="frame" data-theme="light">
+<header class="portal-topbar">
+  <a class="portal-brand" href="#"><span class="logo-dot">SNG</span><span>SNG <b>EXPRESS</b></span></a>
+  <div class="portal-top-actions">
+    <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg></i><span>โหมดมืด</span></a>
+    <a href="#">🇱🇦 <span>ลาว</span></a>
+    <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></i><span>เข้าสู่ระบบ</span></a>
+  </div>
+</header>
+<main class="portal-main">
+<section class="portal-shell home-page">
+  <header class="home-hero">
+    <p class="eyebrow">SNG EXPRESS</p>
+    <h1>ส่งพัสดุไทย-ลาว ง่าย รวดเร็ว ไว้ใจได้</h1>
+    <p class="home-hero-sub">ติดตามพัสดุ คำนวณค่าส่ง และบริการอื่นๆ ของ SNG Express</p>
+    <ul class="home-lanes">
+      <li><span>🇹🇭 → 🇱🇦</span>ไทย → ลาว</li>
+      <li><span>🇱🇦 → 🇹🇭</span>ลาว → ไทย</li>
+    </ul>
+  </header>
+
+  <form class="home-track">
+    <label>ค้นหาด้วยเลขพัสดุ</label>
+    <div class="home-track-row">
+      <input class="input-portal" placeholder="SNG-XXXXXX">
+      <button class="home-track-button" type="button"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></i><span>ค้นหา</span></button>
+    </div>
+    <div class="home-recent">
+      <span class="home-recent-label">ค้นหาล่าสุด</span>
+      <div class="home-recent-list">
+        <a class="home-recent-chip" href="#">SNG-260818-041</a>
+        <a class="home-recent-chip" href="#">SNG-260729-018</a>
+      </div>
+      <button class="home-recent-clear" type="button">ล้าง</button>
+    </div>
+  </form>
+
+  <div class="home-section-heading"><h2>บริการของเรา</h2></div>
+
+  <nav class="home-services">
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></i></span><span><strong>ติดตามพัสดุ</strong><small>เช็คสถานะพัสดุของคุณ</small></span></a>
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg></i></span><span><strong>คำนวณค่าส่ง</strong><small>ประเมินค่าส่งไทย-ลาวล่วงหน้า</small></span></a>
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3.5 9 5 4h14l1.5 5a3 3 0 0 1-5.7 1 3 3 0 0 1-5.6 0 3 3 0 0 1-5.7-1z"/></svg></i></span><span><strong>ร้านค้าเข้าร่วม</strong><small>ร้านค้าพันธมิตรที่ SNG ส่งให้</small></span></a>
+    <a class="home-service" href="#"><span class="home-service-icon"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M22 11h-6"/></svg></i></span><span><strong>สมัครสมาชิก</strong><small>แต้มสะสม คูปอง และสิทธิพิเศษ</small></span></a>
+  </nav>
+
+  <section class="home-member">
+    <div class="home-member-copy">
+      <strong>สมัครสมาชิกฟรี</strong>
+      <small>ดูพัสดุทั้งหมด ขอใบเสนอราคา และรับเครดิตแนะนำเพื่อน</small>
+    </div>
+    <div class="home-member-actions">
+      <a class="btn-gold" href="#">สมัครสมาชิก</a>
+      <a class="btn-outline" href="#">เข้าสู่ระบบ</a>
+    </div>
+  </section>
+
+  <section class="home-contact">
+    <span class="home-contact-label">ติดต่อเรา</span>
+    <strong>SNG Express ขนส่งไทย-ลาว</strong>
+    <span class="home-contact-address">99 ถ.มิตรภาพ อ.เมือง จ.หนองคาย 43000</span>
+    <div class="home-contact-actions">
+      <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h3l1.5 4.5-2 1.5a12 12 0 0 0 6.5 6.5l1.5-2L21 15v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4 5.2 2 2 0 0 1 6 3z"/></svg></i><span>042 000 000</span></a>
+      <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.8 7 8.2 6 8.2-6"/></svg></i><span>info@sngexpress.com</span></a>
+    </div>
+  </section>
+</section>
+</main>
+<nav class="bottom-nav">
+  <a class="active" href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/></svg></i><span>หน้าแรก</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></i><span>ติดตามพัสดุ</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg></i><span>คำนวณค่าส่ง</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3.5 9 5 4h14l1.5 5a3 3 0 0 1-5.7 1 3 3 0 0 1-5.6 0 3 3 0 0 1-5.7-1z"/></svg></i><span>ร้านค้า</span></a>
+  <a href="#"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></i><span>บัญชีของฉัน</span></a>
+</nav>
+</div></div></div></body></html>

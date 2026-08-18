@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SNG Member UI Concepts</title>
+  <style>
+    :root {
+      --yellow: #f3d21d;
+      --ink: #171712;
+      --muted: #74746d;
+      --line: #e8e6de;
+      --paper: #f6f5f0;
+      --green: #147a4d;
+      font-family: "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(17,17,15,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17,17,15,.035) 1px, transparent 1px),
+        #eeede8;
+      background-size: 24px 24px;
+    }
+
+    .board {
+      width: 1500px;
+      min-height: 1060px;
+      margin: 0 auto;
+      padding: 42px 48px 46px;
+    }
+
+    .board-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .board-kicker {
+      margin: 0 0 7px;
+      font: 800 12px/1 Arial, sans-serif;
+      letter-spacing: .18em;
+      color: #8c7800;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.15;
+      letter-spacing: -.03em;
+    }
+
+    .board-note {
+      max-width: 490px;
+      margin: 0;
+      text-align: right;
+      color: #686860;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .concepts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+
+    .concept-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 10px 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #66665f;
+    }
+
+    .concept-label b {
+      display: inline-grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border-radius: 50%;
+      background: #171712;
+      color: #fff;
+      font: 800 12px/1 Arial, sans-serif;
+    }
+
+    .concept.recommended .concept-label b {
+      background: var(--yellow);
+      color: #171712;
+    }
+
+    .recommended-tag {
+      margin-left: auto;
+      padding: 5px 8px;
+      border-radius: 6px;
+      background: #e4f4ea;
+      color: #12613f;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .phone {
+      position: relative;
+      height: 864px;
+      overflow: hidden;
+      border: 8px solid #1a1a18;
+      border-radius: 34px;
+      background: #fafaf7;
+      box-shadow: 0 24px 60px rgba(30,29,25,.15);
+    }
+
+    .statusbar {
+      height: 31px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      font: 700 10px/1 Arial, sans-serif;
+      letter-spacing: .02em;
+    }
+
+    .status-icons { letter-spacing: 2px; }
+
+    .appbar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(250,250,247,.96);
+    }
+
+    .brand { display: flex; align-items: center; gap: 9px; }
+    .brand img { width: 30px; height: 30px; object-fit: contain; }
+    .brand-name { font: 900 13px/1 Arial, sans-serif; letter-spacing: .04em; }
+    .brand-name span { color: #a68d00; }
+
+    .avatar {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 50%;
+      background: #efeee8;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .screen {
+      height: calc(100% - 31px - 58px - 67px);
+      overflow: hidden;
+      padding: 20px 18px 24px;
+    }
+
+    .hello-row { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+    .hello-row h2 { margin: 0; font-size: 22px; line-height: 1.25; letter-spacing: -.02em; }
+    .hello-row p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+
+    .verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .verified::before {
+      content: "✓";
+      display: inline-grid;
+      width: 14px;
+      height: 14px;
+      place-items: center;
+      border-radius: 50%;
+      background: #dff2e7;
+      font: 900 9px/1 Arial, sans-serif;
+    }
+
+    .balance {
+      min-width: 112px;
+      padding-left: 12px;
+      border-left: 1px solid var(--line);
+      text-align: right;
+    }
+
+    .balance small { display: block; color: var(--muted); font-size: 9px; }
+    .balance strong { display: block; margin-top: 2px; font-size: 15px; }
+
+    .track-box {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid #ddd9c5;
+      border-radius: 14px;
+      background: #fffdf2;
+    }
+
+    .track-box label { display: block; margin-bottom: 8px; font-size: 11px; font-weight: 800; }
+    .track-input { display: flex; gap: 8px; }
+    .track-input span {
+      flex: 1;
+      padding: 10px 11px;
+      border: 1px solid #dfddd4;
+      border-radius: 9px;
+      background: #fff;
+      color: #98978f;
+      font-size: 11px;
+    }
+
+    .track-input button {
+      border: 0;
+      border-radius: 9px;
+      padding: 0 14px;
+      background: var(--ink);
+      color: #fff;
+      font: 800 10px/1 inherit;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 9px;
+    }
+
+    .section-title h3 { margin: 0; font-size: 13px; }
+    .section-title a { color: #696860; font-size: 10px; text-decoration: none; }
+
+    .shipment {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .shipment-top { display: flex; justify-content: space-between; gap: 10px; }
+    .job { font: 900 13px/1.2 Arial, sans-serif; letter-spacing: .03em; }
+    .route { margin-top: 5px; color: var(--muted); font-size: 10px; }
+
+    .status-chip {
+      height: fit-content;
+      padding: 5px 7px;
+      border-radius: 6px;
+      background: #fff6c2;
+      color: #6b5900;
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    .progress { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 17px; }
+    .step { position: relative; text-align: center; color: #99978d; font-size: 8px; }
+    .step::before {
+      content: "";
+      position: relative;
+      z-index: 2;
+      display: block;
+      width: 8px;
+      height: 8px;
+      margin: 0 auto 6px;
+      border: 2px solid #d4d1c8;
+      border-radius: 50%;
+      background: #fff;
+    }
+    .step::after {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      width: 100%;
+      height: 2px;
+      left: -50%;
+      top: 4px;
+      background: #dedbd2;
+    }
+    .step:first-child::after { display: none; }
+    .step.done { color: #35352f; font-weight: 700; }
+    .step.done::before { border-color: var(--yellow); background: var(--yellow); }
+    .step.done::after { background: var(--yellow); }
+
+    .services {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .service {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .service-icon {
+      display: grid;
+      flex: 0 0 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 9px;
+      background: #f5f2df;
+      color: #4d450f;
+      font: 900 13px/1 Arial, sans-serif;
+    }
+
+    .service strong { display: block; font-size: 10px; }
+    .service small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
+
+    .referral {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 12px 14px;
+      border: 1px dashed #c7bb6d;
+      border-radius: 12px;
+      background: #fffdf1;
+    }
+
+    .referral small { display: block; color: #7b7451; font-size: 8px; }
+    .referral strong { display: block; margin-top: 2px; font: 900 13px/1.2 Arial, sans-serif; }
+    .copy { padding: 7px 9px; border: 1px solid #d6ce99; border-radius: 8px; font-size: 9px; font-weight: 800; }
+
+    .bottomnav {
+      position: absolute;
+      inset: auto 0 0;
+      height: 67px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      align-items: center;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .navitem { text-align: center; color: #99978f; font-size: 8px; }
+    .navitem b { display: block; margin: 0 auto 3px; font: 900 14px/1 Arial, sans-serif; }
+    .navitem.active { color: #292820; font-weight: 800; }
+    .navitem.active b { color: #a88f00; }
+
+    /* Direction B: restrained dark brand */
+    .dark.phone { background: #0d0d0c; border-color: #050505; color: #f6f4eb; }
+    .dark .appbar { background: #0d0d0c; border-color: #292925; }
+    .dark .brand-name span { color: var(--yellow); }
+    .dark .avatar { background: #23231f; }
+    .dark .screen { background: #0d0d0c; }
+    .dark .hello-row p, .dark .route, .dark .service small, .dark .section-title a, .dark .balance small { color: #8d8b82; }
+    .dark .balance { border-color: #33332d; }
+    .dark .track-box {
+      border-color: #36352e;
+      background: #171714;
+    }
+    .dark .track-input span { border-color: #393831; background: #0d0d0c; color: #77756e; }
+    .dark .track-input button { background: var(--yellow); color: #171712; }
+    .dark .shipment, .dark .service { border-color: #30302b; background: #171714; }
+    .dark .status-chip { background: #332f17; color: #f3d95d; }
+    .dark .step { color: #77756d; }
+    .dark .step::before { border-color: #4b4a42; background: #171714; }
+    .dark .step::after { background: #393832; }
+    .dark .step.done { color: #e8e5da; }
+    .dark .step.done::before, .dark .step.done::after { border-color: var(--yellow); background: var(--yellow); }
+    .dark .service-icon { background: #2c2a17; color: var(--yellow); }
+    .dark .referral { border-color: #4f4a27; background: #171714; }
+    .dark .referral small { color: #9c9672; }
+    .dark .copy { border-color: #4d492d; }
+    .dark .bottomnav { border-color: #30302b; background: #141412; }
+    .dark .navitem.active { color: #f3f0e5; }
+    .dark .navitem.active b { color: var(--yellow); }
+    .dark .verified { color: #70d49d; }
+    .dark .verified::before { background: #153725; }
+
+    /* Direction C: list-first, high density */
+    .compact.phone { background: #f7f7f4; }
+    .compact .screen { padding: 18px 16px 22px; }
+    .compact-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      margin-top: 16px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--line);
+    }
+    .compact-summary div { padding: 12px; background: #fff; }
+    .compact-summary small { display: block; color: var(--muted); font-size: 9px; }
+    .compact-summary strong { display: block; margin-top: 3px; font-size: 16px; }
+    .action-list { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+    .action-row {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 54px;
+      padding: 8px 11px;
+      border-bottom: 1px solid var(--line);
+    }
+    .action-row:last-child { border-bottom: 0; }
+    .action-row .service-icon { background: #f2f1eb; }
+    .action-row strong { display: block; font-size: 10px; }
+    .action-row small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
+    .chevron { color: #a2a097; font: 900 15px/1 Arial, sans-serif; }
+    .mini-shipment {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .mini-shipment + .mini-shipment { margin-top: 7px; }
+    .mini-shipment .route { margin-top: 4px; }
+    .mini-shipment time { color: var(--muted); font-size: 8px; }
+    .compact-logout { margin-top: 14px; text-align: center; color: #9e3d36; font-size: 9px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <header class="board-head">
+      <div>
+        <p class="board-kicker">SNG EXPRESS · MEMBER EXPERIENCE</p>
+        <h1>หน้า MEMBER — 3 ทิศทางที่ใช้งานจริง</h1>
+      </div>
+      <p class="board-note">ลด gradient, glass card, icon และคำโปรยที่ไม่จำเป็น<br>ให้เลขพัสดุ สถานะ เครดิต และงานประจำขึ้นมาก่อน</p>
+    </header>
+
+    <section class="concepts">
+      <article class="concept recommended">
+        <div class="concept-label"><b>A</b> Utility First <span class="recommended-tag">แนะนำ</span></div>
+        <div class="phone">
+          <div class="statusbar"><span>09:41</span><span class="status-icons">● ◒ ▮</span></div>
+          <header class="appbar">
+            <div class="brand"><img src="../public/images/sng-logo-nav.png" alt=""><div class="brand-name">SNG <span>EXPRESS</span></div></div>
+            <div class="avatar">SK</div>
+          </header>
+          <div class="screen">
+            <div class="hello-row">
+              <div><h2>สวัสดี, สมใจ</h2><p>020 5555 1288</p><span class="verified">ยืนยันตัวตนแล้ว</span></div>
+              <div class="balance"><small>เครดิตแนะนำเพื่อน</small><strong>40,000 กีบ</strong></div>
+            </div>
+            <div class="track-box"><label>ติดตามพัสดุ</label><div class="track-input"><span>กรอกเลข SNG</span><button>ค้นหา</button></div></div>
+            <div class="section-title"><h3>พัสดุล่าสุด</h3><a href="#">ดูทั้งหมด →</a></div>
+            <div class="shipment">
+              <div class="shipment-top"><div><div class="job">SNG-260818-041</div><div class="route">กรุงเทพฯ → เวียงจันทน์</div></div><span class="status-chip">ถึงศูนย์ปลายทาง</span></div>
+              <div class="progress"><div class="step done">รับพัสดุ</div><div class="step done">ข้ามแดน</div><div class="step done">ถึงศูนย์</div><div class="step">นำส่ง</div></div>
+            </div>
+            <div class="section-title"><h3>บริการของคุณ</h3><a href="#">จัดการบัญชี</a></div>
+            <div class="services">
+              <div class="service"><span class="service-icon">▣</span><div><strong>พัสดุของฉัน</strong><small>ประวัติและใบปะหน้า</small></div></div>
+              <div class="service"><span class="service-icon">฿</span><div><strong>ขอเช็คราคา</strong><small>สินค้าจากไทย</small></div></div>
+              <div class="service"><span class="service-icon">↗</span><div><strong>คำนวณค่าส่ง</strong><small>ไทย–ลาว</small></div></div>
+              <div class="service"><span class="service-icon">◎</span><div><strong>ข้อมูลส่วนตัว</strong><small>ชื่อและเบอร์โทร</small></div></div>
+            </div>
+            <div class="referral"><div><small>รหัสแนะนำเพื่อน</small><strong>SNG-SOMJAI</strong></div><span class="copy">คัดลอกรหัส</span></div>
+          </div>
+          <nav class="bottomnav"><span class="navitem"><b>⌂</b>หน้าแรก</span><span class="navitem"><b>⌖</b>ติดตาม</span><span class="navitem"><b>∑</b>ค่าส่ง</span><span class="navitem"><b>▦</b>ร้านค้า</span><span class="navitem active"><b>●</b>บัญชี</span></nav>
+        </div>
+      </article>
+
+      <article class="concept">
+        <div class="concept-label"><b>B</b> Restrained Brand Dark</div>
+        <div class="phone dark">
+          <div class="statusbar"><span>09:41</span><span class="status-icons">● ◒ ▮</span></div>
+          <header class="appbar">
+            <div class="brand"><img src="../public/images/sng-logo-nav.png" alt=""><div class="brand-name">SNG <span>EXPRESS</span></div></div>
+            <div class="avatar">SK</div>
+          </header>
+          <div class="screen">
+            <div class="hello-row">
+              <div><h2>สวัสดี, สมใจ</h2><p>020 5555 1288</p><span class="verified">ยืนยันตัวตนแล้ว</span></div>
+              <div class="balance"><small>เครดิตแนะนำเพื่อน</small><strong>40,000 กีบ</strong></div>
+            </div>
+            <div class="track-box"><label>ติดตามพัสดุ</label><div class="track-input"><span>กรอกเลข SNG</span><button>ค้นหา</button></div></div>
+            <div class="section-title"><h3>พัสดุล่าสุด</h3><a href="#">ดูทั้งหมด →</a></div>
+            <div class="shipment">
+              <div class="shipment-top"><div><div class="job">SNG-260818-041</div><div class="route">กรุงเทพฯ → เวียงจันทน์</div></div><span class="status-chip">ถึงศูนย์ปลายทาง</span></div>
+              <div class="progress"><div class="step done">รับพัสดุ</div><div class="step done">ข้ามแดน</div><div class="step done">ถึงศูนย์</div><div class="step">นำส่ง</div></div>
+            </div>
+            <div class="section-title"><h3>บริการของคุณ</h3><a href="#">จัดการบัญชี</a></div>
+            <div class="services">
+              <div class="service"><span class="service-icon">▣</span><div><strong>พัสดุของฉัน</strong><small>ประวัติและใบปะหน้า</small></div></div>
+              <div class="service"><span class="service-icon">฿</span><div><strong>ขอเช็คราคา</strong><small>สินค้าจากไทย</small></div></div>
+              <div class="service"><span class="service-icon">↗</span><div><strong>คำนวณค่าส่ง</strong><small>ไทย–ลาว</small></div></div>
+              <div class="service"><span class="service-icon">◎</span><div><strong>ข้อมูลส่วนตัว</strong><small>ชื่อและเบอร์โทร</small></div></div>
+            </div>
+            <div class="referral"><div><small>รหัสแนะนำเพื่อน</small><strong>SNG-SOMJAI</strong></div><span class="copy">คัดลอกรหัส</span></div>
+          </div>
+          <nav class="bottomnav"><span class="navitem"><b>⌂</b>หน้าแรก</span><span class="navitem"><b>⌖</b>ติดตาม</span><span class="navitem"><b>∑</b>ค่าส่ง</span><span class="navitem"><b>▦</b>ร้านค้า</span><span class="navitem active"><b>●</b>บัญชี</span></nav>
+        </div>
+      </article>
+
+      <article class="concept">
+        <div class="concept-label"><b>C</b> Compact Member Center</div>
+        <div class="phone compact">
+          <div class="statusbar"><span>09:41</span><span class="status-icons">● ◒ ▮</span></div>
+          <header class="appbar">
+            <div class="brand"><img src="../public/images/sng-logo-nav.png" alt=""><div class="brand-name">SNG <span>EXPRESS</span></div></div>
+            <div class="avatar">SK</div>
+          </header>
+          <div class="screen">
+            <div class="hello-row"><div><h2>บัญชีของสมใจ</h2><p>สมาชิกตั้งแต่ พ.ค. 2026</p><span class="verified">ยืนยันตัวตนแล้ว</span></div></div>
+            <div class="compact-summary"><div><small>เครดิตคงเหลือ</small><strong>40,000 <small style="display:inline">กีบ</small></strong></div><div><small>พัสดุทั้งหมด</small><strong>12 <small style="display:inline">รายการ</small></strong></div></div>
+            <div class="section-title"><h3>เมนูสมาชิก</h3></div>
+            <div class="action-list">
+              <div class="action-row"><span class="service-icon">▣</span><div><strong>พัสดุของฉัน</strong><small>ติดตามย้อนหลังและดูใบปะหน้า</small></div><span class="chevron">›</span></div>
+              <div class="action-row"><span class="service-icon">฿</span><div><strong>คำขอเช็คราคา</strong><small>รายการที่ส่งให้เจ้าหน้าที่</small></div><span class="chevron">›</span></div>
+              <div class="action-row"><span class="service-icon">◎</span><div><strong>ข้อมูลส่วนตัว</strong><small>ชื่อ เบอร์โทร และรหัสผ่าน</small></div><span class="chevron">›</span></div>
+              <div class="action-row"><span class="service-icon">☆</span><div><strong>แนะนำเพื่อน</strong><small>SNG-SOMJAI · เครดิต 40,000 กีบ</small></div><span class="chevron">›</span></div>
+            </div>
+            <div class="section-title"><h3>พัสดุล่าสุด</h3><a href="#">ดูทั้งหมด →</a></div>
+            <div class="mini-shipment"><div><div class="job">SNG-260818-041</div><div class="route">กรุงเทพฯ → เวียงจันทน์</div></div><div><span class="status-chip">ถึงศูนย์</span><time>18 ส.ค.</time></div></div>
+            <div class="mini-shipment"><div><div class="job">SNG-260729-018</div><div class="route">เวียงจันทน์ → อุดรธานี</div></div><div><span class="status-chip" style="background:#e4f4ea;color:#12613f">สำเร็จ</span><time>30 ก.ค.</time></div></div>
+            <div class="compact-logout">ออกจากระบบ</div>
+          </div>
+          <nav class="bottomnav"><span class="navitem"><b>⌂</b>หน้าแรก</span><span class="navitem"><b>⌖</b>ติดตาม</span><span class="navitem"><b>∑</b>ค่าส่ง</span><span class="navitem"><b>▦</b>ร้านค้า</span><span class="navitem active"><b>●</b>บัญชี</span></nav>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
