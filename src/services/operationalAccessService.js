@@ -1,4 +1,4 @@
-const MANAGEMENT_ROLES = new Set(['admin', 'manager']);
+const MANAGEMENT_ROLES = new Set(['owner', 'admin', 'manager']);
 
 export function expectedWarehouseRole(direction, phase) {
   if (!['TH_TO_LA', 'LA_TO_TH'].includes(direction)) return null;
