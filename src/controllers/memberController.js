@@ -11,6 +11,7 @@ import { createAndSendOtp, verifyOtp } from '../services/otpService.js';
 import { regenerateCustomerSession, recordMemberLoginAttempt } from '../middleware/customerAuth.js';
 import { resolveInviteToken } from '../services/inviteTokenService.js';
 import { getUnredeemedRewards } from '../services/referralRewardService.js';
+import { resolveStatus } from '../constants/transitions.js';
 
 // Constant-time login even when the phone isn't registered (resist enumeration).
 const DUMMY_PASSWORD_HASH = '$2b$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -547,36 +548,82 @@ export async function processResetPassword(req, res) {
   }
 }
 
+/** Load the orders visible to a member through their verified account phone. */
+async function findMemberOrders(phone, limit = 50) {
+  // `limit` is selected by server code only. Keeping the two supported values
+  // explicit avoids placing an arbitrary value in the SQL string.
+  const rowLimit = limit === 1 ? 1 : 50;
+  const [orders] = await pool.query(
+    `SELECT o.id, o.job_no, o.direction, o.status, o.declared_weight, o.cod_amount,
+            o.created_at, o.updated_at, o.delivered_at,
+            s.name AS sender_name, r.name AS receiver_name, r.city AS receiver_city
+     FROM orders o
+     LEFT JOIN customers s ON s.id = o.sender_id
+     LEFT JOIN customers r ON r.id = o.receiver_id
+     WHERE s.phone_normalized = ? OR r.phone_normalized = ? OR s.phone = ? OR r.phone = ?
+     ORDER BY o.created_at DESC, o.id DESC
+     LIMIT ${rowLimit}`,
+    [phone, phone, phone, phone]
+  );
+  return orders.map(order => ({ ...order, status: resolveStatus(order.status) }));
+}
+
 /**
  * GET /member/profile
  */
 export async function profile(req, res) {
   const customer = req.session.customer;
-  try {
-    const [[account]] = await pool.query(
+
+  // Concept A is the default member experience. Keep an explicit theme choice
+  // intact, but start first-time member sessions in the light presentation.
+  if (!req.session.theme) {
+    req.session.theme = 'light';
+    res.locals.theme = 'light';
+    res.locals.otherTheme = 'dark';
+  }
+
+  const [accountResult, rewardsResult, ordersResult] = await Promise.allSettled([
+    pool.query(
       `SELECT id, phone, phone_display, first_name, last_name, gender, referral_code, created_at
        FROM customer_accounts WHERE id = ?`,
       [customer.id]
-    );
+    ),
+    getUnredeemedRewards(customer.id),
+    findMemberOrders(customer.phone, 1),
+  ]);
 
-    const rewards = await getUnredeemedRewards(customer.id);
-    const referralCreditLak = rewards.reduce((sum, r) => sum + Number(r.amount_lak), 0);
+  let account = customer;
+  let referralCreditLak = null;
+  let latestOrder = null;
+  let latestOrderUnavailable = false;
 
-    res.render('customer/member/profile', {
-      layout: 'customer/layout',
-      title: `${res.locals.t('portal.account')} | SNG Express`,
-      account: account || customer,
-      referralCreditLak,
-    });
-  } catch (err) {
-    console.error('[Member Profile]', err);
-    res.render('customer/member/profile', {
-      layout: 'customer/layout',
-      title: `${res.locals.t('portal.account')} | SNG Express`,
-      account: customer,
-      referralCreditLak: 0,
-    });
+  if (accountResult.status === 'fulfilled') {
+    account = accountResult.value[0][0] || customer;
+  } else {
+    console.error('[Member Profile] account:', accountResult.reason);
   }
+
+  if (rewardsResult.status === 'fulfilled') {
+    referralCreditLak = rewardsResult.value.reduce((sum, reward) => sum + Number(reward.amount_lak), 0);
+  } else {
+    console.error('[Member Profile] referral credit:', rewardsResult.reason);
+  }
+
+  if (ordersResult.status === 'fulfilled') {
+    latestOrder = ordersResult.value[0] || null;
+  } else {
+    latestOrderUnavailable = true;
+    console.error('[Member Profile] latest order:', ordersResult.reason);
+  }
+
+  res.render('customer/member/profile', {
+    layout: 'customer/layout',
+    title: `${res.locals.t('portal.account')} | SNG Express`,
+    account,
+    referralCreditLak,
+    latestOrder,
+    latestOrderUnavailable,
+  });
 }
 
 /**
@@ -587,17 +634,7 @@ export async function myOrders(req, res) {
   const phone = customer.phone;
 
   try {
-    const [orders] = await pool.query(
-      `SELECT o.id, o.job_no, o.direction, o.status, o.declared_weight, o.cod_amount, o.created_at,
-              s.name AS sender_name, r.name AS receiver_name, r.city AS receiver_city
-       FROM orders o
-       LEFT JOIN customers s ON s.id = o.sender_id
-       LEFT JOIN customers r ON r.id = o.receiver_id
-       WHERE s.phone_normalized = ? OR r.phone_normalized = ? OR s.phone = ? OR r.phone = ?
-       ORDER BY o.created_at DESC
-       LIMIT 50`,
-      [phone, phone, phone, phone]
-    );
+    const orders = await findMemberOrders(phone);
 
     res.render('customer/member/orders', {
       layout: 'customer/layout',
@@ -616,7 +653,7 @@ export async function myOrders(req, res) {
 
 /**
  * GET /member/orders/:jobNo/sticker
- * A member's own order's shipping label ("ใบปะหน้า") — reuses the exact same
+ * A member's own order's shipping label ("ใบบิล") — reuses the exact same
  * views/orders/sticker.ejs template staff use, scoped to orders where this
  * customer is the sender OR receiver by phone match (same rule as myOrders()).
  * The ownership check lives in the SQL WHERE clause itself, so it is
@@ -679,7 +716,7 @@ export async function myOrderSticker(req, res) {
       exchangeRate,
       lang: isLa ? 'la' : 'th',
       trackingUrl: `${req.protocol}://${req.get('host')}/track/${order.job_no}`,
-      title: `ใบปะหน้า — ${order.job_no}`,
+      title: `ใบบิล — ${order.job_no}`,
     });
   } catch (err) {
     console.error('[Member Order Sticker]', err);

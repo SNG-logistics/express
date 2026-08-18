@@ -88,14 +88,20 @@ test('update()\'s catch-block re-render no longer omits memberLink (pre-existing
   assert.match(updateFn, /referralRewards: \[\]/);
 });
 
-test('member profile shows the referral credit balance and leaves the points tile untouched', () => {
+test('member profile shows real referral credit without placeholder loyalty data', () => {
   assert.match(member, /getUnredeemedRewards\(customer\.id\)/);
   assert.match(profileView, /referralCreditLak/);
-  assert.match(profileView, /t\('member\.points'\) %> \(เร็วๆ นี้\)/);   // points tile still "coming soon"
-  assert.doesNotMatch(profileView, /t\('member\.coupons'\)/);            // coupons tile replaced, not left dangling
+  assert.doesNotMatch(profileView, /t\('member\.points'\)/);
+  assert.doesNotMatch(profileView, /SNG-XXXX/);
+  assert.doesNotMatch(profileView, /onclick=/);
   const html = ejs.render(profileView, {
-    t: (k) => k, account: { first_name: 'A', phone_display: '0812345678', referral_code: 'SNG-AB12' },
+    t: (k) => k,
+    lang: 'th',
+    account: { first_name: 'A', phone_display: '0812345678', referral_code: 'SNG-AB12' },
     referralCreditLak: 40000,
+    latestOrder: null,
+    latestOrderUnavailable: false,
   });
   assert.match(html, /40,000/);
+  assert.doesNotMatch(html, /member\.creditUnavailable/);
 });
