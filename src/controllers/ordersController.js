@@ -6,6 +6,7 @@ import { parseDimensionSum, resolveShippingRate } from '../services/pricingServi
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
 import { assignBranchToOrder, assignOrderToBranch } from './branchesController.js';
 import { toWaPhone } from '../utils/waPhone.js';
+import { applySavedLocationToOrder } from '../services/receiverLocationService.js';
 
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
@@ -365,6 +366,10 @@ export async function create(req, res) {
           [result.insertId, payload.cod_amount]
         );
       }
+      // Carry over a receiver pin captured on an earlier parcel (WhatsApp pin
+      // or a past delivery), so a returning customer's order is routable the
+      // moment it exists instead of waiting to be asked for the same pin again.
+      await applySavedLocationToOrder(result.insertId, payload.receiver_id, conn);
       if (payload.quotation_id) {
         // Only a PURCHASED quotation (item actually bought) may bridge into a
         // real shipment order — accepting a quote is not the same moment as

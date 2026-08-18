@@ -79,3 +79,29 @@ test('unload is restricted to the destination warehouse and matching trip direct
     role: 'dispatcher', orderDirection: 'TH_TO_LA', tripDirection: 'LA_TO_TH',
   }), false);
 });
+
+test('a branch on the truck route can unload there, but not for the wrong direction', () => {
+  // Truck passes the branch before the main warehouse — the branch takes the
+  // parcel off itself rather than the truck driving on and doubling back.
+  assert.equal(canUnloadAtDestination({
+    role: 'branch_operator', orderDirection: 'TH_TO_LA', tripDirection: 'TH_TO_LA',
+  }), true);
+  // Direction still has to match: a Lao branch is not a destination for LA→TH goods.
+  assert.equal(canUnloadAtDestination({
+    role: 'branch_operator', orderDirection: 'TH_TO_LA', tripDirection: 'LA_TO_TH',
+  }), false);
+  // Roles with no destination-point business still cannot unload.
+  assert.equal(canUnloadAtDestination({
+    role: 'rider', orderDirection: 'TH_TO_LA', tripDirection: 'TH_TO_LA',
+  }), false);
+});
+
+test('owner has the same operational reach as admin/manager', () => {
+  assert.equal(canUnloadAtDestination({
+    role: 'owner', orderDirection: 'TH_TO_LA', tripDirection: 'TH_TO_LA',
+  }), true);
+  assert.equal(canAutoScanTarget({
+    role: 'owner', targetStatus: 'BRANCH_RECEIVED', order: { direction: 'TH_TO_LA', dest_branch_id: 7 },
+  }), true);
+  assert.equal(canManageBranchResource({ role: 'owner', sessionBranchId: null, targetBranchId: 8 }), true);
+});

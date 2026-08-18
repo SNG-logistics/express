@@ -119,23 +119,40 @@ export async function autoBroadcastOnBranchReceived(orderId) {
 }
 
 /**
- * Fire-and-forget auto-broadcast used when an order reaches AT_DEST_WH.
- * Only relevant when the order was never routed to a branch (dest_branch_id
- * still NULL after assignBranchToOrder ran) — those orders sit at the main
- * warehouse, so this broadcasts to HQ riders (riders.branch_id IS NULL)
- * instead of leaving last-mile dispatch entirely to a staff member's memory.
- * A branch-bound order reaching AT_DEST_WH is a no-op here — it gets its
- * own broadcast later, at BRANCH_RECEIVED, once it actually reaches the branch.
+ * Fire-and-forget auto-broadcast used when an order reaches AT_DEST_WH —
+ * i.e. the parcel has just come off the truck. It goes to whoever is actually
+ * holding the goods, so last-mile dispatch never depends on a staff member
+ * remembering to open the job by hand:
+ *
+ *  - no destination branch (dest_branch_id NULL) — the parcel sits at the main
+ *    warehouse, so offer it to HQ riders (riders.branch_id IS NULL);
+ *  - a branch unloaded it off the truck itself (branch_deliveries.received_at
+ *    stamped by takeBranchCustody) — offer it to that branch's riders now;
+ *    the box is physically there, so there is nothing left to wait for.
+ *
+ * A branch-bound order that the main warehouse still holds is a no-op here: it
+ * has yet to travel to the branch, and gets its own broadcast on arrival via
+ * the BRANCH_RECEIVED hook.
  */
-export async function autoBroadcastOnMainWarehouseArrival(orderId) {
+export async function autoBroadcastOnDestinationArrival(orderId) {
   try {
     const [[order]] = await pool.query('SELECT dest_branch_id FROM orders WHERE id=?', [orderId]);
-    if (!order || order.dest_branch_id) return; // branch-bound — handled by the BRANCH_RECEIVED hook instead
+    if (!order) return;
+    let scope = 'HQ';
+    if (order.dest_branch_id) {
+      const [[held]] = await pool.query(
+        'SELECT received_at FROM branch_deliveries WHERE order_id=? AND branch_id=?',
+        [orderId, order.dest_branch_id]
+      );
+      // Routed to a branch but not yet in its hands — wait for BRANCH_RECEIVED.
+      if (!held?.received_at) return;
+      scope = `branch=${order.dest_branch_id}`;
+    }
     const r = await broadcastOffer(orderId, { createdBy: null });
-    if (!r.ok) console.log(`[RiderDispatch] HQ auto-broadcast order=${orderId} skipped: ${r.reason}`);
-    else console.log(`[RiderDispatch] HQ auto-broadcast order=${orderId} → offer=${r.offerId} riders=${r.riderCount ?? '(existing)'}`);
+    if (!r.ok) console.log(`[RiderDispatch] ${scope} auto-broadcast order=${orderId} skipped: ${r.reason}`);
+    else console.log(`[RiderDispatch] ${scope} auto-broadcast order=${orderId} → offer=${r.offerId} riders=${r.riderCount ?? '(existing)'}`);
   } catch (e) {
-    console.error(`[RiderDispatch] HQ auto-broadcast order=${orderId} failed:`, e.message);
+    console.error(`[RiderDispatch] destination auto-broadcast order=${orderId} failed:`, e.message);
   }
 }
 

@@ -1,0 +1,220 @@
+<%# views/branches/edit.ejs — Edit an existing branch's zones, fees and split %>
+
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <a href="/branches/<%= branch.id %>" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+    <div>
+      <h2 class="text-2xl font-bold text-white">แก้ไขสาขา <%= branch.name %></h2>
+      <p class="text-slate-400 text-sm font-mono"><%= branch.branch_code %></p>
+    </div>
+  </div>
+
+  <form action="/branches/<%= branch.id %>/edit" method="POST" class="space-y-5">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <!-- Basic Info -->
+    <div class="glass-panel-dark p-5 space-y-4">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-shop text-amber-400"></i> ข้อมูลสาขา
+      </h3>
+      <p class="text-slate-500 text-xs">รหัสสาขาแก้ไขไม่ได้ เพราะมีงานที่อ้างอิงอยู่แล้ว</p>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            ชื่อสาขา <span class="text-red-400">*</span>
+          </label>
+          <input type="text" name="name" required
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+            value="<%= branch.name || '' %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            ชื่อเจ้าของ / ผู้ดำเนินการ <span class="text-red-400">*</span>
+          </label>
+          <input type="text" name="operator_name" required
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+            value="<%= branch.operator_name || '' %>">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">เบอร์โทร</label>
+          <input type="text" name="phone"
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+            placeholder="020-XXXXXXXX" value="<%= branch.phone || '' %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">อีเมล</label>
+          <input type="email" name="email"
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+            value="<%= branch.email || '' %>">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">ที่อยู่</label>
+        <input type="text" name="address"
+          class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+          value="<%= branch.address || '' %>">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">แขวง / จังหวัด</label>
+          <input type="text" name="province"
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+            value="<%= branch.province || '' %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">เมือง / อำเภอ</label>
+          <input type="text" name="district"
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"
+            value="<%= branch.district || '' %>">
+        </div>
+      </div>
+    </div>
+
+    <!-- Location: needed for zone/fee to be computed at all -->
+    <div class="glass-panel-dark p-5 space-y-4">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-location-dot text-amber-400"></i> พิกัดสาขา
+      </h3>
+      <% if (!branch.lat || !branch.lng) { %>
+        <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-200 text-xs leading-relaxed">
+          <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+          สาขานี้ยังไม่มีพิกัด ระบบจึงวัดระยะทางถึงผู้รับไม่ได้ และจะคิดเป็นโซน A (โซนเริ่มต้น) ให้ทุกงาน
+          — ใส่พิกัดเพื่อให้คิดค่าส่งตามระยะจริง
+        </div>
+      <% } %>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Latitude</label>
+          <input type="number" step="any" name="lat"
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm font-mono"
+            placeholder="17.97570000" value="<%= branch.lat ?? '' %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Longitude</label>
+          <input type="number" step="any" name="lng"
+            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm font-mono"
+            placeholder="102.63310000" value="<%= branch.lng ?? '' %>">
+        </div>
+      </div>
+    </div>
+
+    <!-- Zones & fees -->
+    <div class="glass-panel-dark p-5 space-y-4">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-crosshairs text-amber-400"></i> โซนการส่ง และค่าส่ง
+      </h3>
+      <p class="text-slate-500 text-xs leading-relaxed">
+        ใส่ค่าส่งเป็น <span class="text-emerald-400 font-semibold">0</span> เพื่อทำโซนส่งฟรี ·
+        งานที่รับเข้ามาแล้วยังคงใช้ค่าส่งเดิม การแก้ไขมีผลกับงานใหม่เท่านั้น
+      </p>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Zone A ≤ (กม.)</label>
+          <input type="number" step="0.01" min="0" name="zone_a_km" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-emerald-500/50 text-sm font-mono"
+            value="<%= branch.zone_a_km %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Zone B ≤ (กม.)</label>
+          <input type="number" step="0.01" min="0" name="zone_b_km" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-amber-500/50 text-sm font-mono"
+            value="<%= branch.zone_b_km %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Zone C ≤ (กม.)</label>
+          <input type="number" step="0.01" min="0" name="zone_c_km" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-red-500/50 text-sm font-mono"
+            value="<%= branch.zone_c_km %>">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">ค่าส่ง A (₭)</label>
+          <input type="number" step="1" min="0" name="fee_zone_a" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-emerald-500/50 text-sm font-mono"
+            value="<%= Number(branch.fee_zone_a) %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">ค่าส่ง B (₭)</label>
+          <input type="number" step="1" min="0" name="fee_zone_b" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-amber-500/50 text-sm font-mono"
+            value="<%= Number(branch.fee_zone_b) %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">ค่าส่ง C (₭)</label>
+          <input type="number" step="1" min="0" name="fee_zone_c" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-red-500/50 text-sm font-mono"
+            value="<%= Number(branch.fee_zone_c) %>">
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue split -->
+    <div class="glass-panel-dark p-5 space-y-4">
+      <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+        <i class="fa-solid fa-chart-pie text-amber-400"></i> แบ่งรายได้
+      </h3>
+      <p class="text-slate-500 text-xs leading-relaxed">
+        Hub% + Branch% ต้องรวมเป็น 100 · ส่วนที่เหลือจาก 100 คือส่วนของไรเดอร์
+        <% const riderPct = 100 - Number(branch.split_hub_pct) - Number(branch.split_branch_pct); %>
+        <% if (riderPct <= 0) { %>
+          <span class="block mt-1 text-amber-300">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            ตอนนี้ไรเดอร์ได้ส่วนแบ่ง <%= riderPct %>% จากค่าส่ง — ถ้าตั้งใจให้ไรเดอร์ได้ส่วนแบ่ง ต้องลด Hub หรือ Branch ลง
+          </span>
+        <% } %>
+      </p>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">แผน</label>
+          <select name="split_plan"
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-amber-500/50 text-sm">
+            <% for (const plan of ['A','B','C']) { %>
+              <option value="<%= plan %>" <%= branch.split_plan === plan ? 'selected' : '' %>><%= plan %></option>
+            <% } %>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hub %</label>
+          <input type="number" step="0.01" min="0" max="100" name="split_hub_pct" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-amber-500/50 text-sm font-mono"
+            value="<%= Number(branch.split_hub_pct) %>">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Branch %</label>
+          <input type="number" step="0.01" min="0" max="100" name="split_branch_pct" required
+            class="w-full px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-amber-500/50 text-sm font-mono"
+            value="<%= Number(branch.split_branch_pct) %>">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">หมายเหตุ</label>
+        <textarea name="notes" rows="2"
+          class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm"><%= branch.notes || '' %></textarea>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <a href="/branches/<%= branch.id %>"
+        class="flex-1 text-center px-5 py-3 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white text-sm font-semibold transition-all">
+        ยกเลิก
+      </a>
+      <button type="submit"
+        class="flex-1 px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-bold transition-all">
+        <i class="fa-solid fa-floppy-disk mr-1"></i> บันทึกการแก้ไข
+      </button>
+    </div>
+  </form>
+</div>
