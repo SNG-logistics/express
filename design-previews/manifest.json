@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-18T06:37:37.621Z",
+  "sourceCommit": "cad34be957ea2b97c8a826849bd1facd4ed97486",
+  "generator": "design-previews/render-previews.mjs",
+  "dataPolicy": "All captured personal, shipment, credit, and company values are synthetic.",
+  "viewport": {
+    "width": 500,
+    "height": 1100,
+    "deviceScaleFactor": 1
+  },
+  "artifacts": [
+    {
+      "file": "member-profile-light-th.png",
+      "status": "rendered runtime template",
+      "route": "/member/profile",
+      "theme": "light",
+      "language": "th",
+      "auth": "authenticated synthetic member",
+      "state": "latest order at destination warehouse"
+    },
+    {
+      "file": "member-profile-dark-th.png",
+      "status": "rendered runtime template",
+      "route": "/member/profile",
+      "theme": "dark",
+      "language": "th",
+      "auth": "authenticated synthetic member",
+      "state": "latest order at destination warehouse"
+    },
+    {
+      "file": "home-light-th.png",
+      "status": "rendered runtime template",
+      "route": "/home",
+      "theme": "light",
+      "language": "th",
+      "auth": "guest",
+      "state": "no recent tracking searches"
+    },
+    {
+      "file": "home-dark-th.png",
+      "status": "rendered runtime template",
+      "route": "/home",
+      "theme": "dark",
+      "language": "th",
+      "auth": "guest",
+      "state": "no recent tracking searches"
+    }
+  ],
+  "concepts": [
+    {
+      "file": "concepts/member-ui-concepts.html",
+      "screenshot": "concepts/member-ui-concepts.png",
+      "status": "archived concept; option A informed the implementation"
+    },
+    {
+      "file": "concepts/home-ui-preview.html",
+      "screenshot": "concepts/home-ui-preview.png",
+      "status": "archived static concept; not runtime evidence"
+    }
+  ]
+}
