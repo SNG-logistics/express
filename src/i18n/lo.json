@@ -210,6 +210,8 @@
 
   "member": {
     "welcome": "ຍິນດີຕ້ອນຮັບ",
+    "greeting": "ສະບາຍດີ",
+    "verified": "ຢືນຢັນຕົວຕົນແລ້ວ",
     "myProfile": "ຂໍ້ມູນສ່ວນຕົວ",
     "myOrders": "ພັດສະດຸຂອງຂ້ອຍ",
     "points": "ຄະແນນສະສົມ",
@@ -224,7 +226,33 @@
     "noOrders": "ຍັງບໍ່ມີລາຍການພັດສະດຸ",
     "viewTracking": "ເບິ່ງສະຖານະ",
     "viewSticker": "ໃບປະໜ້າ",
-    "quoteRequest": "ກວດລາຄາສິນຄ້າ"
+    "quoteRequest": "ກວດລາຄາສິນຄ້າ",
+    "trackParcel": "ຕິດຕາມພັດສະດຸ",
+    "trackPlaceholder": "ປ້ອນເລກ SNG",
+    "latestOrder": "ພັດສະດຸລ່າສຸດ",
+    "viewAll": "ເບິ່ງທັງໝົດ",
+    "viewJourney": "ເບິ່ງການເດີນທາງ",
+    "noRecentOrder": "ຍັງບໍ່ມີພັດສະດຸໃນບັນຊີນີ້",
+    "noRecentOrderHint": "ເມື່ອເບີຜູ້ສົ່ງ ຫຼື ຜູ້ຮັບກົງກັບບັນຊີ ລາຍການຈະສະແດງຢູ່ບ່ອນນີ້",
+    "orderUnavailable": "ໂຫຼດຂໍ້ມູນພັດສະດຸບໍ່ໄດ້",
+    "progressCreated": "ສ້າງລາຍການ",
+    "progressTransit": "ລະຫວ່າງທາງ",
+    "progressDestination": "ຮອດປາຍທາງ",
+    "progressDelivered": "ສົ່ງສຳເລັດ",
+    "yourServices": "ບໍລິການຂອງທ່ານ",
+    "manageAccount": "ຈັດການບັນຊີ",
+    "orderHistoryHint": "ປະຫວັດ ແລະ ໃບປະໜ້າ",
+    "quoteRequestHint": "ສົ່ງລິ້ງສິນຄ້າຈາກໄທ",
+    "quoteHistory": "ຄຳຂໍກວດລາຄາ",
+    "quoteHistoryHint": "ຕິດຕາມຄຳຂໍ ແລະ ໃບສະເໜີລາຄາ",
+    "profileHint": "ຊື່ ເບີໂທ ແລະ ລະຫັດຜ່ານ",
+    "creditUnavailable": "ໂຫຼດເຄຣດິດບໍ່ໄດ້",
+    "lak": "ກີບ",
+    "noReferralCode": "ຍັງບໍ່ມີລະຫັດແນະນຳໝູ່",
+    "copyCode": "ສຳເນົາລະຫັດ",
+    "copied": "ສຳເນົາແລ້ວ",
+    "copyFailed": "ສຳເນົາບໍ່ສຳເລັດ",
+    "logout": "ອອກຈາກລະບົບ"
   },
 
   "quoteRequest": {

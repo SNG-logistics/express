@@ -210,6 +210,8 @@
 
   "member": {
     "welcome": "ยินดีต้อนรับ",
+    "greeting": "สวัสดี",
+    "verified": "ยืนยันตัวตนแล้ว",
     "myProfile": "ข้อมูลส่วนตัว",
     "myOrders": "พัสดุของฉัน",
     "points": "แต้มสะสม",
@@ -224,7 +226,33 @@
     "noOrders": "ยังไม่มีรายการพัสดุ",
     "viewTracking": "ดูสถานะ",
     "viewSticker": "ใบปะหน้า",
-    "quoteRequest": "เช็คราคาสินค้า"
+    "quoteRequest": "เช็คราคาสินค้า",
+    "trackParcel": "ติดตามพัสดุ",
+    "trackPlaceholder": "กรอกเลข SNG",
+    "latestOrder": "พัสดุล่าสุด",
+    "viewAll": "ดูทั้งหมด",
+    "viewJourney": "ดูการเดินทาง",
+    "noRecentOrder": "ยังไม่มีพัสดุในบัญชีนี้",
+    "noRecentOrderHint": "เมื่อเบอร์ผู้ส่งหรือผู้รับตรงกับบัญชี รายการจะปรากฏที่นี่",
+    "orderUnavailable": "โหลดข้อมูลพัสดุไม่ได้",
+    "progressCreated": "สร้างรายการ",
+    "progressTransit": "ระหว่างทาง",
+    "progressDestination": "ถึงปลายทาง",
+    "progressDelivered": "ส่งสำเร็จ",
+    "yourServices": "บริการของคุณ",
+    "manageAccount": "จัดการบัญชี",
+    "orderHistoryHint": "ประวัติและใบปะหน้า",
+    "quoteRequestHint": "ส่งลิงก์สินค้าจากไทย",
+    "quoteHistory": "คำขอเช็คราคา",
+    "quoteHistoryHint": "ติดตามคำขอและใบเสนอราคา",
+    "profileHint": "ชื่อ เบอร์โทร และรหัสผ่าน",
+    "creditUnavailable": "โหลดเครดิตไม่ได้",
+    "lak": "กีบ",
+    "noReferralCode": "ยังไม่มีรหัสแนะนำเพื่อน",
+    "copyCode": "คัดลอกรหัส",
+    "copied": "คัดลอกแล้ว",
+    "copyFailed": "คัดลอกไม่สำเร็จ",
+    "logout": "ออกจากระบบ"
   },
 
   "quoteRequest": {

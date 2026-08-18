@@ -1,74 +1,243 @@
-<section class="portal-shell">
-  <div class="page-heading">
-    <p class="eyebrow">MY ACCOUNT</p>
-    <h1><%= t('member.welcome') %>, <%= account.first_name %>!</h1>
-    <p style="font-size: 0.85rem; color: var(--portal-text-dim);">
-      <i class="fa-brands fa-whatsapp" style="color: #25D366; margin-right: 4px;"></i> <%= account.phone_display || account.phone %>
-      <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; background: rgba(34, 197, 94, 0.15); color: var(--portal-success); font-size: 0.75rem; font-weight: 700; margin-left: 6px;">
-        <i class="fa-solid fa-check-circle"></i> ยืนยันตัวตนแล้ว
-      </span>
-    </p>
-  </div>
+<%
+  const memberLatestOrder = typeof latestOrder !== 'undefined' ? latestOrder : null;
+  const orderDataUnavailable = typeof latestOrderUnavailable !== 'undefined' && latestOrderUnavailable;
+  const creditAvailable = typeof referralCreditLak !== 'undefined' && referralCreditLak !== null;
+  const creditValue = creditAvailable ? Number(referralCreditLak) : null;
+  const numberLocale = lang === 'lo' ? 'lo-LA' : 'th-TH';
+  const referralCode = account.referral_code || '';
 
-  <!-- Referral Card -->
-  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem; border-color: rgba(255, 224, 0, 0.25); background: linear-gradient(135deg, rgba(255, 224, 0, 0.05), rgba(20, 20, 20, 0.8));">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-      <div>
-        <small style="color: #FFE000; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.05em;"><%= t('member.referralCode') %></small>
-        <div style="font-size: 1.4rem; font-weight: 800; color: #fff; letter-spacing: 1px;"><%= account.referral_code || 'SNG-XXXX' %></div>
-      </div>
-      <button onclick="navigator.clipboard.writeText('<%= account.referral_code %>'); alert('คัดลอกรหัสแนะนำเพื่อนเรียบร้อย!');" class="btn-gold" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-        <i class="fa-regular fa-copy"></i> คัดลอกรหัส
+  let orderProgress = 1;
+  let orderTone = 'active';
+  let showOrderProgress = true;
+  let directionFlags = '';
+  let directionLabel = '';
+
+  if (memberLatestOrder) {
+    const progressByStatus = {
+      NEW: 1,
+      RECEIVED_WH_TH: 1,
+      RECEIVED_WH_LA: 1,
+      READY_TO_LOAD: 1,
+      ON_TRUCK: 2,
+      CROSSING_BORDER: 2,
+      CUSTOMS_HOLD: 2,
+      CUSTOMS_CLEARED: 2,
+      CUSTOMS_REJECTED: 2,
+      ARRIVED_BORDER_WH: 2,
+      AT_DEST_WH: 3,
+      BRANCH_TRANSFER: 3,
+      BRANCH_RECEIVED: 3,
+      RIDER_ASSIGNED: 3,
+      RIDER_ACCEPTED: 3,
+      OUT_FOR_DELIVERY: 3,
+      DELIVERY_FAILED: 3,
+      RETURN_TO_SENDER: 3,
+      RETURNED: 3,
+      DELIVERED: 4,
+      COD_COLLECTED: 4,
+      COD_REMITTED: 4,
+      CLOSED: memberLatestOrder.delivered_at ? 4 : 3,
+    };
+    const successStatuses = ['DELIVERED', 'COD_COLLECTED', 'COD_REMITTED'];
+    const dangerStatuses = ['CUSTOMS_REJECTED', 'DELIVERY_FAILED', 'RETURN_TO_SENDER', 'RETURNED', 'CANCELLED'];
+    const deliveredTerminal = successStatuses.includes(memberLatestOrder.status)
+      || (memberLatestOrder.status === 'CLOSED' && memberLatestOrder.delivered_at);
+
+    orderProgress = progressByStatus[memberLatestOrder.status] || 1;
+    showOrderProgress = memberLatestOrder.status !== 'CLOSED' || Boolean(memberLatestOrder.delivered_at);
+    orderTone = deliveredTerminal
+      ? 'success'
+      : dangerStatuses.includes(memberLatestOrder.status)
+        ? 'danger'
+        : memberLatestOrder.status === 'CUSTOMS_HOLD'
+          ? 'warning'
+          : 'active';
+    directionFlags = memberLatestOrder.direction === 'LA_TO_TH' ? '🇱🇦 → 🇹🇭' : '🇹🇭 → 🇱🇦';
+    directionLabel = memberLatestOrder.direction === 'LA_TO_TH' ? t('order.laToTh') : t('order.thToLa');
+  }
+
+  const progressLabels = [
+    t('member.progressCreated'),
+    t('member.progressTransit'),
+    t('member.progressDestination'),
+    t('member.progressDelivered'),
+  ];
+%>
+
+<section class="portal-shell member-dashboard">
+  <header class="member-summary">
+    <div class="member-identity">
+      <h1><%= t('member.greeting') %>, <%= account.first_name || '' %></h1>
+      <p><%= account.phone_display || account.phone || '–' %></p>
+      <span class="member-verified"><i class="fa-solid fa-check"></i><%= t('member.verified') %></span>
+    </div>
+    <div class="member-credit" aria-label="<%= t('member.referralCredit') %>">
+      <span><%= t('member.referralCredit') %></span>
+      <% if (creditAvailable && Number.isFinite(creditValue)) { %>
+        <strong><%= creditValue.toLocaleString(numberLocale) %> <small><%= t('member.lak') %></small></strong>
+      <% } else { %>
+        <strong>–</strong>
+        <small class="member-credit-error"><%= t('member.creditUnavailable') %></small>
+      <% } %>
+    </div>
+  </header>
+
+  <form class="member-track" action="/track" method="GET">
+    <label for="member-track-q"><%= t('member.trackParcel') %></label>
+    <div class="member-track-row">
+      <input
+        id="member-track-q"
+        class="input-portal"
+        type="text"
+        name="q"
+        placeholder="<%= t('member.trackPlaceholder') %>"
+        autocomplete="off"
+        required
+      >
+      <button class="member-track-button" type="submit" aria-label="<%= t('common.search') %>">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span><%= t('common.search') %></span>
       </button>
     </div>
+  </form>
+
+  <div class="member-section-heading">
+    <h2><%= t('member.latestOrder') %></h2>
+    <a href="/member/orders"><%= t('member.viewAll') %> <i class="fa-solid fa-arrow-right"></i></a>
   </div>
 
-  <!-- Loyalty Placeholders Grid -->
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-    <div class="card" style="padding: 1rem; text-align: center;">
-      <i class="fa-solid fa-coins" style="font-size: 1.5rem; color: var(--portal-gold); margin-bottom: 0.25rem;"></i>
-      <div style="font-size: 1.2rem; font-weight: 800; color: #fff;">0</div>
-      <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= t('member.points') %> (เร็วๆ นี้)</small>
+  <% if (orderDataUnavailable) { %>
+    <div class="member-inline-state is-error" role="status">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span><%= t('member.orderUnavailable') %></span>
     </div>
-    <div class="card" style="padding: 1rem; text-align: center;">
-      <i class="fa-solid fa-ticket" style="font-size: 1.5rem; color: var(--portal-gold); margin-bottom: 0.25rem;"></i>
-      <div style="font-size: 1.2rem; font-weight: 800; color: #fff;"><%= Number(referralCreditLak || 0).toLocaleString('th-TH') %></div>
-      <small style="color: var(--portal-text-faint); font-size: 0.75rem;"><%= t('member.referralCredit') %> (กีบ)</small>
+  <% } else if (memberLatestOrder) { %>
+    <article class="member-latest-order">
+      <div class="member-order-topline">
+        <div class="member-order-title">
+          <strong><%= memberLatestOrder.job_no %></strong>
+          <span><%= directionFlags %> <%= directionLabel %></span>
+          <% if (memberLatestOrder.receiver_city) { %>
+            <span><i class="fa-solid fa-location-dot"></i> <%= memberLatestOrder.receiver_city %></span>
+          <% } %>
+        </div>
+        <span class="member-order-status is-<%= orderTone %>"><%= t('status.' + memberLatestOrder.status) %></span>
+      </div>
+
+      <% if (showOrderProgress) { %>
+        <ol class="member-order-progress is-<%= orderTone %>" aria-label="<%= t('order.status') %>">
+          <% progressLabels.forEach((label, index) => { const step = index + 1; %>
+            <li class="<%= step <= orderProgress ? 'is-complete' : '' %> <%= step === orderProgress ? 'is-current' : '' %>">
+              <span aria-hidden="true"></span>
+              <small><%= label %></small>
+            </li>
+          <% }); %>
+        </ol>
+      <% } %>
+
+      <a class="member-order-link" href="/track/<%= encodeURIComponent(memberLatestOrder.job_no) %>">
+        <%= t('member.viewJourney') %> <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </article>
+  <% } else { %>
+    <div class="member-inline-state">
+      <i class="fa-solid fa-box-open"></i>
+      <div>
+        <strong><%= t('member.noRecentOrder') %></strong>
+        <span><%= t('member.noRecentOrderHint') %></span>
+      </div>
     </div>
+  <% } %>
+
+  <div class="member-section-heading member-services-heading">
+    <h2><%= t('member.yourServices') %></h2>
+    <a href="/member/account"><%= t('member.manageAccount') %></a>
   </div>
 
-  <!-- Menu Shortcuts -->
-  <div class="shortcut-grid">
-    <a class="card shortcut" href="/member/orders">
-      <i class="fa-solid fa-boxes-stacked"></i>
-      <strong><%= t('member.myOrders') %></strong>
-      <small>ติดตามและเช็ครายการพัสดุของคุณ</small>
+  <nav class="member-services" aria-label="<%= t('member.yourServices') %>">
+    <a class="member-service" href="/member/orders">
+      <span class="member-service-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
+      <span><strong><%= t('member.myOrders') %></strong><small><%= t('member.orderHistoryHint') %></small></span>
     </a>
-    <a class="card shortcut" href="/member/quote-request">
-      <i class="fa-solid fa-cart-shopping"></i>
-      <strong><%= t('member.quoteRequest') %></strong>
-      <small>เช็คราคาสินค้าออนไลน์จากไทย</small>
+    <a class="member-service" href="/member/quote-request">
+      <span class="member-service-icon"><i class="fa-solid fa-file-circle-plus"></i></span>
+      <span><strong><%= t('member.quoteRequest') %></strong><small><%= t('member.quoteRequestHint') %></small></span>
     </a>
-    <a class="card shortcut" href="/track">
-      <i class="fa-solid fa-location-dot"></i>
-      <strong><%= t('portal.track') %></strong>
-      <small>เช็คสถานะพัสดุด้วยเลข SNG</small>
+    <a class="member-service" href="/member/quote-requests">
+      <span class="member-service-icon"><i class="fa-solid fa-file-invoice"></i></span>
+      <span><strong><%= t('member.quoteHistory') %></strong><small><%= t('member.quoteHistoryHint') %></small></span>
     </a>
-    <a class="card shortcut" href="/calculate">
-      <i class="fa-solid fa-calculator"></i>
-      <strong><%= t('portal.calculate') %></strong>
-      <small>ประเมินค่าส่งไทย-ลาว</small>
+    <a class="member-service" href="/member/account">
+      <span class="member-service-icon"><i class="fa-solid fa-user-gear"></i></span>
+      <span><strong><%= t('member.editProfile') %></strong><small><%= t('member.profileHint') %></small></span>
     </a>
-    <a class="card shortcut" href="/member/account">
-      <i class="fa-solid fa-user-gear"></i>
-      <strong><%= t('member.editProfile') %></strong>
-      <small>แก้ไขชื่อและข้อมูลส่วนตัว</small>
-    </a>
-  </div>
+  </nav>
 
-  <div style="text-align: center; margin-top: 1.5rem;">
-    <a href="/member/logout" class="btn-gold" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
-      <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
-    </a>
-  </div>
+  <section class="member-referral" aria-labelledby="member-referral-title">
+    <div>
+      <span id="member-referral-title"><%= t('member.referralCode') %></span>
+      <% if (referralCode) { %>
+        <strong><%= referralCode %></strong>
+      <% } else { %>
+        <strong class="is-empty"><%= t('member.noReferralCode') %></strong>
+      <% } %>
+    </div>
+    <% if (referralCode) { %>
+      <button
+        class="member-copy-button"
+        type="button"
+        data-referral-code="<%= referralCode %>"
+        data-copy-success="<%= t('member.copied') %>"
+        data-copy-error="<%= t('member.copyFailed') %>"
+      >
+        <i class="fa-regular fa-copy"></i>
+        <span><%= t('member.copyCode') %></span>
+      </button>
+    <% } %>
+    <span class="member-copy-feedback" aria-live="polite"></span>
+  </section>
+
+  <a class="member-logout" href="/member/logout">
+    <i class="fa-solid fa-arrow-right-from-bracket"></i><%= t('member.logout') %>
+  </a>
 </section>
+
+<script>
+  (() => {
+    const button = document.querySelector('[data-referral-code]');
+    const feedback = document.querySelector('.member-copy-feedback');
+    if (!button || !feedback) return;
+
+    const fallbackCopy = (value) => {
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      const copied = document.execCommand('copy');
+      input.remove();
+      if (!copied) throw new Error('copy failed');
+    };
+
+    button.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(button.dataset.referralCode);
+        } else {
+          fallbackCopy(button.dataset.referralCode);
+        }
+        feedback.textContent = button.dataset.copySuccess;
+        button.classList.add('is-copied');
+      } catch (error) {
+        feedback.textContent = button.dataset.copyError;
+        button.classList.remove('is-copied');
+      }
+      window.setTimeout(() => {
+        feedback.textContent = '';
+        button.classList.remove('is-copied');
+      }, 2200);
+    });
+  })();
+</script>
