@@ -21,6 +21,11 @@ function parsePlatform(raw) {
   return ALLOWED_PLATFORMS.has(value) ? value : null;
 }
 
+function getUploadedPhotoPaths(files) {
+  if (!Array.isArray(files)) return [];
+  return files.map(file => `/uploads/products/${file.filename}`);
+}
+
 /**
  * GET /member/online
  * Curated grid of published online products, for logged-in members.
@@ -86,16 +91,16 @@ export async function adminShowCreate(req, res) {
  */
 export async function adminCreateProduct(req, res) {
   const { name, badge_label, discount_pct, product_url, platform, status, sort_order } = req.body;
-  const photoPath = req.file ? `/uploads/products/${req.file.filename}` : null;
+  const photoPaths = getUploadedPhotoPaths(req.files);
 
   try {
     await pool.query(
       `INSERT INTO online_products
-         (name, photo_path, badge_label, discount_pct, product_url, platform, status, sort_order)
+         (name, photos, badge_label, discount_pct, product_url, platform, status, sort_order)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
-        photoPath,
+        photoPaths.length > 0 ? JSON.stringify(photoPaths) : null,
         (badge_label || '').trim() || null,
         parseDiscountPct(discount_pct),
         product_url.trim(),
@@ -137,27 +142,41 @@ export async function adminShowEdit(req, res) {
 export async function adminUpdateProduct(req, res) {
   const productId = req.params.id;
   const { name, badge_label, discount_pct, product_url, platform, status, sort_order } = req.body;
+  const photoPaths = getUploadedPhotoPaths(req.files);
 
   try {
-    const [[existing]] = await pool.query(`SELECT photo_path FROM online_products WHERE id = ?`, [productId]);
-    const photoPath = req.file ? `/uploads/products/${req.file.filename}` : existing?.photo_path;
+    const setClauses = [
+      'name = ?',
+      'badge_label = ?',
+      'discount_pct = ?',
+      'product_url = ?',
+      'platform = ?',
+      'status = ?',
+      'sort_order = ?',
+    ];
+    const values = [
+      name.trim(),
+      (badge_label || '').trim() || null,
+      parseDiscountPct(discount_pct),
+      product_url.trim(),
+      parsePlatform(platform),
+      ALLOWED_STATUSES.has(status) ? status : 'draft',
+      parseInt(sort_order, 10) || 0,
+    ];
+
+    // Uploading a new set replaces the gallery. With no files, omit the
+    // photos assignment entirely so the existing JSON value is preserved.
+    if (photoPaths.length > 0) {
+      setClauses.splice(1, 0, 'photos = ?');
+      values.splice(1, 0, JSON.stringify(photoPaths));
+    }
+    values.push(productId);
 
     await pool.query(
       `UPDATE online_products
-       SET name = ?, photo_path = ?, badge_label = ?, discount_pct = ?,
-           product_url = ?, platform = ?, status = ?, sort_order = ?
+       SET ${setClauses.join(', ')}
        WHERE id = ?`,
-      [
-        name.trim(),
-        photoPath,
-        (badge_label || '').trim() || null,
-        parseDiscountPct(discount_pct),
-        product_url.trim(),
-        parsePlatform(platform),
-        ALLOWED_STATUSES.has(status) ? status : 'draft',
-        parseInt(sort_order, 10) || 0,
-        productId,
-      ]
+      values
     );
 
     req.session.flash = { type: 'success', message: 'อัปเดตข้อมูลสินค้าเรียบร้อยแล้ว' };

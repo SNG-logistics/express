@@ -21,11 +21,47 @@
         const badgeText = product.discount_pct
           ? `${t('online.discountPrefix')} ${Number(product.discount_pct)}%`
           : (product.badge_label || null);
+        let photos = [];
+        if (product.photos) {
+          try {
+            const parsedPhotos = typeof product.photos === 'string'
+              ? JSON.parse(product.photos)
+              : product.photos;
+            photos = Array.isArray(parsedPhotos)
+              ? parsedPhotos.filter(photo => typeof photo === 'string' && photo)
+              : [];
+          } catch (_err) {
+            photos = [];
+          }
+        }
       %>
       <a href="<%= product.product_url %>" target="_blank" rel="noopener" class="card" style="text-decoration: none; color: inherit; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
         <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--portal-surface-2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-          <% if (product.photo_path) { %>
-            <img src="<%= product.photo_path %>" alt="<%= product.name %>" style="width: 100%; height: 100%; object-fit: cover;">
+          <% if (photos.length === 1) { %>
+            <img src="<%= photos[0] %>" alt="<%= product.name %>" style="width: 100%; height: 100%; object-fit: cover;">
+          <% } else if (photos.length > 1) { %>
+            <div
+              x-data="{ i: 0 }"
+              x-init="setInterval(() => i = (i + 1) % <%= photos.length %>, 3000)"
+              style="width: 100%; height: 100%; position: relative;"
+            >
+              <% photos.forEach((photo, index) => { %>
+                <img
+                  src="<%= photo %>"
+                  alt="<%= index === 0 ? product.name : '' %>"
+                  :style="{ opacity: i === <%= index %> ? 1 : 0 }"
+                  style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: <%= index === 0 ? 1 : 0 %>; transition: opacity 0.6s ease;"
+                >
+              <% }); %>
+              <div style="position: absolute; left: 50%; bottom: 0.55rem; transform: translateX(-50%); display: flex; gap: 0.35rem; z-index: 1;" aria-hidden="true">
+                <% photos.forEach((_photo, index) => { %>
+                  <span
+                    :style="{ opacity: i === <%= index %> ? 1 : 0.35 }"
+                    style="width: 0.42rem; height: 0.42rem; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55); opacity: <%= index === 0 ? 1 : 0.35 %>; transition: opacity 0.6s ease;"
+                  ></span>
+                <% }); %>
+              </div>
+            </div>
           <% } else { %>
             <i class="fa-solid fa-bag-shopping" style="font-size: 3rem; color: var(--portal-text-faint);"></i>
           <% } %>

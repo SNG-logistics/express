@@ -1,3 +1,18 @@
+<%
+  let existingPhotos = [];
+  if (product?.photos) {
+    try {
+      const parsedPhotos = typeof product.photos === 'string'
+        ? JSON.parse(product.photos)
+        : product.photos;
+      existingPhotos = Array.isArray(parsedPhotos)
+        ? parsedPhotos.filter(photo => typeof photo === 'string' && photo)
+        : [];
+    } catch (_err) {
+      existingPhotos = [];
+    }
+  }
+%>
 <div class="container py-4" style="max-width: 720px;">
   <div class="mb-4">
     <a href="/admin/products" class="text-decoration-none small">
@@ -40,13 +55,15 @@
 
         <div class="mb-3">
           <label class="form-label fw-bold">รูปภาพสินค้า</label>
-          <% if (product?.photo_path) { %>
-            <div class="mb-2">
-              <img src="<%= product.photo_path %>" alt="" style="max-height: 120px;" class="rounded border">
+          <% if (existingPhotos.length > 0) { %>
+            <div class="mb-2 d-flex flex-wrap gap-2">
+              <% existingPhotos.forEach((photo, index) => { %>
+                <img src="<%= photo %>" alt="รูปสินค้า <%= index + 1 %>" style="width: 80px; height: 80px; object-fit: cover;" class="rounded border">
+              <% }); %>
             </div>
           <% } %>
-          <input type="file" class="form-control" name="photo" accept="image/*">
-          <small class="text-muted">รองรับไฟล์ภาพ JPG, PNG, WebP ขนาดไม่เกิน 5MB</small>
+          <input type="file" class="form-control" name="photos" accept="image/*" multiple>
+          <small class="text-muted">เลือกได้สูงสุด 6 รูป (รูปแรก = รูปปก) ระบบจะแสดงสไลด์วนอัตโนมัติที่หน้าเว็บ — หากอัปโหลดใหม่จะแทนที่รูปเดิมทั้งหมด รองรับ JPG, PNG, WebP หรือ GIF รูปละไม่เกิน 5MB</small>
         </div>
 
         <div class="row">
