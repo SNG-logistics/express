@@ -132,6 +132,14 @@ body {
   font: 800 .9rem inherit; cursor: pointer; text-decoration: none;
 }
 
+.btn-outline {
+  display: inline-flex; justify-content: center; align-items: center; gap: .4rem;
+  border: 1px solid var(--portal-border); border-radius: .75rem; padding: .82rem 1rem;
+  background: transparent; color: var(--portal-text);
+  font: 800 .9rem inherit; cursor: pointer; text-decoration: none;
+}
+.btn-outline:hover { border-color: var(--portal-gold); color: var(--portal-gold); }
+
 .shortcut-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .75rem; margin: 1rem 0; }
 .shortcut { padding: 1rem; color: var(--portal-text); text-decoration: none; }
 .shortcut i { display: block; color: var(--portal-gold); font-size: 1.35rem; margin-bottom: .7rem; }

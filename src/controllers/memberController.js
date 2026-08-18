@@ -6,7 +6,7 @@
  */
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
-import { toWaPhone } from '../utils/waPhone.js';
+import { toWaPhone, isLaoPhone } from '../utils/waPhone.js';
 import { createAndSendOtp, verifyOtp } from '../services/otpService.js';
 import { regenerateCustomerSession, recordMemberLoginAttempt } from '../middleware/customerAuth.js';
 import { resolveInviteToken } from '../services/inviteTokenService.js';
@@ -611,6 +611,79 @@ export async function myOrders(req, res) {
       title: `รายการพัสดุของฉัน | SNG Express`,
       orders: [],
     });
+  }
+}
+
+/**
+ * GET /member/orders/:jobNo/sticker
+ * A member's own order's shipping label ("ใบปะหน้า") — reuses the exact same
+ * views/orders/sticker.ejs template staff use, scoped to orders where this
+ * customer is the sender OR receiver by phone match (same rule as myOrders()).
+ * The ownership check lives in the SQL WHERE clause itself, so it is
+ * structurally impossible to return someone else's order. Both "job_no
+ * doesn't exist" and "exists but isn't yours" render the identical 404 so
+ * neither response leaks which case occurred.
+ */
+export async function myOrderSticker(req, res) {
+  const customer = req.session.customer;
+  const phone = customer.phone;
+  const jobNo = (req.params.jobNo || '').trim().toUpperCase();
+
+  const renderNotFound = () =>
+    res.status(404).render('customer/404', { layout: 'customer/layout' });
+
+  if (!jobNo) return renderNotFound();
+
+  try {
+    const [[order]] = await pool.query(
+      `SELECT o.*,
+              s.name AS sender_name, s.phone AS sender_phone,
+              s.address AS sender_address, s.province AS sender_province,
+              r.name AS receiver_name, r.phone AS receiver_phone,
+              r.address AS receiver_address, r.city AS receiver_city,
+              r.province AS receiver_province, r.district AS receiver_district,
+              t.trip_no, t.vehicle_plate, t.trip_date,
+              t.border_checkpoint
+       FROM orders o
+       LEFT JOIN customers s ON o.sender_id  = s.id
+       LEFT JOIN customers r ON o.receiver_id = r.id
+       LEFT JOIN trips t     ON o.trip_id    = t.id
+       WHERE o.job_no = ?
+         AND (s.phone_normalized = ? OR r.phone_normalized = ? OR s.phone = ? OR r.phone = ?)
+       LIMIT 1`,
+      [jobNo, phone, phone, phone, phone]
+    );
+
+    if (!order) return renderNotFound();
+
+    // Latest THB→LAK rate for the sticker's fee row (template falls back to
+    // 700 when unavailable — same behaviour as the staff route).
+    let exchangeRate = 700;
+    try {
+      const [[rateRow]] = await pool.query(
+        'SELECT rate FROM exchange_rates WHERE pair = "THB_LAK" ORDER BY created_at DESC LIMIT 1'
+      );
+      if (rateRow) exchangeRate = Number(rateRow.rate);
+    } catch (_) {}
+
+    // The sticker template switches on lang === 'la'. Default from the
+    // member's own site-wide language choice, falling back to their phone's
+    // country — but an explicit ?lang= always wins, matching the staff route.
+    const defaultIsLa = req.session?.lang === 'lo' || isLaoPhone(customer.phone);
+    const isLa = req.query.lang ? req.query.lang === 'la' : defaultIsLa;
+
+    res.set('Cache-Control', 'no-store');
+    res.render('orders/sticker', {
+      layout: false,
+      order,
+      exchangeRate,
+      lang: isLa ? 'la' : 'th',
+      trackingUrl: `${req.protocol}://${req.get('host')}/track/${order.job_no}`,
+      title: `ใบปะหน้า — ${order.job_no}`,
+    });
+  } catch (err) {
+    console.error('[Member Order Sticker]', err);
+    return renderNotFound();
   }
 }
 

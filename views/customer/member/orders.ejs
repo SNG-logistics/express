@@ -23,9 +23,14 @@
                 <span><%= dirFlags %></span> <%= dirLabel %>
               </div>
             </div>
-            <a href="/track/<%= order.job_no %>" class="btn-gold" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">
-              <%= t('member.viewTracking') %> <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem;"></i>
-            </a>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <a href="/member/orders/<%= encodeURIComponent(order.job_no) %>/sticker" target="_blank" rel="noopener" class="btn-outline" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+                <i class="fa-solid fa-receipt" style="font-size: 0.7rem;"></i> <%= t('member.viewSticker') %>
+              </a>
+              <a href="/track/<%= order.job_no %>" class="btn-gold" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+                <%= t('member.viewTracking') %> <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem;"></i>
+              </a>
+            </div>
           </div>
         </div>
         <div class="tracking-details">

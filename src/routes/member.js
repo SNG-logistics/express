@@ -32,6 +32,7 @@ router.post('/member/reset-password', member.processResetPassword);
 // Member Dashboard & Settings (Guarded by requireCustomerLogin)
 router.get('/member/profile', requireCustomerLogin, member.profile);
 router.get('/member/orders', requireCustomerLogin, member.myOrders);
+router.get('/member/orders/:jobNo/sticker', requireCustomerLogin, member.myOrderSticker);
 router.get('/member/account', requireCustomerLogin, member.accountEdit);
 router.post('/member/account', requireCustomerLogin, member.processAccountEdit);
 
