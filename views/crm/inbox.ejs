@@ -173,7 +173,7 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
           const hColor = channelColor[activeConversation.channel_type] || '#94a3b8';
         %>
         <div class="crm-chat-header-avatar">
-          <i class="<%= hIcon %>" style="color:<%= hColor %>;"></i>
+          <%= (activeConversation.customer_name || '?').charAt(0).toUpperCase() %>
         </div>
 
         <div class="crm-chat-header-info">
@@ -186,7 +186,7 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
             <% } %>
           </div>
           <div class="crm-chat-header-sub">
-            <span class="crm-channel-tag" style="color:<%= hColor %>;"><%= activeConversation.channel_type %></span>
+            <span class="crm-channel-tag" style="color:<%= hColor %>;"><i class="<%= hIcon %>"></i> <%= activeConversation.channel_type %></span>
             <span class="crm-dot-sep">•</span>
             <span>เคส #<%= activeConversation.id %></span>
             <% if (activeConversation.subject) { %>
@@ -202,7 +202,9 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <select name="status" class="crm-select-sm" onchange="this.form.submit()">
               <% ['OPEN','PENDING','RESOLVED','CLOSED'].forEach(s => { %>
-                <option value="<%= s %>" <%= activeConversation.status === s ? 'selected' : '' %>><%= statusTh[s] || s %></option>
+                <option value="<%= s %>" <%= activeConversation.status === s ? 'selected' : '' %>>
+                  <%= s === 'OPEN' ? '🟢 ต้องดำเนินการ' : (s === 'PENDING' ? '🟡 กำลังดำเนินการ' : (s === 'RESOLVED' ? '✅ ดำเนินการแล้ว' : '🔒 ปิดเคส')) %>
+                </option>
               <% }) %>
             </select>
           </form>
@@ -211,22 +213,25 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
           <% if (can.superviseCrm) { %>
           <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/assign" class="crm-header-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <select name="to_agent_id" class="crm-select-sm">
-              <option value="">— มอบหมาย —</option>
+            <select name="to_agent_id" class="crm-select-sm" onchange="this.form.submit()">
+              <option value="">— มอบหมายผู้รับผิดชอบ —</option>
               <% (agents || []).forEach(a => { %>
                 <option value="<%= a.id %>" <%= activeConversation.assigned_agent_id == a.id ? 'selected' : '' %>><%= a.name %></option>
               <% }) %>
             </select>
-            <button type="submit" class="btn-crm btn-crm-primary btn-crm-sm btn-crm-icon" title="บันทึกการมอบหมาย">
-              <i class="fa-solid fa-user-check"></i>
-            </button>
           </form>
           <% } %>
         </div>
       </div>
 
-      <!-- Messages Stream -->
+      <!-- Messages Stream (LINE OA Chat Feed) -->
       <div class="crm-chat-messages" id="chatMessages">
+        
+        <!-- Date Separator Badge -->
+        <div class="crm-chat-date-pill">
+          <i class="fa-regular fa-calendar"></i> <%= new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' }) %>
+        </div>
+
         <% (messages || []).forEach(msg => { %>
         <% 
           const isAgent = msg.sender_type === 'AGENT' || msg.sender_type === 'BOT'; 
@@ -237,26 +242,37 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
         <div class="crm-note-bubble">
           <div class="crm-note-header">
             <i class="fa-solid fa-lock"></i>
-            <span class="crm-note-author"><%= msg.sender_name || 'เจ้าหน้าที่' %> (โน้ตภายใน)</span>
+            <span class="crm-note-author"><%= msg.sender_name || 'เจ้าหน้าที่' %> (โน้ตภายในทีม)</span>
             <span class="crm-note-time"><%= msg.sent_at ? new Date(msg.sent_at).toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit' }) : '' %></span>
           </div>
           <div class="crm-note-body"><%= msg.content_text %></div>
         </div>
         <% } else { %>
         <div class="crm-msg <%= isAgent ? 'agent' : 'customer' %>">
-          <div class="crm-msg-bubble">
-            <div class="crm-msg-text"><%= msg.content_text %></div>
+          
+          <% if (!isAgent) { %>
+          <div class="crm-msg-avatar">
+            <%= (activeConversation.customer_name || '?').charAt(0).toUpperCase() %>
           </div>
-          <div class="crm-msg-meta">
-            <span><%= msg.sent_at ? new Date(msg.sent_at).toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit' }) : '' %></span>
-            <% if (isAgent) { %>
-              <span class="crm-meta-dot">•</span>
-              <span class="crm-msg-agent-name"><%= msg.sender_name || 'เจ้าหน้าที่' %></span>
-            <% } else { %>
-              <span class="crm-meta-dot">•</span>
-              <span class="crm-msg-chan-label"><%= activeConversation.channel_type %></span>
-            <% } %>
+          <% } %>
+
+          <div class="crm-msg-content-wrap">
+            <div class="crm-msg-bubble">
+              <div class="crm-msg-text"><%= msg.content_text %></div>
+            </div>
+
+            <div class="crm-msg-meta">
+              <span><%= msg.sent_at ? new Date(msg.sent_at).toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit' }) : '' %></span>
+              <% if (isAgent) { %>
+                <span class="crm-meta-dot">•</span>
+                <span class="crm-msg-agent-name"><%= msg.sender_name || 'เจ้าหน้าที่' %></span>
+              <% } else { %>
+                <span class="crm-meta-dot">•</span>
+                <span class="crm-msg-chan-label"><%= activeConversation.channel_type %></span>
+              <% } %>
+            </div>
           </div>
+
         </div>
         <% } %>
         <% }) %>
