@@ -524,47 +524,60 @@ main:has(.crm-inbox-layout) {
 .crm-msg {
   display: flex;
   flex-direction: column;
-  max-width: 72%;
+  max-width: 78%;
+  margin-bottom: 4px;
 }
-.crm-msg.customer { align-self: flex-start; }
-.crm-msg.agent    { align-self: flex-end; }
+.crm-msg.customer {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+.crm-msg.agent {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.crm-msg.system, .crm-msg.bot {
+  align-self: center;
+  max-width: 90%;
+}
 
 .crm-msg-bubble {
-  padding: 10px 15px;
-  border-radius: 16px;
-  font-size: 0.85rem;
-  line-height: 1.5;
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-size: 0.84rem;
+  line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  width: fit-content;
+  max-width: 100%;
 }
 .crm-msg.customer .crm-msg-bubble {
-  background: rgba(30, 41, 59, 0.9);
+  background: rgba(30, 41, 59, 0.95);
   border: 1px solid var(--crm-border-strong);
   border-bottom-left-radius: 4px;
-  color: var(--crm-text);
+  color: #f8fafc;
 }
 .crm-msg.agent .crm-msg-bubble {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border-bottom-right-radius: 4px;
   color: #ffffff;
 }
-.crm-msg-sender-name {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--crm-accent);
-  margin-bottom: 4px;
+.crm-msg-text {
+  margin: 0;
+  padding: 0;
 }
 .crm-msg-meta {
   font-size: 0.63rem;
   color: var(--crm-text-muted);
-  margin-top: 4px;
+  margin-top: 3px;
   padding: 0 4px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.crm-msg.agent .crm-msg-meta { justify-content: flex-end; }
+.crm-msg.agent .crm-msg-meta {
+  justify-content: flex-end;
+}
 
 /* Internal Note Bubble */
 .crm-note-bubble {
@@ -928,52 +941,7 @@ main:has(.crm-inbox-layout) {
 .crm-chat-empty i { font-size: 2.5rem; }
 .crm-chat-empty p { font-size: 0.85rem; }
 
-/* Message bubbles */
-.crm-msg {
-  display: flex;
-  flex-direction: column;
-  max-width: 72%;
-}
-.crm-msg.customer { align-self: flex-start; }
-.crm-msg.agent    { align-self: flex-end; }
-.crm-msg.system, .crm-msg.bot {
-  align-self: center;
-  max-width: 90%;
-  opacity: 0.7;
-}
-.crm-msg-bubble {
-  padding: 9px 14px;
-  border-radius: 14px;
-  font-size: 0.83rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.crm-msg.customer .crm-msg-bubble {
-  background: rgba(255,255,255,0.08);
-  border-bottom-left-radius: 4px;
-  color: var(--crm-text);
-}
-.crm-msg.agent .crm-msg-bubble {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  border-bottom-right-radius: 4px;
-  color: #fff;
-}
-.crm-msg.system .crm-msg-bubble, .crm-msg.bot .crm-msg-bubble {
-  background: rgba(251,191,36,0.12);
-  border: 1px solid rgba(251,191,36,0.2);
-  border-radius: 8px;
-  color: #fbbf24;
-  font-size: 0.75rem;
-  font-style: italic;
-}
-.crm-msg-meta {
-  font-size: 0.62rem;
-  color: var(--crm-text-muted);
-  margin-top: 3px;
-  padding: 0 2px;
-}
-.crm-msg.agent .crm-msg-meta { text-align: right; }
+/* Message bubbles — styled above in main block */
 
 /* Internal note bubbles */
 .crm-note-bubble {

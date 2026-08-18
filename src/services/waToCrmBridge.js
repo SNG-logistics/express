@@ -42,7 +42,7 @@ export function attachCrmBridge(sock) {
         if (msg.key.remoteJid === 'status@broadcast') continue;
 
         const jid         = msg.key.remoteJid || '';
-        const externalId  = jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+        const externalId  = jid.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '').trim();
         const isGroup     = jid.endsWith('@g.us');
 
         // Skip group messages for now (handle 1:1 chats only)
@@ -101,14 +101,23 @@ export function attachCrmBridge(sock) {
           }
         }
 
-        const displayName = msg.pushName || externalId;
+        // Clean up pushName / displayName
+        let displayName = (msg.pushName || '').trim();
+        if (displayName.includes('@lid') || displayName.includes('@s.whatsapp.net')) {
+          displayName = '';
+        }
+
         const waChannelId = await getWaChannelId();
 
         // Normalize phone for potential customer matching
         let phoneNormalized = externalId.replace(/\D/g, '');
-        // Thai: starts with 66 → keep; starts with 0 → replace with 66
+        // Thai: starts with 0 → replace with 66
         if (phoneNormalized.startsWith('0') && phoneNormalized.length <= 10) {
           phoneNormalized = '66' + phoneNormalized.substring(1);
+        }
+
+        if (!displayName) {
+          displayName = phoneNormalized ? `+${phoneNormalized}` : `ลูกค้า WhatsApp`;
         }
 
         const result = await ingestInboundMessage({

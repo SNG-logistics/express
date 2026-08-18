@@ -245,15 +245,6 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
         <% } else { %>
         <div class="crm-msg <%= isAgent ? 'agent' : 'customer' %>">
           <div class="crm-msg-bubble">
-            <% if (!isAgent) { %>
-            <div class="crm-msg-sender-name">
-              <% if (activeConversation && activeConversation.customer_phone) { %>
-                <i class="fa-solid fa-phone"></i> <%= activeConversation.customer_phone %>
-              <% } else { %>
-                <%= msg.sender_name %>
-              <% } %>
-            </div>
-            <% } %>
             <div class="crm-msg-text"><%= msg.content_text %></div>
           </div>
           <div class="crm-msg-meta">
@@ -261,8 +252,7 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
             <% if (isAgent) { %>
               <span class="crm-meta-dot">•</span>
               <span class="crm-msg-agent-name"><%= msg.sender_name || 'เจ้าหน้าที่' %></span>
-            <% } %>
-            <% if (!isAgent && activeConversation && activeConversation.customer_phone) { %>
+            <% } else { %>
               <span class="crm-meta-dot">•</span>
               <span class="crm-msg-chan-label"><%= activeConversation.channel_type %></span>
             <% } %>

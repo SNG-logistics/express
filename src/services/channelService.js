@@ -83,7 +83,10 @@ export async function resolveCustomerIdentity({ channelType, channelId, external
   // 3. Create new crm_customer if no match
   let isNew = false;
   if (!crmCustomerId) {
-    const fullName = displayName || `ลูกค้า ${channelType}`;
+    let fullName = displayName || `ลูกค้า ${channelType}`;
+    if (fullName.includes('@lid') || fullName.includes('@s.whatsapp.net')) {
+      fullName = phoneNormalized ? `+${phoneNormalized}` : `ลูกค้า ${channelType}`;
+    }
     const [r] = await pool.query(`
       INSERT INTO crm_customers (full_name, phone, customer_type)
       VALUES (?, ?, 'CUSTOMER')
