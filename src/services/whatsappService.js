@@ -381,7 +381,11 @@ export async function sendOrderUpdate(orderId, newStatus) {
                 if (order.branch_name) {
                     branchInfo = `\n(ສາຂາ: ${order.branch_name}${order.branch_phone ? ' ໂທ: ' + order.branch_phone : ''})`;
                 }
-                message = `📦 *SNG EXPRESS*\nພັດສະດຸ ${jobNo} ປາຍທາງຫາ ${receiverName} *ຮອດສຳນັກງານແລ້ວ*\nລູກຄ້າສາມາດມາຮັບເອງ ຫຼື ໃຫ້ໄລເດີ້ໄປສົ່ງກໍໄດ້ (ອາດມີຄ່າບໍລິການຕາມໄລຍະທາງ)\nສະຖານະ: ຕິດຕໍ່ແອດມິນໄດ້ເລີຍ${branchInfo}`;
+                // The pin request rides on this message because this is the
+                // moment the customer chooses between collecting the parcel and
+                // having it delivered — and the distance from their pin is what
+                // sets the delivery fee we quote them in the same breath.
+                message = `📦 *SNG EXPRESS*\nພັດສະດຸ ${jobNo} ປາຍທາງຫາ ${receiverName} *ຮອດສຳນັກງານແລ້ວ*\nລູກຄ້າສາມາດມາຮັບເອງ ຫຼື ໃຫ້ໄລເດີ້ໄປສົ່ງກໍໄດ້ (ອາດມີຄ່າບໍລິການຕາມໄລຍະທາງ)\n\n📍 ຢາກໃຫ້ໄລເດີ້ໄປສົ່ງເຖິງບ້ານບໍ? ກົດ 📎 → ຕຳແໜ່ງ (Location) ແລ້ວສົ່ງມາໃນແຊັດນີ້ ເພື່ອໃຫ້ພວກເຮົາຄິດໄລ່ຄ່າສົ່ງໄດ້ຖືກຕ້ອງ\n\nສະຖານະ: ຕິດຕໍ່ແອດມິນໄດ້ເລີຍ${branchInfo}`;
                 break;
             }
             case 'OUT_FOR_DELIVERY':

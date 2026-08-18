@@ -17,6 +17,7 @@ import pool from '../config/db.js';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 import { kickNotificationWorker } from '../services/notificationService.js';
 import { claimOffer } from '../services/riderDispatchService.js';
+import { rememberDeliveryLocation } from '../services/receiverLocationService.js';
 
 // ── Available (unclaimed) job offers for a rider ────────────────────────────────
 async function getAvailableOffers(riderUserId) {
@@ -327,6 +328,13 @@ export async function deliverJob(req, res) {
       await conn.query(`UPDATE riders SET status='active' WHERE user_id=?`, [riderId]);
     });
     kickNotificationWorker(orderId);
+    // The rider was standing at the receiver's door — the most accurate pin
+    // this business will ever get for that address. Saving it means the next
+    // parcel for the same person is routable without asking them for anything.
+    // After the commit and never awaited into the response: a delivery that
+    // physically happened must not fail over a bookkeeping write.
+    rememberDeliveryLocation(orderId, lat, lng)
+      .catch(err => console.error('[Rider] remember delivery location:', err.message));
 
     res.json({ success: true, message: `ส่งสำเร็จ! ${order.job_no}`, gpsVerified, distM });
   } catch (e) {

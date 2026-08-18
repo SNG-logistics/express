@@ -76,6 +76,23 @@ export function attachCrmBridge(sock) {
           messageType = 'LOCATION';
           const loc = msgContent.locationMessage;
           contentText = `📍 ${loc.degreesLatitude},${loc.degreesLongitude}`;
+          // A customer dropping a pin is telling us where to deliver. Store it
+          // against them (and their in-flight parcels) rather than leaving the
+          // coordinates as text nobody can route on. Still forwarded to the CRM
+          // inbox below so staff keep the full conversation.
+          try {
+            const { saveLocationFromPhone } = await import('./receiverLocationService.js');
+            const pin = await saveLocationFromPhone(
+              externalId, loc.degreesLatitude, loc.degreesLongitude
+            );
+            if (pin.saved) {
+              console.log(`[WA→Location] ${externalId} pinned customer=${pin.customerId} orders=${pin.ordersUpdated}`);
+            } else {
+              console.log(`[WA→Location] ${externalId} pin not stored: ${pin.reason}`);
+            }
+          } catch (locErr) {
+            console.error('[WA→Location] error:', locErr.message);
+          }
         } else if (msgContent?.stickerMessage) {
           messageType = 'STICKER';
           contentText = '[Sticker]';
