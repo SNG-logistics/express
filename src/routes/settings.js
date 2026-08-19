@@ -46,6 +46,11 @@ router.get('/api/shipping-price', requireLogin, settings.calculatePrice);
 router.get('/api/exchange-rate', requireLogin, settings.getLatestRate);
 
 // ─── Danger Zone (Super Admin only) ───────────────────────────────────────────
+router.get('/settings/prohibited', requireLogin, requireRole(['admin','manager']), settings.showProhibitedItems);
+router.post('/settings/prohibited', requireLogin, requireRole(['admin','manager']), settings.createProhibitedItem);
+router.post('/settings/prohibited/:id', requireLogin, requireRole(['admin','manager']), settings.updateProhibitedItem);
+router.post('/settings/prohibited/:id/delete', requireLogin, requireRole(['admin','manager']), settings.deleteProhibitedItem);
+
 router.post('/settings/clear-test-data', requireLogin, requireRole('admin'), settings.clearTestData);
 
 // ─── Company Profile (Admin only) ─────────────────────────────────────────────

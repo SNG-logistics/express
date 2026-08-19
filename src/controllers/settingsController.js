@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { listAllProhibitedItems, invalidateProhibitedItemsCache } from '../services/prohibitedItemsService.js';
 import bcrypt from 'bcryptjs';
 import { getCompanySettings } from '../services/companySettingsService.js';
 import { findBestShippingRate } from '../services/pricingService.js';
@@ -356,4 +357,93 @@ export async function uploadCompanyLogo(req, res) {
         req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาด: ' + err.message };
         res.redirect('/settings/rates#company');
     }
+}
+
+// ─── Prohibited / restricted goods ────────────────────────────────────────────
+// Customs practice changes, and the person who learns it is at the counter, not
+// at a keyboard with a deploy pipeline. The list is data, editable here, so a
+// correction reaches customers the same day.
+
+export async function showProhibitedItems(req, res) {
+    try {
+        const items = await listAllProhibitedItems();
+        const flash = req.session.flash;
+        delete req.session.flash;
+        res.render('settings/prohibited', {
+            user: req.session.user,
+            title: 'ของที่รับ / ไม่รับ',
+            banned: items.filter(i => i.category === 'BANNED'),
+            askFirst: items.filter(i => i.category === 'ASK_FIRST'),
+            flash,
+        });
+    } catch (err) {
+        console.error('[Settings] showProhibitedItems:', err);
+        res.status(500).send(err.message);
+    }
+}
+
+export async function createProhibitedItem(req, res) {
+    const { category, label_th, label_lo, note_th, note_lo, sort_order } = req.body;
+    try {
+        if (!['BANNED', 'ASK_FIRST'].includes(category)) {
+            throw new Error('หมวดหมู่ไม่ถูกต้อง');
+        }
+        if (!label_th?.trim() || !label_lo?.trim()) {
+            // Both languages are required because a customer reading in Lao must
+            // never be shown a blank where a restriction should be.
+            throw new Error('ต้องกรอกชื่อรายการทั้งภาษาไทยและภาษาลาว');
+        }
+        await pool.query(
+            `INSERT INTO prohibited_items
+               (category, label_th, label_lo, note_th, note_lo, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                category, label_th.trim(), label_lo.trim(),
+                note_th?.trim() || null, note_lo?.trim() || null,
+                Number(sort_order) || 0,
+            ]
+        );
+        invalidateProhibitedItemsCache();
+        req.session.flash = { type: 'success', message: 'เพิ่มรายการแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/prohibited');
+}
+
+export async function updateProhibitedItem(req, res) {
+    const { id } = req.params;
+    const { label_th, label_lo, note_th, note_lo, sort_order, active } = req.body;
+    try {
+        if (!label_th?.trim() || !label_lo?.trim()) {
+            throw new Error('ต้องกรอกชื่อรายการทั้งภาษาไทยและภาษาลาว');
+        }
+        await pool.query(
+            `UPDATE prohibited_items
+                SET label_th = ?, label_lo = ?, note_th = ?, note_lo = ?,
+                    sort_order = ?, active = ?
+              WHERE id = ?`,
+            [
+                label_th.trim(), label_lo.trim(),
+                note_th?.trim() || null, note_lo?.trim() || null,
+                Number(sort_order) || 0, active ? 1 : 0, id,
+            ]
+        );
+        invalidateProhibitedItemsCache();
+        req.session.flash = { type: 'success', message: 'บันทึกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/prohibited');
+}
+
+export async function deleteProhibitedItem(req, res) {
+    try {
+        await pool.query('DELETE FROM prohibited_items WHERE id = ?', [req.params.id]);
+        invalidateProhibitedItemsCache();
+        req.session.flash = { type: 'success', message: 'ลบรายการแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/prohibited');
 }

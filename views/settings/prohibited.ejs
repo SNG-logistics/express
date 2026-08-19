@@ -1,0 +1,134 @@
+<%# Staff editor for the goods SNG will and will not carry.
+    Customs practice changes and the person who learns it is at the counter, not
+    at a keyboard with a deploy pipeline — so this is data, edited here. %>
+<%
+  const GROUPS = [
+    { key: 'BANNED',    rows: banned,   title: 'ไม่รับเด็ดขาด',   hint: 'สั่งไม่ได้ทุกกรณี',        cls: 'text-red-400',   icon: 'fa-ban' },
+    { key: 'ASK_FIRST', rows: askFirst, title: 'ต้องถามก่อนสั่ง', hint: 'รับได้บางกรณี ขึ้นกับชนิดและปริมาณ', cls: 'text-amber-400', icon: 'fa-circle-question' },
+  ];
+%>
+
+<div class="max-w-4xl mx-auto">
+  <div class="flex items-center gap-3 mb-2">
+    <a href="/settings/rates" class="text-slate-500 hover:text-white"><i class="fa-solid fa-arrow-left"></i></a>
+    <h1 class="text-xl font-black text-white">ของที่รับ / ไม่รับ</h1>
+  </div>
+  <p class="text-slate-500 text-sm mb-5">
+    รายการนี้แสดงให้ลูกค้าเห็นในหน้าประเมินราคาและหน้าขอราคาสินค้า
+    แก้แล้วมีผลกับลูกค้าทันที
+  </p>
+
+  <% if (flash) { %>
+  <div class="rounded-xl px-4 py-3 mb-4 text-sm font-semibold <%= flash.type === 'success'
+      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+      : 'bg-red-500/10 border border-red-500/20 text-red-300' %>">
+    <%= flash.message %>
+  </div>
+  <% } %>
+
+  <% GROUPS.forEach(function (group) { %>
+  <div class="glass-panel-dark rounded-2xl p-4 mb-5 border border-white/5">
+    <div class="flex items-baseline gap-2 mb-3">
+      <i class="fa-solid <%= group.icon %> <%= group.cls %>"></i>
+      <h2 class="text-sm font-bold text-white"><%= group.title %></h2>
+      <span class="text-slate-500 text-xs"><%= group.hint %></span>
+    </div>
+
+    <div class="grid gap-2 mb-3">
+      <% group.rows.forEach(function (item) { %>
+      <div class="flex flex-wrap items-end gap-2 py-2 border-t border-white/5 text-xs">
+        <form action="/settings/prohibited/<%= item.id %>" method="post"
+          class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label class="flex flex-col gap-1">
+            <span class="text-[10px] font-bold text-slate-500 uppercase">ไทย</span>
+            <input type="text" name="label_th" value="<%= item.label_th %>" required
+              class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-[10px] font-bold text-slate-500 uppercase">ลาว</span>
+            <input type="text" name="label_lo" value="<%= item.label_lo %>" required
+              class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-[10px] font-bold text-slate-500 uppercase">หมายเหตุ (ไทย)</span>
+            <input type="text" name="note_th" value="<%= item.note_th || '' %>"
+              class="w-44 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-[10px] font-bold text-slate-500 uppercase">หมายเหตุ (ลาว)</span>
+            <input type="text" name="note_lo" value="<%= item.note_lo || '' %>"
+              class="w-44 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-[10px] font-bold text-slate-500 uppercase">ลำดับ</span>
+            <input type="number" name="sort_order" value="<%= item.sort_order %>"
+              class="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+          </label>
+          <label class="flex items-center gap-1.5 pb-2 text-slate-300">
+            <input type="checkbox" name="active" value="1" <%= item.active ? 'checked' : '' %>>
+            <span>แสดง</span>
+          </label>
+          <button type="submit"
+            class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 font-bold">
+            บันทึก
+          </button>
+        </form>
+        <form action="/settings/prohibited/<%= item.id %>/delete" method="post"
+          onsubmit="return confirm('ลบ &quot;<%= item.label_th %>&quot; ออกจากรายการ?');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" aria-label="ลบ <%= item.label_th %>"
+            class="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg px-2 py-1.5">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </form>
+      </div>
+      <% }); %>
+      <% if (!group.rows.length) { %>
+      <p class="text-slate-600 text-xs py-2">ยังไม่มีรายการในหมวดนี้</p>
+      <% } %>
+    </div>
+
+    <form action="/settings/prohibited" method="post"
+      class="flex flex-wrap items-end gap-2 pt-3 border-t border-white/5 text-xs">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="category" value="<%= group.key %>">
+      <label class="flex flex-col gap-1">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">ไทย <em class="text-red-400 not-italic">*</em></span>
+        <input type="text" name="label_th" required placeholder="เช่น แบตเตอรี่ลิเธียม"
+          class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">ลาว <em class="text-red-400 not-italic">*</em></span>
+        <input type="text" name="label_lo" required placeholder="ຖ່ານລິທຽມ"
+          class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">หมายเหตุ (ไทย)</span>
+        <input type="text" name="note_th" placeholder="ไม่บังคับ"
+          class="w-44 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">หมายเหตุ (ลาว)</span>
+        <input type="text" name="note_lo" placeholder="ບໍ່ບັງຄັບ"
+          class="w-44 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">ลำดับ</span>
+        <input type="number" name="sort_order" value="0"
+          class="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+      </label>
+      <button type="submit"
+        class="bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl px-3.5 py-2 font-bold">
+        <i class="fa-solid fa-plus"></i> เพิ่ม
+      </button>
+    </form>
+  </div>
+  <% }); %>
+
+  <p class="text-slate-500 text-xs leading-relaxed">
+    <i class="fa-solid fa-circle-info mr-1"></i>
+    รายการเริ่มต้นเป็นของที่ขนส่งทั่วไปไม่รับ และหมวดที่มักต้องตรวจสอบบนเส้นทางไทย–ลาว
+    ควรทบทวนให้ตรงกับระเบียบศุลกากรปัจจุบันก่อนใช้งานจริง
+  </p>
+</div>

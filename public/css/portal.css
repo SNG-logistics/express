@@ -1157,3 +1157,76 @@ body {
   line-height: 1.45;
 }
 .home-buy-arrow { color: var(--portal-gold); flex: 0 0 auto; }
+
+/* ── What we will and will not carry ─────────────────────────────────────────
+   Shown where someone is about to commit, so it has to be readable at a glance
+   rather than admired: two groups, each led by what the group means, and the
+   consequence stated plainly at the end. */
+
+.prohibited { padding: 1.15rem 1.25rem; }
+.prohibited-title { margin: 0 0 .9rem; font-size: 1rem; color: var(--portal-text); }
+
+.prohibited-group + .prohibited-group { margin-top: 1rem; }
+.prohibited-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: .45rem;
+  flex-wrap: wrap;
+  margin: 0 0 .5rem;
+  font-size: .85rem;
+}
+.prohibited-group-head strong { color: var(--portal-text); }
+.prohibited-group-head span { font-size: .76rem; color: var(--portal-text-faint); }
+.prohibited-group.is-banned .prohibited-group-head i { color: #ef4444; }
+.prohibited-group.is-ask .prohibited-group-head i { color: var(--portal-gold); }
+
+.prohibited-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: .3rem;
+}
+.prohibited-group li {
+  position: relative;
+  padding-left: 1.1rem;
+  font-size: .86rem;
+  color: var(--portal-text);
+  line-height: 1.5;
+}
+.prohibited-group li::before {
+  content: "";
+  position: absolute;
+  left: .2rem;
+  top: .62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.prohibited-group.is-banned li::before { background: #ef4444; }
+.prohibited-group.is-ask li::before { background: var(--portal-gold); }
+.prohibited-group li small {
+  display: block;
+  font-size: .76rem;
+  color: var(--portal-text-faint);
+  line-height: 1.45;
+}
+
+.prohibited-why {
+  display: flex;
+  gap: .5rem;
+  margin: 1rem 0 .5rem;
+  padding: .65rem .8rem;
+  border-radius: .6rem;
+  background: var(--portal-danger-bg);
+  color: var(--portal-danger-text);
+  font-size: .8rem;
+  line-height: 1.55;
+}
+.prohibited-why i { flex: 0 0 auto; margin-top: .15rem; }
+.prohibited-unsure {
+  margin: 0;
+  font-size: .8rem;
+  color: var(--portal-text-dim);
+  line-height: 1.55;
+}

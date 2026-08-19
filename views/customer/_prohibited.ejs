@@ -1,0 +1,58 @@
+<%#
+  views/customer/_prohibited.ejs — what SNG will and will not carry.
+
+  Included wherever someone is about to commit to an order, not filed under an
+  FAQ nobody opens. A purchase-agent customer pays a deposit before the goods
+  exist, so learning this at the border costs them money rather than just time —
+  which is exactly why the consequence is stated plainly rather than left implied.
+
+  Expects: prohibited = { banned: [], askFirst: [] }, and t().
+%>
+<% const pi = typeof prohibited !== 'undefined' ? prohibited : { banned: [], askFirst: [] }; %>
+<% if (pi.banned.length || pi.askFirst.length) { %>
+<section class="card prohibited">
+  <h2 class="prohibited-title"><%= t('prohibited.title') %></h2>
+
+  <% if (pi.banned.length) { %>
+  <div class="prohibited-group is-banned">
+    <p class="prohibited-group-head">
+      <i class="fa-solid fa-ban" aria-hidden="true"></i>
+      <strong><%= t('prohibited.bannedTitle') %></strong>
+      <span><%= t('prohibited.bannedHint') %></span>
+    </p>
+    <ul>
+      <% pi.banned.forEach(function (item) { %>
+      <li>
+        <%= item.label %>
+        <% if (item.note) { %><small><%= item.note %></small><% } %>
+      </li>
+      <% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (pi.askFirst.length) { %>
+  <div class="prohibited-group is-ask">
+    <p class="prohibited-group-head">
+      <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+      <strong><%= t('prohibited.askTitle') %></strong>
+      <span><%= t('prohibited.askHint') %></span>
+    </p>
+    <ul>
+      <% pi.askFirst.forEach(function (item) { %>
+      <li>
+        <%= item.label %>
+        <% if (item.note) { %><small><%= item.note %></small><% } %>
+      </li>
+      <% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <p class="prohibited-why">
+    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    <%= t('prohibited.whyMatters') %>
+  </p>
+  <p class="prohibited-unsure"><%= t('prohibited.unsure') %></p>
+</section>
+<% } %>
