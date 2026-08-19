@@ -68,7 +68,7 @@
 
   <div class="doc-header">
     <div style="display:flex; align-items:center; gap:12px;">
-      <img src="/images/snglogo.png" alt="SNG Logo" style="width:40px; height:40px; object-fit:contain; flex-shrink:0;">
+      <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Logo" style="width:40px; height:40px; object-fit:contain; flex-shrink:0;">
       <div>
         <div class="company-name" style="font-size: 1.25rem;"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>
         <div class="company-sub">บริษัทขนส่ง ไทย-ลาว | Tel: <%= company.company_phone_la || '020 8889 8888' %></div>

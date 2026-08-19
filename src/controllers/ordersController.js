@@ -7,6 +7,7 @@ import { enqueueOrderNotification, kickNotificationWorker } from '../services/no
 import { assignBranchToOrder, assignOrderToBranch } from './branchesController.js';
 import { toWaPhone } from '../utils/waPhone.js';
 import { applySavedLocationToOrder } from '../services/receiverLocationService.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
 
 
 const allowedDirections = ['TH_TO_LA', 'LA_TO_TH'];
@@ -1082,8 +1083,7 @@ export async function printWaybill(req, res) {
   const [[rateRow]] = await pool.query('SELECT rate FROM exchange_rates WHERE pair = "THB_LAK" ORDER BY created_at DESC LIMIT 1');
   const exchangeRate = rateRow ? Number(rateRow.rate) : 700;
 
-  const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-  const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+  const company = await getCompanySettings();
 
   res.render('orders/waybill', {
     layout: false,
@@ -1123,8 +1123,7 @@ export async function showPrint(req, res) {
     const [[rateRow]] = await pool.query('SELECT rate FROM exchange_rates WHERE pair = "THB_LAK" ORDER BY created_at DESC LIMIT 1');
     const exchangeRate = rateRow ? Number(rateRow.rate) : 700;
 
-    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const company = await getCompanySettings();
 
     res.render('orders/print', {
       layout: false,
@@ -1543,11 +1542,14 @@ export async function showSticker(req, res) {
   const [[rateRow]] = await pool.query('SELECT rate FROM exchange_rates WHERE pair = "THB_LAK" ORDER BY created_at DESC LIMIT 1');
   const exchangeRate = rateRow ? Number(rateRow.rate) : 700;
 
+  const company = await getCompanySettings();
+
   res.render('orders/sticker', {
     layout: false,
     order,
     flagTypes,
     exchangeRate,
+    company,
     trackingUrl: `${req.protocol}://${req.get('host')}/track/${order.job_no}`,
     user: req.session.user,
     lang: req.query.lang || 'la',

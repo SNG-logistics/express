@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import { withTransaction } from '../services/orderWorkflowService.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
 import { getLatestRate } from '../services/exchangeRateService.js';
 import { previewPurchaseAgentQuote, resolvePurchaseAgentQuote } from '../services/purchaseAgentPricingService.js';
 import { transitionQuotation } from '../services/quotationWorkflowService.js';
@@ -308,8 +309,7 @@ export async function printQuote(req, res) {
         );
         if (!quote) return res.status(404).send('ไม่พบใบเสนอราคา');
 
-        const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-        const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+        const company = await getCompanySettings();
 
         res.render('partner/quotes/print', {
             layout: false,

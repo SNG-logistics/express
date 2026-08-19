@@ -163,7 +163,7 @@
   <%# Header Section %>
   <div class="doc-header">
     <div class="logo-brand">
-      <img src="/images/snglogo.png" alt="SNG Logo" class="logo-img" onerror="this.style.display='none'">
+      <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Logo" class="logo-img" onerror="this.style.display='none'">
       <div>
         <div class="company-title"><%= company.company_name_la || company.company_name || 'SNG COMPREHENSIVE SERVICE CO., LTD' %></div>
         <div class="company-sub">บริษัท ขนส่งและโลจิสติกส์ ไทย-ลาว ครบวงจร</div>

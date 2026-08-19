@@ -13,6 +13,7 @@ import { resolveInviteToken } from '../services/inviteTokenService.js';
 import { getUnredeemedRewards } from '../services/referralRewardService.js';
 import { resolveStatus } from '../constants/transitions.js';
 import { getProhibitedItems } from '../services/prohibitedItemsService.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
 
 // Constant-time login even when the phone isn't registered (resist enumeration).
 const DUMMY_PASSWORD_HASH = '$2b$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -709,12 +710,14 @@ export async function myOrderSticker(req, res) {
     // country — but an explicit ?lang= always wins, matching the staff route.
     const defaultIsLa = req.session?.lang === 'lo' || isLaoPhone(customer.phone);
     const isLa = req.query.lang ? req.query.lang === 'la' : defaultIsLa;
+    const company = await getCompanySettings();
 
     res.set('Cache-Control', 'no-store');
     res.render('orders/sticker', {
       layout: false,
       order,
       exchangeRate,
+      company,
       lang: isLa ? 'la' : 'th',
       trackingUrl: `${req.protocol}://${req.get('host')}/track/${order.job_no}`,
       title: `ใบบิล — ${order.job_no}`,

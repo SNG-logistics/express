@@ -784,7 +784,7 @@
 
               <div class="card-front-left">
                 <div class="card-logo">
-                  <img src="/images/snglogo.png" alt="SNG Logo"
+                  <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Logo"
                        onerror="this.parentElement.className='card-logo-fallback'; this.parentElement.innerHTML='S'">
                 </div>
                 <div class="card-brand-name" x-text="cardData.brandName"></div>
@@ -828,7 +828,7 @@
             <!-- Back -->
             <div class="card-back">
               <div class="card-back-logo">
-                <img src="/images/snglogo.png" alt="SNG Logo">
+                <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Logo">
               </div>
               <div class="card-back-company" x-text="cardData.brandName"></div>
               <div class="card-back-tag">
@@ -863,7 +863,7 @@
               </template>
             </div>
             <div class="staff-logo">
-              <img src="/images/snglogo.png" alt="SNG">
+              <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG">
             </div>
             <div class="staff-role-badge" x-text="cardData.staffBadge"></div>
           </div>

@@ -7,6 +7,7 @@
  *   billing/print  — A4 print layout (layout:false, same convention as orders/print.ejs)
  */
 import * as billingModel from '../models/billingModel.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
 
 export async function index(req, res) {
   try {
@@ -77,7 +78,8 @@ export async function print(req, res) {
   try {
     const statement = await billingModel.getStatement(req.params.id);
     if (!statement) return res.status(404).send('Statement not found');
-    res.render('billing/print', { title: `ใบวางบิล #${statement.id}`, statement, layout: false });
+    const company = await getCompanySettings();
+    res.render('billing/print', { title: `ใบวางบิล #${statement.id}`, statement, company, layout: false });
   } catch (err) {
     console.error('[Billing.print]', err);
     res.status(500).send('Error printing statement: ' + err.message);

@@ -4,6 +4,7 @@
  */
 
 import pool from '../config/db.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
 
 const BOOKING_TRANSITIONS = Object.freeze({
   DRAFT: ['CONFIRMED', 'CANCELLED'],
@@ -546,8 +547,7 @@ export async function printQuote(req, res) {
       booking.quote_issued_at = new Date();
     }
 
-    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const company = await getCompanySettings();
 
     res.render('freight/quote-print', {
       layout: false,
@@ -588,8 +588,7 @@ export async function printInvoice(req, res) {
       booking.invoice_issued_at = new Date();
     }
 
-    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const company = await getCompanySettings();
 
     res.render('freight/invoice-print', {
       layout: false,

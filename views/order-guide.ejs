@@ -462,7 +462,7 @@
       <div class="header-content">
 
         <div class="header-logo-wrap">
-          <img src="/images/snglogo.png" alt="SNG Express"
+          <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Express"
                onerror="this.style.display='none';this.parentElement.style.background='#FFE000';this.parentElement.innerHTML='<span style=\'font-size:2rem;font-weight:900;color:#000\'>S</span>'">
         </div>
 

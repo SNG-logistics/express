@@ -571,12 +571,12 @@
         <div class="doc-header">
             <div class="brand">
                 <div class="brand-logo">
-                    <img src="/images/snglogo.png" alt="SNG Logistics">
+                    <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Logistics">
                 </div>
                 <div>
-                    <div class="brand-name">SNG Logistics</div>
+                    <div class="brand-name"><%= company.company_name_la || company.company_name || 'SNG Logistics' %></div>
                     <div class="brand-sub">ขนส่งไทย-ลาว (TH-LA Logistics)</div>
-                    <div class="brand-contact">โทร/Tel: 020 8889 8888 &nbsp;|&nbsp; เลขภาษี/TIN: 804052456000</div>
+                    <div class="brand-contact">โทร/Tel: <%= company.company_phone_la || '020 8889 8888' %> &nbsp;|&nbsp; เลขภาษี/TIN: <%= company.company_tax_id_la || '804052456000' %></div>
                 </div>
             </div>
             <div class="doc-title-box">
@@ -769,9 +769,9 @@
 
         <!-- Footer -->
         <div class="doc-footer">
-            <strong>SNG Logistics</strong> — ขนส่งไทย-ลาว (TH-LA Logistics) &nbsp;|&nbsp; โทร: 020 8889 8888 &nbsp;|&nbsp; www.sng-logistics.com<br>
+            <strong><%= company.company_name_la || company.company_name || 'SNG Logistics' %></strong> — ขนส่งไทย-ลาว (TH-LA Logistics) &nbsp;|&nbsp; โทร: <%= company.company_phone_la || '020 8889 8888' %> &nbsp;|&nbsp; www.sng-logistics.com<br>
             พิมพ์เมื่อ: <%= new Date().toLocaleString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
-            &nbsp;|&nbsp; เอกสารนี้พิมพ์จากระบบ SNG Logistics
+            &nbsp;|&nbsp; เอกสารนี้พิมพ์จากระบบ <%= company.company_name_la || company.company_name || 'SNG Logistics' %>
         </div>
 
     </div>

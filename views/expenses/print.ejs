@@ -286,7 +286,7 @@
       <!-- ① HEADER -->
       <div class="doc-header">
         <div class="hdr-logo">
-          <img src="/images/snglogo.png" alt="SNG Logo">
+          <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG Logo">
         </div>
         <div class="hdr-center">
           <div class="company-title"><%= company.company_name_la || company.company_name || 'SNG CO,PREHENSIVE SERVICE CO.,LTD' %></div>

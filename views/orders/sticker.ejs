@@ -264,17 +264,17 @@
     <!-- ① YELLOW HEADER — 11mm -->
     <div class="hdr">
       <div class="hdr-logo">
-        <img src="/images/snglogo.png" alt="SNG">
+        <img src="<%= company.company_logo_la || company.company_logo || '/images/snglogo.png' %>" alt="SNG">
       </div>
       <div class="hdr-text">
-        <div class="hdr-brand">SNG EXPRESS</div>
+        <div class="hdr-brand"><%= (isLa ? (company.company_name_la || company.company_name) : (company.company_name_th || company.company_name)) || 'SNG EXPRESS' %></div>
         <div class="hdr-sub">FAST &amp; SAFE DELIVERY</div>
       </div>
       <div class="hdr-right">
         <div class="hdr-svc"><%= t.service %></div>
         <div class="hdr-tel">
           <div class="tel-bubble">📞</div>
-          <div class="hdr-num">020 59531230</div>
+          <div class="hdr-num"><%= (isLa ? company.company_phone_la : company.company_phone_th) || company.company_phone || '020 59531230' %></div>
         </div>
       </div>
     </div>

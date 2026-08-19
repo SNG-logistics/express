@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import fs from 'fs';
 import path from 'path';
+import { getCompanySettings } from '../services/companySettingsService.js';
 
 const CATEGORY_MAP = {
   'CAPITAL': 'เงินลงทุน/ก่อตั้ง (CAPEX)',
@@ -425,8 +426,7 @@ export async function printReport(req, res) {
     };
 
     // 4. Fetch company settings
-    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const company = await getCompanySettings();
 
     res.render('expenses/print', {
       layout: false,
@@ -501,8 +501,7 @@ export async function plReport(req, res) {
     `, [start, end]);
 
     // 4. Get company settings
-    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const company = await getCompanySettings();
 
     // Helper functions for currency conversion
     const convertAmount = (amount, cur) => {

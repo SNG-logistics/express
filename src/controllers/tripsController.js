@@ -15,6 +15,7 @@ import pool from '../config/db.js';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 import { kickNotificationWorker } from '../services/notificationService.js';
 import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
+import { getCompanySettings } from '../services/companySettingsService.js';
 
 // ─── Allowed trip status transitions ─────────────────────────────────────────
 const TRIP_TRANSITIONS = {
@@ -701,8 +702,7 @@ export async function printManifest(req, res) {
     ORDER BY o.created_at ASC
   `, [id]);
 
-  const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-  const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+  const company = await getCompanySettings();
 
   res.render('trips/manifest', {
     layout: false,
@@ -796,8 +796,7 @@ export async function printExpenses(req, res) {
     `, [id]);
     const revenuePartner = partnerBookings.reduce((s, b) => s + (b.status === 'CANCELLED' ? 0 : Number(b.grand_total_thb || 0)), 0);
 
-    const [settingRows] = await pool.query('SELECT setting_key, setting_value FROM company_settings');
-    const company = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const company = await getCompanySettings();
 
     // Get latest exchange rates
     const [[rateTHB_LAK]] = await pool.query(
