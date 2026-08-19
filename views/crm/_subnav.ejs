@@ -1,0 +1,24 @@
+<%# CRM module sub-nav — shared across the 7 non-inbox CRM pages so every
+    module is one click from any other, now that the sidebar collapses them
+    into a single "ระบบ CRM ลูกค้า" entry. Inbox is deliberately excluded
+    here too (it stays its own standalone sidebar link).
+    Gates mirror the sidebar's own per-item gates exactly. %>
+<%
+  const CRM_MODULES = [
+    { href: '/crm',               icon: 'fa-chart-line',       label: 'Dashboard',        labelLa: 'Dashboard',           show: true },
+    { href: '/crm/customers',     icon: 'fa-address-card',     label: 'ลูกค้า 360°',       labelLa: 'ຂໍ້ມູນລູກຄ້າ 360°',    show: true },
+    { href: '/crm/cases',         icon: 'fa-ticket',           label: 'เคส / Ticket',      labelLa: 'ເຄດ / Ticket',        show: true },
+    { href: '/crm/automation',    icon: 'fa-robot',            label: 'ระบบอัตโนมัติ',     labelLa: 'ລະບົບອັດຕະໂນມັດ',      show: can.manageCrm },
+    { href: '/crm/quick-replies', icon: 'fa-reply-all',        label: 'ตอบด่วน',           labelLa: 'ຕອບໄວ',               show: can.manageCrm },
+    { href: '/crm/reports',       icon: 'fa-chart-bar',        label: 'รายงานทีมแชต',      labelLa: 'ລາຍງານທີມ',           show: can.superviseCrm },
+    { href: '/crm/channels',      icon: 'fa-tower-broadcast',  label: 'ช่องทางแชต',        labelLa: 'ຊ່ອງທາງແຊດ',          show: can.manageCrm },
+  ];
+%>
+<div style="display:flex;flex-wrap:wrap;gap:8px;padding:16px 24px;">
+  <% CRM_MODULES.forEach(m => { if (!m.show) return;
+       const isActive = currentPath === m.href; %>
+  <a href="<%= m.href %>" class="btn-crm <%= isActive ? 'btn-crm-primary' : 'btn-crm-secondary' %> btn-crm-sm">
+    <i class="fa-solid <%= m.icon %>"></i> <%= lang === 'lo' ? m.labelLa : m.label %>
+  </a>
+  <% }) %>
+</div>

@@ -136,9 +136,9 @@
     </div>
 
     <a href="/crm"
-       class="sidebar-link <%= currentPath === '/crm' ? 'active' : '' %>">
-      <i class="fa-solid fa-chart-line" style="color:#818cf8;"></i>
-      <span><%= lang === 'lo' ? 'Dashboard CRM' : 'CRM Dashboard' %></span>
+       class="sidebar-link <%= currentPath.startsWith('/crm') && !currentPath.startsWith('/crm/inbox') ? 'active' : '' %>">
+      <i class="fa-solid fa-headset" style="color:#818cf8;"></i>
+      <span><%= lang === 'lo' ? 'ລະບົບ CRM ລູກຄ້າ' : 'ระบบ CRM ลูกค้า' %></span>
     </a>
 
     <% if (can.useInbox) { %>
@@ -154,47 +154,6 @@
                      border-radius:999px;min-width:18px;text-align:center;"
         ></span>
       </span>
-    </a>
-    <% } %>
-
-    <a href="/crm/customers"
-       class="sidebar-link <%= currentPath.startsWith('/crm/customers') ? 'active' : '' %>">
-      <i class="fa-solid fa-address-card" style="color:#60a5fa;"></i>
-      <span><%= lang === 'lo' ? 'ຂໍ້ມູນລູກຄ້າ 360°' : 'ลูกค้า 360°' %></span>
-    </a>
-
-    <a href="/crm/cases"
-       class="sidebar-link <%= currentPath.startsWith('/crm/cases') ? 'active' : '' %>">
-      <i class="fa-solid fa-ticket" style="color:#fb923c;"></i>
-      <span><%= lang === 'lo' ? 'ເຄດ / Ticket' : 'เคส / Ticket' %></span>
-    </a>
-
-    <% if (can.manageCrm) { %>
-    <a href="/crm/automation"
-       class="sidebar-link <%= currentPath.startsWith('/crm/automation') ? 'active' : '' %>">
-      <i class="fa-solid fa-robot" style="color:#a78bfa;"></i>
-      <span><%= lang === 'lo' ? 'ລະບົບອັດຕະໂນມັດ' : 'ระบบอัตโนมัติ' %></span>
-    </a>
-    <a href="/crm/quick-replies"
-       class="sidebar-link <%= currentPath.startsWith('/crm/quick-replies') ? 'active' : '' %>">
-      <i class="fa-solid fa-reply-all" style="color:#fb923c;"></i>
-      <span><%= lang === 'lo' ? 'ຕອບໄວ' : 'ตอบด่วน (Quick Reply)' %></span>
-    </a>
-    <% } %>
-
-    <% if (can.superviseCrm) { %>
-    <a href="/crm/reports"
-       class="sidebar-link <%= currentPath.startsWith('/crm/reports') ? 'active' : '' %>">
-      <i class="fa-solid fa-chart-bar" style="color:#fbbf24;"></i>
-      <span><%= lang === 'lo' ? 'ລາຍງານທີມ' : 'รายงานทีมแชต' %></span>
-    </a>
-    <% } %>
-
-    <% if (can.manageCrm) { %>
-    <a href="/crm/channels"
-       class="sidebar-link <%= currentPath.startsWith('/crm/channels') ? 'active' : '' %>">
-      <i class="fa-solid fa-tower-broadcast" style="color:#38bdf8;"></i>
-      <span><%= lang === 'lo' ? 'ຊ່ອງທາງແຊດ' : 'ช่องทางแชต' %></span>
     </a>
     <% } %>
 

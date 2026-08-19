@@ -6,19 +6,16 @@
   <div class="crm-header">
     <div class="crm-header-icon"><i class="fa-solid fa-chart-line"></i></div>
     <h1>CRM Dashboard</h1>
+    <% if (can.useInbox) { %>
     <div style="margin-left:auto;display:flex;gap:8px;">
-      <% if (can.useInbox) { %>
       <a href="/crm/inbox" class="btn-crm btn-crm-primary btn-crm-sm">
         <i class="fa-solid fa-inbox"></i> Unified Inbox
       </a>
-      <% } %>
-      <% if (can.manageCrm) { %>
-      <a href="/crm/automation" class="btn-crm btn-crm-secondary btn-crm-sm">
-        <i class="fa-solid fa-robot"></i> Automation
-      </a>
-      <% } %>
     </div>
+    <% } %>
   </div>
+
+  <%- include('_subnav') %>
 
   <%# KPI Cards %>
   <div class="crm-kpi-grid">

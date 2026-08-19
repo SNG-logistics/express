@@ -5,12 +5,9 @@
   <div class="crm-header">
     <div class="crm-header-icon"><i class="fa-solid fa-address-card"></i></div>
     <h1>Customer 360</h1>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-      <a href="/crm" class="btn-crm btn-crm-secondary btn-crm-sm">
-        <i class="fa-solid fa-arrow-left"></i> Dashboard
-      </a>
-    </div>
   </div>
+
+  <%- include('_subnav') %>
 
   <%# ── Sync Banner (Admin only) ────────────────────────────────────────────── %>
   <% if (can && can.crmAdmin && syncStats) { %>
