@@ -49,7 +49,7 @@
                             <div id="logo-ph-th" class="flex w-full h-full items-center justify-center text-violet-400 text-3xl"><i class="fa-solid fa-building"></i></div>
                         <% } %>
                     </div>
-                    <form action="/settings/company-logo" method="post" enctype="multipart/form-data" class="w-full space-y-2">
+                    <form action="/settings/company-logo?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post" enctype="multipart/form-data" class="w-full space-y-2">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <input type="hidden" name="logo_target" value="th">
                         <label class="block w-full cursor-pointer">
@@ -162,7 +162,7 @@
                             <div id="logo-ph-la" class="flex w-full h-full items-center justify-center text-red-400 text-3xl"><i class="fa-solid fa-building"></i></div>
                         <% } %>
                     </div>
-                    <form action="/settings/company-logo" method="post" enctype="multipart/form-data" class="w-full space-y-2">
+                    <form action="/settings/company-logo?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post" enctype="multipart/form-data" class="w-full space-y-2">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <input type="hidden" name="logo_target" value="la">
                         <label class="block w-full cursor-pointer">

@@ -57,7 +57,7 @@
     </div>
 
     <div class="flex flex-wrap items-end gap-2 mt-3 pt-3 border-t border-white/5 text-xs">
-      <form action="/settings/testimonials/<%= row.id %>" method="post" enctype="multipart/form-data"
+      <form action="/settings/testimonials/<%= row.id %>?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post" enctype="multipart/form-data"
         class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <label class="flex flex-col gap-1">
@@ -133,7 +133,7 @@
 <%# Add new %>
 <div class="glass-panel-dark rounded-2xl p-4 border border-white/5">
   <h2 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-plus mr-1"></i> เพิ่มหลักฐานใหม่</h2>
-  <form action="/settings/testimonials" method="post" enctype="multipart/form-data"
+  <form action="/settings/testimonials?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post" enctype="multipart/form-data"
     class="flex flex-wrap items-end gap-2 text-xs">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label class="flex flex-col gap-1">
