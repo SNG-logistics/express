@@ -5,6 +5,10 @@ import { previewPurchaseAgentQuote, resolvePurchaseAgentQuote } from '../service
 import { transitionQuotation } from '../services/quotationWorkflowService.js';
 import { getNextQuotationStatuses } from '../constants/transitions.js';
 import { enqueuePurchaseAgentNotification, kickNotificationWorker } from '../services/notificationService.js';
+import {
+    listParcels, addParcel, updateParcel, deleteParcel,
+    parcelProgress, deriveSupplierStage, syncQuotationStage,
+} from '../services/quotationParcelService.js';
 
 // Statuses a quotation may be persisted in directly at create time.
 // (Most rows start life as 'draft'; staff push them forward from the detail
@@ -273,11 +277,16 @@ export async function detail(req, res) {
              ORDER BY pqsl.action_at ASC`, [id]
         );
 
+        const parcels = await listParcels(id);
+
         res.render('partner/quotes/detail', {
             user: req.session.user,
             title: `ใบเสนอราคา ${quote.quote_no}`,
             quote,
             logs,
+            parcels,
+            parcelProgress: parcelProgress(parcels),
+            supplierStage: deriveSupplierStage(parcels),
             nextStatuses: getNextQuotationStatuses(quote.status),
         });
     } catch (err) {
@@ -617,4 +626,59 @@ export async function dashboard(req, res) {
         console.error(err);
         res.status(500).send(err.message);
     }
+}
+
+// ─── Thai-leg parcels ─────────────────────────────────────────────────────────
+// The boxes the platform's courier brings to SNG's Thai warehouse. Staff record
+// them here right after buying, which is the only moment the tracking numbers
+// are on screen — asking anyone to come back later is asking for empty fields.
+
+/** Also saves the platform's order number, which lives on the quotation. */
+async function saveSupplierOrderNo(quotationId, raw) {
+    const value = String(raw ?? '').trim();
+    if (!value) return;
+    await pool.query(
+        'UPDATE partner_quotations SET supplier_order_no = ? WHERE id = ?',
+        [value, quotationId]
+    );
+}
+
+export async function createParcel(req, res) {
+    const { id } = req.params;
+    try {
+        await saveSupplierOrderNo(id, req.body.supplier_order_no);
+        await addParcel(id, req.body, req.session.user?.id ?? null);
+        await syncQuotationStage(id, req.session.user?.id ?? null);
+        req.session.flash = { type: 'success', message: 'บันทึกพัสดุขาไทยแล้ว' };
+    } catch (err) {
+        console.error('[Partner] createParcel:', err);
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect(`/partner/quotes/${id}`);
+}
+
+export async function editParcel(req, res) {
+    const { id, parcelId } = req.params;
+    try {
+        await updateParcel(parcelId, id, req.body);
+        await syncQuotationStage(id, req.session.user?.id ?? null);
+        req.session.flash = { type: 'success', message: 'อัปเดตพัสดุแล้ว' };
+    } catch (err) {
+        console.error('[Partner] editParcel:', err);
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect(`/partner/quotes/${id}`);
+}
+
+export async function removeParcel(req, res) {
+    const { id, parcelId } = req.params;
+    try {
+        await deleteParcel(parcelId, id);
+        await syncQuotationStage(id, req.session.user?.id ?? null);
+        req.session.flash = { type: 'success', message: 'ลบพัสดุแล้ว' };
+    } catch (err) {
+        console.error('[Partner] removeParcel:', err);
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect(`/partner/quotes/${id}`);
 }

@@ -237,7 +237,7 @@ app.use(themeMiddleware);
 // instead of merely "separate when logged out."
 // Paths that pass through unprefixed on the subdomain — includes '/', the
 // customer home page, which IS a valid direct route there.
-const CUSTOMER_DIRECT_PATHS = ['/', '/home', '/track', '/calculate', '/shops', '/api/public', '/member'];
+const CUSTOMER_DIRECT_PATHS = ['/', '/home', '/track', '/calculate', '/buy', '/online', '/shops', '/api/public', '/member'];
 // Same set minus '/' — used on the main host, where '/' gets its own
 // host-aware handling below instead of a blind bounce (see app.get('/', ...)).
 const MAIN_HOST_BOUNCE_PATHS = CUSTOMER_DIRECT_PATHS.filter(p => p !== '/');
@@ -539,7 +539,10 @@ app.get('/system-manual/print', (req, res) => {
 
 // Tracking — public page, no auth required (QR code from sticker)
 app.get('/track', tracking.trackLanding);
-app.get('/track/:jobNo', tracking.trackOrder);
+// :ref is an SNG job number or a purchase-agent quote number — one box,
+// either number, because the customer only has the quote number until a
+// shipment exists.
+app.get('/track/:ref', tracking.trackOrder);
 
 // Global 404 Handler
 app.use('*', (req, res) => {

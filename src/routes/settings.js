@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireLogin, requireRole } from '../middleware/auth.js';
 import * as settings from '../controllers/settingsController.js';
 import multer from 'multer';
+import { uploadTestimonialPhoto } from '../middleware/uploadTestimonialPhoto.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -31,6 +32,29 @@ const logoUpload = multer({
   }
 });
 
+// Home promo banner. Its own folder rather than sharing the logo's, so a
+// banner can never be mistaken for a logo when either is replaced.
+const bannerDir = path.join(__dirname, '../../public/uploads/banner');
+if (!fs.existsSync(bannerDir)) fs.mkdirSync(bannerDir, { recursive: true });
+
+const bannerUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, bannerDir),
+    filename:    (req, file, cb) => cb(null, 'banner-' + Date.now() + path.extname(file.originalname).toLowerCase()),
+  }),
+  // Larger than the logo cap: this is a full-bleed photograph, and squeezing it
+  // under 2MB would show as visible artefacts on the biggest image on the site.
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!file.mimetype.startsWith('image/') || !allowed.has(ext)) {
+      return cb(new Error('อนุญาตเฉพาะไฟล์รูปภาพ (.jpg, .png, .webp)'));
+    }
+    cb(null, true);
+  },
+});
+
 const router = Router();
 
 // ─── Shipping Rate (Admin only) ───────────────────────────────────────────────
@@ -46,6 +70,19 @@ router.get('/api/shipping-price', requireLogin, settings.calculatePrice);
 router.get('/api/exchange-rate', requireLogin, settings.getLatestRate);
 
 // ─── Danger Zone (Super Admin only) ───────────────────────────────────────────
+router.get('/settings/prohibited', requireLogin, requireRole(['admin','manager']), settings.showProhibitedItems);
+router.post('/settings/prohibited', requireLogin, requireRole(['admin','manager']), settings.createProhibitedItem);
+router.post('/settings/prohibited/:id', requireLogin, requireRole(['admin','manager']), settings.updateProhibitedItem);
+router.post('/settings/prohibited/:id/delete', requireLogin, requireRole(['admin','manager']), settings.deleteProhibitedItem);
+
+router.get('/settings/testimonials', requireLogin, requireRole(['admin','manager']), settings.showTestimonials);
+router.post('/settings/testimonials', requireLogin, requireRole(['admin','manager']), uploadTestimonialPhoto.single('photo'), settings.createTestimonial);
+router.post('/settings/testimonials/:id', requireLogin, requireRole(['admin','manager']), uploadTestimonialPhoto.single('photo'), settings.updateTestimonial);
+router.post('/settings/testimonials/:id/delete', requireLogin, requireRole(['admin','manager']), settings.deleteTestimonial);
+
+router.post('/settings/home-banner', requireLogin, requireRole(['admin','manager']), bannerUpload.single('banner_file'), settings.uploadHomeBanner);
+router.post('/settings/home-banner/remove', requireLogin, requireRole(['admin','manager']), settings.removeHomeBanner);
+
 router.post('/settings/clear-test-data', requireLogin, requireRole('admin'), settings.clearTestData);
 
 // ─── Company Profile (Admin only) ─────────────────────────────────────────────

@@ -12,6 +12,7 @@ import { regenerateCustomerSession, recordMemberLoginAttempt } from '../middlewa
 import { resolveInviteToken } from '../services/inviteTokenService.js';
 import { getUnredeemedRewards } from '../services/referralRewardService.js';
 import { resolveStatus } from '../constants/transitions.js';
+import { getProhibitedItems } from '../services/prohibitedItemsService.js';
 
 // Constant-time login even when the phone isn't registered (resist enumeration).
 const DUMMY_PASSWORD_HASH = '$2b$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -793,11 +794,14 @@ export async function processAccountEdit(req, res) {
  * Public intake form for "เช็คราคาสินค้าออนไลน์จากไทย".
  * Requires a logged-in (OTP-verified) member.
  */
-export function showQuoteRequest(req, res) {
+export async function showQuoteRequest(req, res) {
+  // Carried over from the public estimator at /buy, so someone who has just
+  // priced three of something does not retype the three.
+  const carriedQty = Math.floor(Number(req.query.qty));
   const values = {
     product_url: typeof req.query.url === 'string' ? req.query.url.slice(0, 1000) : '',
     product_name: '',
-    desired_qty: 1,
+    desired_qty: Number.isFinite(carriedQty) && carriedQty > 0 ? Math.min(carriedQty, 999) : 1,
     note: '',
   };
   res.render('customer/member/quote-request', {
@@ -805,6 +809,7 @@ export function showQuoteRequest(req, res) {
     title: 'เช็คราคาสินค้าออนไลน์ | SNG Express',
     values,
     error: null,
+    prohibited: await getProhibitedItems(res.locals.lang),
   });
 }
 

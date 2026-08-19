@@ -68,6 +68,12 @@
     </p>
   </form>
 
+  <%# Right under the form, because this is the last moment before someone
+      commits to something that might not be allowed across the border. %>
+  <div style="margin-top: 1rem;">
+    <%- include('../_prohibited') %>
+  </div>
+
   <div style="text-align: center; margin-top: 1rem;">
     <a href="/member/quote-requests" style="color: var(--portal-gold); font-size: 0.85rem; text-decoration: none;">
       <i class="fa-solid fa-clock-rotate-left"></i> <%= t('quoteRequest.myRequests') %>

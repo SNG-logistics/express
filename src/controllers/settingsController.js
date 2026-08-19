@@ -1,4 +1,6 @@
 import pool from '../config/db.js';
+import { listAllProhibitedItems, invalidateProhibitedItemsCache } from '../services/prohibitedItemsService.js';
+import { listAllTestimonials, invalidateTestimonialsCache } from '../services/testimonialsService.js';
 import bcrypt from 'bcryptjs';
 import { getCompanySettings } from '../services/companySettingsService.js';
 import { findBestShippingRate } from '../services/pricingService.js';
@@ -356,4 +358,256 @@ export async function uploadCompanyLogo(req, res) {
         req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาด: ' + err.message };
         res.redirect('/settings/rates#company');
     }
+}
+
+// ─── Prohibited / restricted goods ────────────────────────────────────────────
+// Customs practice changes, and the person who learns it is at the counter, not
+// at a keyboard with a deploy pipeline. The list is data, editable here, so a
+// correction reaches customers the same day.
+
+export async function showProhibitedItems(req, res) {
+    try {
+        const items = await listAllProhibitedItems();
+        const flash = req.session.flash;
+        delete req.session.flash;
+        res.render('settings/prohibited', {
+            user: req.session.user,
+            title: 'ของที่รับ / ไม่รับ',
+            banned: items.filter(i => i.category === 'BANNED'),
+            askFirst: items.filter(i => i.category === 'ASK_FIRST'),
+            flash,
+        });
+    } catch (err) {
+        console.error('[Settings] showProhibitedItems:', err);
+        res.status(500).send(err.message);
+    }
+}
+
+export async function createProhibitedItem(req, res) {
+    const { category, label_th, label_lo, note_th, note_lo, sort_order } = req.body;
+    try {
+        if (!['BANNED', 'ASK_FIRST'].includes(category)) {
+            throw new Error('หมวดหมู่ไม่ถูกต้อง');
+        }
+        if (!label_th?.trim() || !label_lo?.trim()) {
+            // Both languages are required because a customer reading in Lao must
+            // never be shown a blank where a restriction should be.
+            throw new Error('ต้องกรอกชื่อรายการทั้งภาษาไทยและภาษาลาว');
+        }
+        await pool.query(
+            `INSERT INTO prohibited_items
+               (category, label_th, label_lo, note_th, note_lo, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                category, label_th.trim(), label_lo.trim(),
+                note_th?.trim() || null, note_lo?.trim() || null,
+                Number(sort_order) || 0,
+            ]
+        );
+        invalidateProhibitedItemsCache();
+        req.session.flash = { type: 'success', message: 'เพิ่มรายการแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/prohibited');
+}
+
+export async function updateProhibitedItem(req, res) {
+    const { id } = req.params;
+    const { label_th, label_lo, note_th, note_lo, sort_order, active } = req.body;
+    try {
+        if (!label_th?.trim() || !label_lo?.trim()) {
+            throw new Error('ต้องกรอกชื่อรายการทั้งภาษาไทยและภาษาลาว');
+        }
+        await pool.query(
+            `UPDATE prohibited_items
+                SET label_th = ?, label_lo = ?, note_th = ?, note_lo = ?,
+                    sort_order = ?, active = ?
+              WHERE id = ?`,
+            [
+                label_th.trim(), label_lo.trim(),
+                note_th?.trim() || null, note_lo?.trim() || null,
+                Number(sort_order) || 0, active ? 1 : 0, id,
+            ]
+        );
+        invalidateProhibitedItemsCache();
+        req.session.flash = { type: 'success', message: 'บันทึกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/prohibited');
+}
+
+export async function deleteProhibitedItem(req, res) {
+    try {
+        await pool.query('DELETE FROM prohibited_items WHERE id = ?', [req.params.id]);
+        invalidateProhibitedItemsCache();
+        req.session.flash = { type: 'success', message: 'ลบรายการแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/prohibited');
+}
+
+// ─── Customer proof ───────────────────────────────────────────────────────────
+// Photos and words customers sent us. Nothing here is invented, and nothing
+// reaches a public page without recorded permission — publishing someone who
+// never agreed would damage the exact trust this feature exists to build.
+
+export async function showTestimonials(req, res) {
+    try {
+        const rows = await listAllTestimonials();
+        const flash = req.session.flash;
+        delete req.session.flash;
+        res.render('settings/testimonials', {
+            user: req.session.user,
+            title: 'หลักฐานจากลูกค้า',
+            rows,
+            flash,
+        });
+    } catch (err) {
+        console.error('[Settings] showTestimonials:', err);
+        res.status(500).send(err.message);
+    }
+}
+
+/** Consent is resolved here, not trusted from whatever the form posted. */
+function consentFields(req, existing = null) {
+    const given = req.body.consent_given ? 1 : 0;
+    if (!given) return { given: 0, note: null, by: null, at: null };
+    // Keep the original attribution once consent has been recorded — re-saving
+    // the row must not rewrite who obtained it or when.
+    if (existing?.consent_given) {
+        return {
+            given: 1,
+            note: req.body.consent_note?.trim() || existing.consent_note,
+            by: existing.consent_by,
+            at: existing.consent_at,
+        };
+    }
+    return {
+        given: 1,
+        note: req.body.consent_note?.trim() || null,
+        by: req.session.user?.id ?? null,
+        at: new Date(),
+    };
+}
+
+export async function createTestimonial(req, res) {
+    try {
+        const { display_name, message, source_ref, sort_order, status } = req.body;
+        if (!display_name?.trim()) throw new Error('ต้องระบุชื่อที่จะแสดง');
+
+        const consent = consentFields(req);
+        // Published without consent is the one combination that must never
+        // persist, so it is downgraded here rather than rejected — the staff
+        // member keeps their typing and sees why it stayed a draft.
+        const safeStatus = consent.given && status === 'published' ? 'published' : 'draft';
+
+        await pool.query(
+            `INSERT INTO testimonials
+               (display_name, message, photo_path, source_ref,
+                consent_given, consent_note, consent_by, consent_at, status, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                display_name.trim(), message?.trim() || null,
+                req.file ? '/uploads/testimonials/' + req.file.filename : null,
+                source_ref?.trim() || null,
+                consent.given, consent.note, consent.by, consent.at,
+                safeStatus, Number(sort_order) || 0,
+            ]
+        );
+        invalidateTestimonialsCache();
+        req.session.flash = safeStatus === 'published'
+            ? { type: 'success', message: 'เพิ่มและเผยแพร่แล้ว' }
+            : { type: 'success', message: 'บันทึกเป็นฉบับร่าง — ต้องยืนยันว่าขออนุญาตลูกค้าแล้วจึงเผยแพร่ได้' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/testimonials');
+}
+
+export async function updateTestimonial(req, res) {
+    const { id } = req.params;
+    try {
+        const [[existing]] = await pool.query('SELECT * FROM testimonials WHERE id = ?', [id]);
+        if (!existing) throw new Error('ไม่พบรายการนี้');
+
+        const { display_name, message, source_ref, sort_order, status } = req.body;
+        if (!display_name?.trim()) throw new Error('ต้องระบุชื่อที่จะแสดง');
+
+        const consent = consentFields(req, existing);
+        const safeStatus = consent.given && status === 'published' ? 'published'
+            : status === 'hidden' ? 'hidden' : 'draft';
+
+        await pool.query(
+            `UPDATE testimonials
+                SET display_name = ?, message = ?, source_ref = ?,
+                    consent_given = ?, consent_note = ?, consent_by = ?, consent_at = ?,
+                    status = ?, sort_order = ?
+                    ${req.file ? ', photo_path = ?' : ''}
+              WHERE id = ?`,
+            req.file
+                ? [display_name.trim(), message?.trim() || null, source_ref?.trim() || null,
+                   consent.given, consent.note, consent.by, consent.at,
+                   safeStatus, Number(sort_order) || 0,
+                   '/uploads/testimonials/' + req.file.filename, id]
+                : [display_name.trim(), message?.trim() || null, source_ref?.trim() || null,
+                   consent.given, consent.note, consent.by, consent.at,
+                   safeStatus, Number(sort_order) || 0, id]
+        );
+        invalidateTestimonialsCache();
+        req.session.flash = { type: 'success', message: 'บันทึกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/testimonials');
+}
+
+export async function deleteTestimonial(req, res) {
+    try {
+        await pool.query('DELETE FROM testimonials WHERE id = ?', [req.params.id]);
+        invalidateTestimonialsCache();
+        req.session.flash = { type: 'success', message: 'ลบแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/testimonials');
+}
+
+// ─── Home promo banner ────────────────────────────────────────────────────────
+// The 16:9 image on the portal home page, linking to the online product
+// catalogue. Stored as a company setting so marketing can swap it for a
+// campaign without a deploy.
+
+export async function uploadHomeBanner(req, res) {
+    try {
+        if (!req.file) throw new Error('กรุณาเลือกไฟล์รูปแบนเนอร์');
+        await pool.query(
+            `INSERT INTO company_settings (setting_key, setting_value, updated_by)
+             VALUES ('home_banner_path', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
+            ['/uploads/banner/' + req.file.filename, req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'อัปเดตแบนเนอร์หน้าแรกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/rates#banner');
+}
+
+export async function removeHomeBanner(req, res) {
+    try {
+        // Clearing the value rather than deleting the row keeps the setting's
+        // history (and updated_by) intact; the home page treats empty as absent.
+        await pool.query(
+            `UPDATE company_settings SET setting_value = '', updated_by = ?
+              WHERE setting_key = 'home_banner_path'`,
+            [req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'เอาแบนเนอร์ออกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/rates#banner');
 }

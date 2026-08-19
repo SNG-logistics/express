@@ -1,0 +1,179 @@
+<%#
+  views/customer/buy.ejs — "what will it cost to have you buy this for me?"
+
+  Marketing pitches the Thai shopping apps, which sets a Lazada-shaped
+  expectation: see the price, now. The old path made customers submit a form and
+  wait for a human before learning anything, and that wait is where the promise
+  was being abandoned. This page answers first and asks for the real request
+  second.
+
+  Two numbers do the persuading, so they get the whole top of the result: what
+  you pay today (the product cost only) and what you pay when the goods arrive.
+  That split IS the offer — the customer never fronts the shipping or the fee.
+%>
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">🇹🇭 → 🇱🇦</p>
+    <h1><%= t('buy.title') %></h1>
+    <p><%= t('buy.subtitle') %></p>
+  </div>
+
+  <form class="card buy-form" id="buyForm" onsubmit="return false;">
+    <div class="buy-row">
+      <label class="buy-field">
+        <span><%= t('buy.priceLabel') %></span>
+        <input class="input-portal" type="number" id="priceThb" inputmode="decimal"
+          min="0" step="1" placeholder="<%= t('buy.pricePlaceholder') %>" autofocus>
+      </label>
+      <label class="buy-field is-narrow">
+        <span><%= t('buy.qtyLabel') %></span>
+        <input class="input-portal" type="number" id="qty" inputmode="numeric"
+          min="1" step="1" value="1">
+      </label>
+    </div>
+
+    <fieldset class="buy-weights">
+      <legend><%= t('buy.weightLabel') %></legend>
+      <p class="buy-weights-hint"><%= t('buy.weightHint') %></p>
+      <div class="buy-chip-row">
+        <% weightPresets.forEach(function (preset, i) { %>
+        <label class="buy-chip">
+          <input type="radio" name="weight" value="<%= preset.kg %>" <%= i === 0 ? 'checked' : '' %>>
+          <span><%= t('buy.w' + preset.key.charAt(0).toUpperCase() + preset.key.slice(1)) %></span>
+          <small><%= preset.kg %> kg</small>
+        </label>
+        <% }); %>
+      </div>
+    </fieldset>
+  </form>
+
+  <%# Result — server-rendered empty, filled live. Announced politely so a
+      screen reader hears the new figure without losing the input focus. %>
+  <div class="card buy-result" id="buyResult" aria-live="polite">
+    <p class="buy-empty" id="buyEmpty"><%= t('buy.enterPrice') %></p>
+
+    <div id="buyFigures" hidden>
+      <p class="buy-estimate-label"><%= t('buy.estimateNote') %></p>
+
+      <div class="buy-split">
+        <div class="buy-split-cell is-now">
+          <p class="buy-split-label"><%= t('buy.payNow') %></p>
+          <p class="buy-split-value"><span id="payNow">0</span> <small>LAK</small></p>
+          <p class="buy-split-what"><%= t('buy.payNowWhat') %></p>
+        </div>
+        <div class="buy-split-cell">
+          <p class="buy-split-label"><%= t('buy.payOnDelivery') %></p>
+          <p class="buy-split-value"><span id="payLater">0</span> <small>LAK</small></p>
+          <p class="buy-split-what"><%= t('buy.payOnDeliveryWhat') %></p>
+        </div>
+      </div>
+
+      <p class="buy-warn" id="buyHeavy" hidden>
+        <i class="fa-solid fa-triangle-exclamation"></i> <%= t('buy.heavyWarn') %>
+      </p>
+
+      <details class="buy-breakdown">
+        <summary><%= t('buy.breakdown') %></summary>
+        <dl>
+          <div><dt><%= t('buy.rowProduct') %></dt><dd id="rowProduct">0</dd></div>
+          <div><dt><%= t('buy.rowShipping') %></dt><dd id="rowShipping">0</dd></div>
+          <div><dt><%= t('buy.rowService') %></dt><dd id="rowService">0</dd></div>
+          <div class="is-total"><dt><%= t('buy.rowTotal') %></dt><dd id="rowTotal">0</dd></div>
+        </dl>
+      </details>
+
+      <p class="buy-disclaimer"><%= t('buy.estimateDisclaimer') %></p>
+
+      <a class="btn-gold buy-cta" id="buyCta" href="/member/quote-request">
+        <i class="fa-solid fa-paper-plane"></i> <%= t('buy.ctaRequest') %>
+      </a>
+      <p class="buy-cta-hint"><%= t('buy.ctaHint') %></p>
+    </div>
+  </div>
+
+  <%# The three steps answer "so what happens after I ask?" — the question that
+      follows a price for a service people have not used before. %>
+  <section class="card buy-steps">
+    <h2><%= t('buy.howItWorks') %></h2>
+    <ol>
+      <li>
+        <span class="buy-step-n">1</span>
+        <div><strong><%= t('buy.step1') %></strong><p><%= t('buy.step1d') %></p></div>
+      </li>
+      <li>
+        <span class="buy-step-n">2</span>
+        <div><strong><%= t('buy.step2') %></strong><p><%= t('buy.step2d') %></p></div>
+      </li>
+      <li>
+        <span class="buy-step-n">3</span>
+        <div><strong><%= t('buy.step3') %></strong><p><%= t('buy.step3d') %></p></div>
+      </li>
+    </ol>
+  </section>
+
+  <%- include('_prohibited') %>
+
+  <%- include('_testimonials') %>
+</section>
+
+<script>
+  (function () {
+    const priceEl  = document.getElementById('priceThb');
+    const qtyEl    = document.getElementById('qty');
+    const form     = document.getElementById('buyForm');
+    const empty    = document.getElementById('buyEmpty');
+    const figures  = document.getElementById('buyFigures');
+    const heavy    = document.getElementById('buyHeavy');
+    const cta      = document.getElementById('buyCta');
+    const fmt      = new Intl.NumberFormat('<%= lang === "lo" ? "lo-LA" : "th-TH" %>');
+
+    const set = (id, value) => { document.getElementById(id).textContent = fmt.format(Math.round(value)); };
+    const weight = () => Number(form.querySelector('input[name="weight"]:checked')?.value || 0);
+
+    let inFlight = null;
+
+    async function recalc() {
+      const price = Number(priceEl.value);
+      const qty = Math.max(1, Number(qtyEl.value) || 1);
+      if (!(price > 0)) {
+        figures.hidden = true;
+        empty.hidden = false;
+        return;
+      }
+
+      const params = new URLSearchParams({ price_thb: price, qty, weight_kg: weight() });
+      // Only the newest keystroke's answer may land: without this an earlier,
+      // slower response can overwrite a later one and show a stale price.
+      const token = {};
+      inFlight = token;
+      try {
+        const res = await fetch('/api/public/purchase-estimate?' + params);
+        const data = await res.json();
+        if (inFlight !== token || !data.ok) return;
+
+        set('payNow', data.payNowLak);
+        set('payLater', data.payOnDeliveryLak);
+        set('rowProduct', data.productLak);
+        set('rowShipping', data.shippingLak);
+        set('rowService', data.serviceFeeLak);
+        set('rowTotal', data.totalLak);
+        heavy.hidden = data.shippingKnown;
+
+        // Carry over only what that form actually accepts — the price is set by
+        // staff from the live listing, so sending it would be decorative.
+        cta.href = '/member/quote-request?qty=' + encodeURIComponent(qty);
+
+        empty.hidden = true;
+        figures.hidden = false;
+      } catch (err) {
+        // A failed estimate must not blank a figure the customer is reading.
+      }
+    }
+
+    let debounce;
+    const schedule = () => { clearTimeout(debounce); debounce = setTimeout(recalc, 250); };
+    priceEl.addEventListener('input', schedule);
+    qtyEl.addEventListener('input', schedule);
+    form.querySelectorAll('input[name="weight"]').forEach(el => el.addEventListener('change', recalc));
+  })();
+</script>
