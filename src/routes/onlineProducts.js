@@ -13,6 +13,12 @@ import { uploadProductPhoto } from '../middleware/uploadProductPhoto.js';
 const router = Router();
 
 // Member Catalog
+// Browsing is public and acting is not: someone who taps the home-page banner
+// must reach the products, not a login wall. The cards only link out to the
+// platform's own listing, so there is nothing here to protect — asking for an
+// account first would simply end the visit that marketing paid for.
+router.get('/online', products.listProducts);
+// The member path stays, so links already sent to customers keep working.
 router.get('/member/online', requireCustomerLogin, products.listProducts);
 
 // Staff Admin Product Management

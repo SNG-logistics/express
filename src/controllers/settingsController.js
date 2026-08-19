@@ -574,3 +574,40 @@ export async function deleteTestimonial(req, res) {
     }
     res.redirect('/settings/testimonials');
 }
+
+// ─── Home promo banner ────────────────────────────────────────────────────────
+// The 6:9 image on the portal home page, linking to the online product
+// catalogue. Stored as a company setting so marketing can swap it for a
+// campaign without a deploy.
+
+export async function uploadHomeBanner(req, res) {
+    try {
+        if (!req.file) throw new Error('กรุณาเลือกไฟล์รูปแบนเนอร์');
+        await pool.query(
+            `INSERT INTO company_settings (setting_key, setting_value, updated_by)
+             VALUES ('home_banner_path', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
+            ['/uploads/banner/' + req.file.filename, req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'อัปเดตแบนเนอร์หน้าแรกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/rates#banner');
+}
+
+export async function removeHomeBanner(req, res) {
+    try {
+        // Clearing the value rather than deleting the row keeps the setting's
+        // history (and updated_by) intact; the home page treats empty as absent.
+        await pool.query(
+            `UPDATE company_settings SET setting_value = '', updated_by = ?
+              WHERE setting_key = 'home_banner_path'`,
+            [req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'เอาแบนเนอร์ออกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/rates#banner');
+}

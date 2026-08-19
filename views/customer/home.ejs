@@ -45,6 +45,22 @@
     </div>
   </form>
 
+  <%#
+    Promo banner — the visual hook for the service marketing leads with. Shown
+    only when staff have uploaded one: an empty 6:9 frame would be a hole in the
+    middle of the home page. Links to the public catalogue rather than the member
+    one, so tapping it never lands on a login wall.
+  %>
+  <% const homeBanner = company.home_banner_path; %>
+  <% if (homeBanner) { %>
+  <a class="home-banner" href="/online">
+    <img src="<%= homeBanner %>" alt="<%= t('portal.bannerAlt') %>" decoding="async">
+    <span class="home-banner-cta">
+      <%= t('portal.bannerCta') %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+    </span>
+  </a>
+  <% } %>
+
   <div class="home-section-heading">
     <h2><%= t('portal.servicesTitle') %></h2>
   </div>
@@ -73,7 +89,9 @@
       <span class="home-service-icon"><i class="fa-solid fa-store" aria-hidden="true"></i></span>
       <span><strong><%= t('portal.shops') %></strong><small><%= t('portal.shopsHint') %></small></span>
     </a>
-    <a class="home-service" href="/member/online">
+    <%# Public catalogue, same reason as the banner: this tile sits on a page
+        anyone can reach, so it must not dead-end at a login form. %>
+    <a class="home-service" href="/online">
       <span class="home-service-icon"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i></span>
       <span><strong><%= t('portal.online') %></strong><small><%= t('portal.onlineHint') %></small></span>
     </a>

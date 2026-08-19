@@ -194,7 +194,9 @@
     "goToAccount": "ไปที่บัญชีของฉัน",
     "contactTitle": "ติดต่อเรา",
     "callNow": "โทรหาเรา",
-    "emailUs": "ส่งอีเมล"
+    "emailUs": "ส่งอีเมล",
+    "bannerAlt": "สินค้าออนไลน์จากไทย",
+    "bannerCta": "ดูสินค้าทั้งหมด"
   },
   "tracking": {
     "title": "ติดตามพัสดุ",
