@@ -1,0 +1,189 @@
+<%# Exchange rate manager (THB<->LAK, USD<->THB). Shared by the standalone
+    /settings/rates page and the /settings/member hub. %>
+<div class="space-y-6">
+    <%
+      const latestThbLak = fxRates.find(r => r.pair === 'THB_LAK');
+      const latestUsdThb = fxRates.find(r => r.pair === 'USD_THB');
+      const fxThbLakHistory = fxRates.filter(r => r.pair === 'THB_LAK').slice(0, 10);
+      const fxUsdThbHistory = fxRates.filter(r => r.pair === 'USD_THB').slice(0, 10);
+    %>
+
+    <!-- 2-column: THB_LAK | USD_THB -->
+    <div class="grid lg:grid-cols-2 gap-6">
+
+        <!-- ── THB → LAK ─────────────────────────────── -->
+        <div class="glass-panel-dark rounded-3xl p-6 border border-amber-500/20 bg-amber-500/5">
+            <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🇹🇭→🇱🇦</span> <i class="fa-solid fa-coins"></i> THB → LAK
+            </div>
+            <% if (latestThbLak) { %>
+                <div class="text-4xl font-black text-white font-mono">
+                    <%= Number(latestThbLak.rate).toLocaleString('th', {maximumFractionDigits: 0}) %>
+                    <span class="text-lg text-amber-400 font-bold">LAK</span>
+                </div>
+                <div class="text-slate-400 text-sm mt-1">= 1 THB</div>
+                <div class="mt-2 text-xs text-slate-500">
+                    <i class="fa-solid fa-clock"></i>
+                    อัปเดตโดย <strong class="text-slate-400"><%= latestThbLak.set_by_name || 'ระบบ' %></strong>
+                    · <%= new Date(latestThbLak.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) %>
+                </div>
+            <% } else { %>
+                <div class="text-slate-500 text-lg mt-2">ยังไม่มีข้อมูล</div>
+            <% } %>
+
+            <div class="mt-5 border-t border-white/5 pt-5">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">ตั้งอัตราใหม่</h4>
+                <form action="/settings/exchange-rate" method="post" class="space-y-3">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="pair" value="THB_LAK">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">อัตรา (LAK ต่อ 1 THB)</label>
+                        <div class="relative">
+                            <input type="number" step="1" name="rate" required placeholder="<%= latestThbLak ? Number(latestThbLak.rate).toFixed(0) : '580' %>"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-xl font-bold font-mono focus:ring-amber-500 focus:border-amber-500 pr-16">
+                            <span class="absolute right-4 top-3 text-amber-400 font-bold text-sm">LAK</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">หมายเหตุ (Optional)</label>
+                        <input type="text" name="note" placeholder="เช่น ราคาตลาด 18 เม.ย."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-amber-500 focus:border-amber-500">
+                    </div>
+                    <button type="submit"
+                        class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-save"></i> บันทึกอัตราใหม่
+                    </button>
+                </form>
+
+                <!-- Mini history -->
+                <% if (fxThbLakHistory.length > 0) { %>
+                <div class="mt-4 space-y-1.5">
+                    <p class="text-[10px] text-slate-600 uppercase tracking-wider font-bold">ประวัติล่าสุด</p>
+                    <% fxThbLakHistory.forEach((fx, i) => { %>
+                    <div class="flex items-center justify-between text-xs <%= i===0 ? 'text-white font-bold' : 'text-slate-500' %>">
+                        <span><%= new Date(fx.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) %></span>
+                        <span class="font-mono"><%= Number(fx.rate).toLocaleString() %> LAK/THB</span>
+                    </div>
+                    <% }) %>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- ── USD → THB ─────────────────────────────── -->
+        <div class="glass-panel-dark rounded-3xl p-6 border border-blue-500/20 bg-blue-500/5">
+            <div class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🇺🇸→🇹🇭</span> <i class="fa-solid fa-dollar-sign"></i> USD → THB
+            </div>
+            <% if (latestUsdThb) { %>
+                <div class="text-4xl font-black text-white font-mono">
+                    <%= Number(latestUsdThb.rate).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    <span class="text-lg text-blue-400 font-bold">THB</span>
+                </div>
+                <div class="text-slate-400 text-sm mt-1">= 1 USD</div>
+                <div class="mt-2 text-xs text-slate-500">
+                    <i class="fa-solid fa-clock"></i>
+                    อัปเดตโดย <strong class="text-slate-400"><%= latestUsdThb.set_by_name || 'ระบบ' %></strong>
+                    · <%= new Date(latestUsdThb.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) %>
+                </div>
+            <% } else { %>
+                <div class="text-slate-500 text-base mt-2 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-amber-500"></i> ยังไม่ได้ตั้งค่า — ระบบใช้ค่าเริ่มต้น 36 THB/USD
+                </div>
+            <% } %>
+
+            <div class="mt-5 border-t border-white/5 pt-5">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">ตั้งอัตราใหม่</h4>
+                <form action="/settings/exchange-rate" method="post" class="space-y-3">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="pair" value="USD_THB">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">อัตรา (THB ต่อ 1 USD)</label>
+                        <div class="relative">
+                            <input type="number" step="0.01" name="rate" required placeholder="<%= latestUsdThb ? Number(latestUsdThb.rate).toFixed(2) : '36.00' %>"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-xl font-bold font-mono focus:ring-blue-500 focus:border-blue-500 pr-16">
+                            <span class="absolute right-4 top-3 text-blue-400 font-bold text-sm">THB</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">หมายเหตุ (Optional)</label>
+                        <input type="text" name="note" placeholder="เช่น BoT rate 22 พ.ค."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <button type="submit"
+                        class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-save"></i> บันทึกอัตรา USD
+                    </button>
+                </form>
+
+                <!-- Mini history -->
+                <% if (fxUsdThbHistory.length > 0) { %>
+                <div class="mt-4 space-y-1.5">
+                    <p class="text-[10px] text-slate-600 uppercase tracking-wider font-bold">ประวัติล่าสุด</p>
+                    <% fxUsdThbHistory.forEach((fx, i) => { %>
+                    <div class="flex items-center justify-between text-xs <%= i===0 ? 'text-white font-bold' : 'text-slate-500' %>">
+                        <span><%= new Date(fx.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) %></span>
+                        <span class="font-mono"><%= Number(fx.rate).toFixed(2) %> THB/USD</span>
+                    </div>
+                    <% }) %>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full history table -->
+    <div class="glass-panel-dark rounded-3xl overflow-hidden border border-white/5">
+        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+            <h4 class="font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-amber-400"></i> ประวัติอัตราแลกเปลี่ยนทั้งหมด
+            </h4>
+            <span class="text-xs text-slate-500">แสดง 20 รายการล่าสุด</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-slate-500 uppercase bg-black/20 border-b border-white/5">
+                    <tr>
+                        <th class="px-5 py-3">คู่เงิน</th>
+                        <th class="px-5 py-3 text-right">อัตรา</th>
+                        <th class="px-5 py-3">หมายเหตุ</th>
+                        <th class="px-5 py-3">ตั้งโดย</th>
+                        <th class="px-5 py-3">วันที่</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5 text-slate-300">
+                    <% if (fxRates.length === 0) { %>
+                    <tr>
+                        <td colspan="5" class="px-5 py-10 text-center text-slate-600">
+                            <i class="fa-solid fa-coins text-3xl mb-2 opacity-20"></i>
+                            <p>ยังไม่มีประวัติ</p>
+                        </td>
+                    </tr>
+                    <% } %>
+                    <% fxRates.forEach((fx) => { %>
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-5 py-3">
+                            <% if (fx.pair === 'USD_THB') { %>
+                                <span class="px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-bold font-mono">USD_THB</span>
+                            <% } else { %>
+                                <span class="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-bold font-mono"><%= fx.pair %></span>
+                            <% } %>
+                        </td>
+                        <td class="px-5 py-3 text-right font-mono font-bold text-white">
+                            <%= Number(fx.rate).toLocaleString('en-US', {maximumFractionDigits: 2}) %>
+                            <span class="text-slate-500 text-xs font-normal">
+                                <%= fx.pair === 'USD_THB' ? 'THB/USD' : 'LAK/THB' %>
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-slate-400 text-xs max-w-[120px] truncate"><%= fx.note || '—' %></td>
+                        <td class="px-5 py-3 text-slate-400 text-xs"><%= fx.set_by_name || '—' %></td>
+                        <td class="px-5 py-3 text-slate-500 text-xs font-mono">
+                            <%= new Date(fx.created_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

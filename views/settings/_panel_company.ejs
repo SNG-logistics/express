@@ -1,0 +1,291 @@
+<%# Company profile (TH + LA offices). Self-contained incl. its own admin-only
+    gate and JS, since only this panel needs them — shared by the standalone
+    /settings/rates page and the /settings/member hub. %>
+<% if (user && ['owner','admin'].includes(user.role)) { %>
+<div class="space-y-6">
+
+    <%# ── Tab Buttons ── %>
+    <div class="flex gap-2" role="tablist">
+        <button onclick="switchOfficeTab('th')" id="tab-th"
+            class="office-tab active-tab flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
+            🇹🇭 ออฟฟิสไทย
+        </button>
+        <button onclick="switchOfficeTab('la')" id="tab-la"
+            class="office-tab flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
+            🇱🇦 ອອຟຟິດລາວ
+        </button>
+    </div>
+
+    <style>
+        .office-tab { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.08); }
+        .office-tab.active-tab { background: rgba(139,92,246,0.2); color: #c4b5fd; border-color: rgba(139,92,246,0.4); }
+        .office-panel { display: none; }
+        .office-panel.active-panel { display: block; }
+    </style>
+
+    <%# ════════════════ ออฟฟิสไทย 🇹🇭 ════════════════ %>
+    <div id="panel-th" class="office-panel active-panel">
+        <div class="glass-panel-dark rounded-3xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
+            <div class="px-6 pt-5 pb-3 border-b border-white/5">
+                <div class="flex items-center gap-2 text-sm font-bold text-violet-300">
+                    <span class="text-lg">🇹🇭</span> ข้อมูลออฟฟิส <strong>ประเทศไทย</strong>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/5">
+
+                <%# Logo TH %>
+                <div class="p-6 flex flex-col items-center gap-4">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider self-start flex items-center gap-2">
+                        <i class="fa-solid fa-image"></i> โลโก้ (ไทย)
+                    </div>
+                    <div class="w-32 h-32 rounded-2xl overflow-hidden bg-black/40 border-2 border-violet-500/25 flex items-center justify-center shadow-xl">
+                        <% if (company.company_logo) { %>
+                            <img id="logo-preview-th" src="<%= company.company_logo %>" alt="Logo TH"
+                                 onerror="this.style.display='none';document.getElementById('logo-ph-th').style.display='flex'"
+                                 class="w-full h-full object-contain p-2">
+                            <div id="logo-ph-th" class="hidden w-full h-full items-center justify-center text-violet-400 text-3xl"><i class="fa-solid fa-building"></i></div>
+                        <% } else { %>
+                            <img id="logo-preview-th" src="" alt="" class="hidden w-full h-full object-contain p-2">
+                            <div id="logo-ph-th" class="flex w-full h-full items-center justify-center text-violet-400 text-3xl"><i class="fa-solid fa-building"></i></div>
+                        <% } %>
+                    </div>
+                    <form action="/settings/company-logo" method="post" enctype="multipart/form-data" class="w-full space-y-2">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <input type="hidden" name="logo_target" value="th">
+                        <label class="block w-full cursor-pointer">
+                            <div class="flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-dashed border-violet-500/35 hover:border-violet-400 text-violet-400 text-xs font-bold transition-all hover:bg-violet-500/5">
+                                <i class="fa-solid fa-upload"></i>
+                                <span id="file-label-th">เลือกไฟล์โลโก้</span>
+                            </div>
+                            <input type="file" name="logo_file" accept="image/*" required class="hidden" onchange="previewLogo(this,'th')">
+                        </label>
+                        <p class="text-[10px] text-slate-600 text-center">JPG, PNG, WebP, SVG · ไม่เกิน 2MB</p>
+                        <button type="submit" class="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                            <i class="fa-solid fa-cloud-upload-alt"></i> อัปโหลดโลโก้
+                        </button>
+                    </form>
+                </div>
+
+                <%# Fields TH %>
+                <div class="md:col-span-2 p-6">
+                    <form action="/settings/company-profile" method="post" class="space-y-4">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ชื่อบริษัท / ร้านค้า</label>
+                                <input type="text" name="company_name_th"
+                                    value="<%= company.company_name_th || company.company_name || '' %>"
+                                    placeholder="เช่น SNG Express (ไทย)"
+                                    class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-violet-500 focus:border-violet-500 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เบอร์โทรศัพท์</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-phone absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                    <input type="text" name="company_phone_th"
+                                        value="<%= company.company_phone_th || company.company_phone || '' %>"
+                                        placeholder="083-754-3623"
+                                        class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-violet-500 focus:border-violet-500 text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">อีเมล</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-envelope absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                    <input type="email" name="company_email_th"
+                                        value="<%= company.company_email_th || company.company_email || '' %>"
+                                        placeholder="info@sngexpress.com"
+                                        class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-violet-500 focus:border-violet-500 text-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เลขผู้เสียภาษี (Tax ID)</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-file-invoice absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                    <input type="text" name="company_tax_id_th"
+                                        value="<%= company.company_tax_id_th || company.company_tax_id || '' %>"
+                                        placeholder="0000000000000" maxlength="20"
+                                        class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-violet-500 focus:border-violet-500 text-sm font-mono">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ที่อยู่บริษัท</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-location-dot absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                <textarea name="company_address_th" rows="3"
+                                    placeholder="เลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"
+                                    class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-violet-500 focus:border-violet-500 text-sm resize-none"><%= company.company_address_th || company.company_address || '' %></textarea>
+                            </div>
+                        </div>
+
+                        <div class="pt-1 flex items-center justify-between gap-4">
+                            <p class="text-xs text-slate-600"><i class="fa-solid fa-circle-info"></i> ข้อมูลนี้จะแสดงบนเอกสารออฟฟิสไทย</p>
+                            <button type="submit" class="flex-shrink-0 px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-violet-900/30">
+                                <i class="fa-solid fa-floppy-disk"></i> บันทึก
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%# ════════════════ ອອຟຟິດລາວ 🇱🇦 ════════════════ %>
+    <div id="panel-la" class="office-panel">
+        <div class="glass-panel-dark rounded-3xl border border-red-500/20 bg-red-500/5 overflow-hidden">
+            <div class="px-6 pt-5 pb-3 border-b border-white/5">
+                <div class="flex items-center gap-2 text-sm font-bold text-red-300">
+                    <span class="text-lg">🇱🇦</span> ຂໍ້ມູນອອຟຟິດ <strong>ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ</strong>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/5">
+
+                <%# Logo LA %>
+                <div class="p-6 flex flex-col items-center gap-4">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider self-start flex items-center gap-2">
+                        <i class="fa-solid fa-image"></i> ໂລໂກ້ (ລາວ)
+                    </div>
+                    <div class="w-32 h-32 rounded-2xl overflow-hidden bg-black/40 border-2 border-red-500/25 flex items-center justify-center shadow-xl">
+                        <% if (company.company_logo_la || company.company_logo) { %>
+                            <img id="logo-preview-la" src="<%= company.company_logo_la || company.company_logo %>" alt="Logo LA"
+                                 onerror="this.style.display='none';document.getElementById('logo-ph-la').style.display='flex'"
+                                 class="w-full h-full object-contain p-2">
+                            <div id="logo-ph-la" class="hidden w-full h-full items-center justify-center text-red-400 text-3xl"><i class="fa-solid fa-building"></i></div>
+                        <% } else { %>
+                            <img id="logo-preview-la" src="" alt="" class="hidden w-full h-full object-contain p-2">
+                            <div id="logo-ph-la" class="flex w-full h-full items-center justify-center text-red-400 text-3xl"><i class="fa-solid fa-building"></i></div>
+                        <% } %>
+                    </div>
+                    <form action="/settings/company-logo" method="post" enctype="multipart/form-data" class="w-full space-y-2">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <input type="hidden" name="logo_target" value="la">
+                        <label class="block w-full cursor-pointer">
+                            <div class="flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-dashed border-red-500/30 hover:border-red-400 text-red-400 text-xs font-bold transition-all hover:bg-red-500/5">
+                                <i class="fa-solid fa-upload"></i>
+                                <span id="file-label-la">ເລືອກໄຟລ໌ໂລໂກ້</span>
+                            </div>
+                            <input type="file" name="logo_file" accept="image/*" required class="hidden" onchange="previewLogo(this,'la')">
+                        </label>
+                        <p class="text-[10px] text-slate-600 text-center">JPG, PNG, WebP, SVG · ບໍ່ເກີນ 2MB</p>
+                        <button type="submit" class="w-full py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                            <i class="fa-solid fa-cloud-upload-alt"></i> ອັບໂຫລດໂລໂກ້
+                        </button>
+                    </form>
+                </div>
+
+                <%# Fields LA %>
+                <div class="md:col-span-2 p-6">
+                    <form action="/settings/company-profile" method="post" class="space-y-4">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ຊື່ບໍລິສັດ / ຮ້ານຄ້າ</label>
+                                <input type="text" name="company_name_la"
+                                    value="<%= company.company_name_la || company.company_name || '' %>"
+                                    placeholder="ເຊັ່ນ: SNG Express (ລາວ)"
+                                    class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-red-500 focus:border-red-500 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ເບີໂທລະສັບ</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-phone absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                    <input type="text" name="company_phone_la"
+                                        value="<%= company.company_phone_la || '' %>"
+                                        placeholder="020-XXXX-XXXX"
+                                        class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-red-500 focus:border-red-500 text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ອີເມວ</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-envelope absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                    <input type="email" name="company_email_la"
+                                        value="<%= company.company_email_la || '' %>"
+                                        placeholder="info@sngexpress.la"
+                                        class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-red-500 focus:border-red-500 text-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ເລກທະບຽນວິສາຫະກິດ</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-file-invoice absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                    <input type="text" name="company_tax_id_la"
+                                        value="<%= company.company_tax_id_la || '' %>"
+                                        placeholder="000-000-000" maxlength="30"
+                                        class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-red-500 focus:border-red-500 text-sm font-mono">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ທີ່ຢູ່ບໍລິສັດ</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-location-dot absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                                <textarea name="company_address_la" rows="3"
+                                    placeholder="ເລກທີ, ຖະໜົນ, ບ້ານ, ເມືອງ, ແຂວງ, ສປປ ລາວ"
+                                    class="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-white focus:ring-red-500 focus:border-red-500 text-sm resize-none"><%= company.company_address_la || '' %></textarea>
+                            </div>
+                        </div>
+
+                        <div class="pt-1 flex items-center justify-between gap-4">
+                            <p class="text-xs text-slate-600"><i class="fa-solid fa-circle-info"></i> ຂໍ້ມູນນີ້ຈະສະແດງໃນເອກະສານອອຟຟິດລາວ</p>
+                            <button type="submit" class="flex-shrink-0 px-6 py-2.5 bg-red-700 hover:bg-red-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-red-900/30">
+                                <i class="fa-solid fa-floppy-disk"></i> ບັນທຶກ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ── Logo preview (ใช้ได้ทั้ง TH และ LA) ─────────────────────────
+function previewLogo(input, suffix) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const label = document.getElementById('file-label-' + suffix);
+    if (label) label.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img  = document.getElementById('logo-preview-' + suffix);
+        const ph   = document.getElementById('logo-ph-' + suffix);
+        if (img) { img.src = e.target.result; img.classList.remove('hidden'); }
+        if (ph)  ph.classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+// ── Office tab switching (TH/LA) ────────────────────────────────
+function switchOfficeTab(target) {
+    // Panels
+    document.querySelectorAll('.office-panel').forEach(p => p.classList.remove('active-panel'));
+    const panel = document.getElementById('panel-' + target);
+    if (panel) panel.classList.add('active-panel');
+    // Tabs
+    document.querySelectorAll('.office-tab').forEach(t => t.classList.remove('active-tab'));
+    const tab = document.getElementById('tab-' + target);
+    if (tab) tab.classList.add('active-tab');
+    // Remember tab in sessionStorage
+    sessionStorage.setItem('officeTab', target);
+}
+
+// Restore last active tab on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = sessionStorage.getItem('officeTab');
+    if (saved === 'la') switchOfficeTab('la');
+});
+</script>
+<% } %>

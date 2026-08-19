@@ -1,0 +1,84 @@
+<%# Shops directory list + "add new"/"reviews" actions. Shared by the
+    standalone /admin/shops page and the /settings/member hub's shops tab. %>
+<div class="d-flex justify-content-end gap-2 mb-3">
+  <a href="/admin/shops/reviews" class="btn btn-outline-warning">
+    <i class="fa-solid fa-comments"></i> อนุมัติรีวิว
+  </a>
+  <a href="/admin/shops/new" class="btn btn-primary">
+    <i class="fa-solid fa-plus"></i> เพิ่มร้านค้าใหม่
+  </a>
+</div>
+
+<% if (flash) { %>
+<div class="alert alert-<%= flash.type === 'error' ? 'danger' : 'success' %> alert-dismissible fade show" role="alert">
+  <%= flash.message %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<div class="card shadow mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 70px;">รูปภาพ</th>
+            <th>ชื่อร้านค้า</th>
+            <th>หมวดหมู่</th>
+            <th>เมือง / จังหวัด</th>
+            <th>เบอร์โทร</th>
+            <th>สถานะ</th>
+            <th style="width: 100px;">การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (shops && shops.length > 0) { %>
+            <% shops.forEach(shop => { %>
+            <tr>
+              <td>
+                <% if (shop.photo_path) { %>
+                  <img src="<%= shop.photo_path %>" alt="" class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
+                <% } else { %>
+                  <div class="bg-secondary bg-opacity-25 rounded d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                    <i class="fa-solid fa-store text-muted"></i>
+                  </div>
+                <% } %>
+              </td>
+              <td>
+                <strong class="d-block"><%= shop.name %></strong>
+                <small class="text-muted"><%= shop.total_reviews || 0 %> รีวิว (<%= shop.pending_reviews || 0 %> รออนุมัติ)</small>
+              </td>
+              <td><span class="badge bg-info text-dark"><%= shop.business_type %></span></td>
+              <td><%= [shop.city, shop.province].filter(Boolean).join(', ') || '–' %></td>
+              <td><%= shop.phone || '–' %></td>
+              <td>
+                <% if (shop.status === 'published') { %>
+                  <span class="badge bg-success">เผยแพร่ (Published)</span>
+                <% } else if (shop.status === 'hidden') { %>
+                  <span class="badge bg-secondary">ซ่อน (Hidden)</span>
+                <% } else { %>
+                  <span class="badge bg-warning text-dark">ฉบับร่าง (Draft)</span>
+                <% } %>
+              </td>
+              <td>
+                <a href="/admin/shops/<%= shop.id %>/edit" class="btn btn-sm btn-outline-primary me-1" title="แก้ไข">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </a>
+                <a href="/shops/<%= shop.id %>" target="_blank" class="btn btn-sm btn-outline-secondary" title="ดูหน้าเว็บ">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              </td>
+            </tr>
+            <% }); %>
+          <% } else { %>
+            <tr>
+              <td colspan="7" class="text-center py-4 text-muted">
+                ยังไม่มีร้านค้าในระบบ กดปุ่ม "เพิ่มร้านค้าใหม่" เพื่อเริ่มต้น
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

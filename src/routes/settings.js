@@ -57,6 +57,11 @@ const bannerUpload = multer({
 
 const router = Router();
 
+// ─── Member-facing UI settings hub ────────────────────────────────────────────
+// Broadest of the individual gates below — a tab's own write actions stay
+// protected by that tab's existing POST route, unchanged.
+router.get('/settings/member', requireLogin, requireRole('admin', 'manager', 'staff'), settings.showMemberSettings);
+
 // ─── Shipping Rate (Admin only) ───────────────────────────────────────────────
 router.get('/settings/rates', requireLogin, requireRole('admin'), settings.showRates);
 router.post('/settings/rates', requireLogin, requireRole('admin'), settings.createRate);

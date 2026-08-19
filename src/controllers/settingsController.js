@@ -54,7 +54,7 @@ export async function createRate(req, res) {
             [values.name, values.maxWeight, values.maxDimension, values.price, values.pricePerKg]
         );
         req.session.flash = { type: 'success', message: 'เพิ่มเรทราคาเรียบร้อยแล้ว' };
-        res.redirect('/settings/rates');
+        res.redirect('/settings/member#rates');
     } catch (err) {
         console.error(err);
         res.status(500).send('Error creating rate');
@@ -66,7 +66,7 @@ export async function deleteRate(req, res) {
     try {
         await pool.query('UPDATE shipping_rates SET active=0 WHERE id = ?', [id]);
         req.session.flash = { type: 'success', message: 'ลบเรทราคาเรียบร้อยแล้ว' };
-        res.redirect('/settings/rates');
+        res.redirect('/settings/member#rates');
     } catch (err) {
         console.error(err);
         res.status(500).send('Error deleting rate');
@@ -96,7 +96,7 @@ export async function setExchangeRate(req, res) {
     const parsedRate = parseFloat(rate);
     if (!parsedRate || parsedRate <= 0) {
         req.session.flash = { type: 'error', message: 'อัตราแลกเปลี่ยนไม่ถูกต้อง' };
-        return res.redirect('/settings/rates#fx');
+        return res.redirect('/settings/member#fx');
     }
     try {
         await pool.query(
@@ -104,11 +104,11 @@ export async function setExchangeRate(req, res) {
             [pair || 'THB_LAK', parsedRate, req.session.user?.id || null, note || null]
         );
         req.session.flash = { type: 'success', message: `บันทึกอัตราแลกเปลี่ยน ${pair || 'THB_LAK'} = ${parsedRate.toLocaleString()} สำเร็จ` };
-        res.redirect('/settings/rates#fx');
+        res.redirect('/settings/member#fx');
     } catch (err) {
         console.error(err);
         req.session.flash = { type: 'error', message: err.message };
-        res.redirect('/settings/rates#fx');
+        res.redirect('/settings/member#fx');
     }
 }
 
@@ -323,11 +323,11 @@ export async function updateCompanyProfile(req, res) {
             }
         }
         req.session.flash = { type: 'success', message: '✅ บันทึกข้อมูลบริษัทเรียบร้อยแล้ว / ບັນທຶກຂໍ້ມູນສຳເລັດ' };
-        res.redirect('/settings/rates#company');
+        res.redirect('/settings/member#company');
     } catch (err) {
         console.error('[COMPANY] updateCompanyProfile error:', err);
         req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาด: ' + err.message };
-        res.redirect('/settings/rates#company');
+        res.redirect('/settings/member#company');
     }
 }
 
@@ -337,7 +337,7 @@ export async function uploadCompanyLogo(req, res) {
     try {
         if (!req.file) {
             req.session.flash = { type: 'error', message: 'กรุณาเลือกไฟล์รูปโลโก้' };
-            return res.redirect('/settings/rates#company');
+            return res.redirect('/settings/member#company');
         }
         const logoUrl = '/uploads/logo/' + req.file.filename;
         await pool.query(
@@ -352,11 +352,11 @@ export async function uploadCompanyLogo(req, res) {
             );
         }
         req.session.flash = { type: 'success', message: '✅ อัปโหลดโลโก้เรียบร้อยแล้ว' };
-        res.redirect('/settings/rates#company');
+        res.redirect('/settings/member#company');
     } catch (err) {
         console.error('[COMPANY] uploadCompanyLogo error:', err);
         req.session.flash = { type: 'error', message: 'เกิดข้อผิดพลาด: ' + err.message };
-        res.redirect('/settings/rates#company');
+        res.redirect('/settings/member#company');
     }
 }
 
@@ -409,7 +409,7 @@ export async function createProhibitedItem(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/prohibited');
+    res.redirect('/settings/member#prohibited');
 }
 
 export async function updateProhibitedItem(req, res) {
@@ -435,7 +435,7 @@ export async function updateProhibitedItem(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/prohibited');
+    res.redirect('/settings/member#prohibited');
 }
 
 export async function deleteProhibitedItem(req, res) {
@@ -446,7 +446,7 @@ export async function deleteProhibitedItem(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/prohibited');
+    res.redirect('/settings/member#prohibited');
 }
 
 // ─── Customer proof ───────────────────────────────────────────────────────────
@@ -524,7 +524,7 @@ export async function createTestimonial(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/testimonials');
+    res.redirect('/settings/member#testimonials');
 }
 
 export async function updateTestimonial(req, res) {
@@ -561,7 +561,7 @@ export async function updateTestimonial(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/testimonials');
+    res.redirect('/settings/member#testimonials');
 }
 
 export async function deleteTestimonial(req, res) {
@@ -572,7 +572,7 @@ export async function deleteTestimonial(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/testimonials');
+    res.redirect('/settings/member#testimonials');
 }
 
 // ─── Home promo banner ────────────────────────────────────────────────────────
@@ -593,7 +593,7 @@ export async function uploadHomeBanner(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/rates#banner');
+    res.redirect('/settings/member#banner');
 }
 
 export async function removeHomeBanner(req, res) {
@@ -609,5 +609,65 @@ export async function removeHomeBanner(req, res) {
     } catch (err) {
         req.session.flash = { type: 'error', message: err.message };
     }
-    res.redirect('/settings/rates#banner');
+    res.redirect('/settings/member#banner');
+}
+
+// ─── Member-facing UI settings hub ─────────────────────────────────────────
+// Everything a customer eventually sees (rates, FX, home banner, company
+// profile, prohibited items, testimonials, online products, shops
+// directory) collected into one page instead of scattered across a
+// multi-tab settings page, two standalone pages, and two unrelated admin
+// sections. Reuses the exact same queries each individual show*/adminList*
+// controller already runs — no new business logic, just gathered in one
+// pass so every tab has its data on first paint.
+export async function showMemberSettings(req, res) {
+    try {
+        const [
+            [rates],
+            [fxRates],
+            company,
+            prohibitedItems,
+            testimonialRows,
+            [products],
+            [shops],
+        ] = await Promise.all([
+            pool.query('SELECT * FROM shipping_rates WHERE active = 1 ORDER BY max_weight ASC'),
+            pool.query(
+                'SELECT er.*, u.username AS set_by_name FROM exchange_rates er LEFT JOIN users u ON u.id = er.set_by ORDER BY er.created_at DESC LIMIT 20'
+            ),
+            getCompanySettings(),
+            listAllProhibitedItems(),
+            listAllTestimonials(),
+            pool.query('SELECT * FROM online_products ORDER BY sort_order ASC, id DESC'),
+            pool.query(
+                `SELECT s.*,
+                        COUNT(r.id) AS total_reviews,
+                        COUNT(CASE WHEN r.status = 'pending' THEN 1 END) AS pending_reviews
+                 FROM directory_shops s
+                 LEFT JOIN shop_reviews r ON r.shop_id = s.id
+                 GROUP BY s.id
+                 ORDER BY s.sort_order ASC, s.id DESC`
+            ),
+        ]);
+
+        const flash = req.session.flash;
+        delete req.session.flash;
+
+        res.render('settings/member', {
+            user: req.session.user,
+            title: 'ตั้งค่าหน้า Member',
+            rates,
+            fxRates,
+            company,
+            banned: prohibitedItems.filter(i => i.category === 'BANNED'),
+            askFirst: prohibitedItems.filter(i => i.category === 'ASK_FIRST'),
+            testimonialRows,
+            products,
+            shops,
+            flash,
+        });
+    } catch (err) {
+        console.error('[Settings] showMemberSettings:', err);
+        res.status(500).send('Error loading member settings');
+    }
 }

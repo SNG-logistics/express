@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import ejs from 'ejs';
 
 const [routes, controller, formView, adminListView, cardView, migration, migrationRunner] = await Promise.all([
@@ -73,7 +74,9 @@ test('admin views read photos defensively and use the first image as the cover',
   assert.match(formHtml, /src="\/uploads\/products\/cover\.jpg"/);
   assert.match(formHtml, /src="\/uploads\/products\/second\.jpg"/);
 
-  const listHtml = ejs.render(adminListView, { products: [product], flash: null });
+  const listHtml = ejs.render(adminListView, { products: [product], flash: null }, {
+    filename: fileURLToPath(new URL('../../views/admin/products/index.ejs', import.meta.url)),
+  });
   assert.match(listHtml, /src="\/uploads\/products\/cover\.jpg"/);
   assert.doesNotMatch(listHtml, /src="\/uploads\/products\/second\.jpg"/);
 });

@@ -1,0 +1,86 @@
+<%
+  const TABS = [
+    { key: 'rates',        label: 'อัตราค่าส่ง',      icon: 'fa-truck-fast',      color: 'indigo' },
+    { key: 'fx',            label: 'อัตราแลกเปลี่ยน',   icon: 'fa-coins',            color: 'amber' },
+    { key: 'banner',        label: 'แบนเนอร์หน้าแรก',   icon: 'fa-image',            color: 'amber' },
+    { key: 'company',       label: 'ข้อมูลบริษัท',      icon: 'fa-building',         color: 'violet' },
+    { key: 'prohibited',    label: 'ของที่รับ/ไม่รับ',  icon: 'fa-ban',              color: 'red' },
+    { key: 'testimonials',  label: 'หลักฐานจากลูกค้า',  icon: 'fa-camera',           color: 'emerald' },
+    { key: 'products',      label: 'สินค้าออนไลน์',     icon: 'fa-bag-shopping',     color: 'amber' },
+    { key: 'shops',         label: 'ร้านค้า',           icon: 'fa-store',            color: 'cyan' },
+  ];
+  const isOfficeAdmin = user && ['owner', 'admin'].includes(user.role);
+%>
+<div class="max-w-7xl mx-auto animate-fade-in"
+     x-data="{
+       activeTab: (() => {
+         const fromHash = window.location.hash.slice(1);
+         const known = [<%- TABS.map(t => `'${t.key}'`).join(',') %>];
+         return known.includes(fromHash) ? fromHash : 'rates';
+       })(),
+       setTab(t) { this.activeTab = t; window.location.hash = t; }
+     }">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            <span class="bg-amber-500 w-1.5 h-8 rounded-full inline-block"></span>
+            ตั้งค่าหน้า Member
+        </h1>
+        <p class="text-slate-400 mt-2 ml-6 text-sm">
+            ทุกอย่างที่ลูกค้าเห็นบนหน้าเว็บ — ราคา ข้อมูลบริษัท ของต้องห้าม รีวิว สินค้าออนไลน์ และร้านค้า — รวมไว้ที่เดียว
+        </p>
+    </div>
+
+    <% if (flash) { %>
+    <div class="mb-6 p-4 rounded-xl <%= flash.type === 'error'
+        ? 'bg-red-500/10 text-red-200 border border-red-500/20'
+        : 'bg-emerald-500/10 text-emerald-200 border border-emerald-500/20' %> flex items-center gap-3 animate-fade-in">
+        <i class="fa-solid <%= flash.type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check' %>"></i>
+        <%= flash.message %>
+    </div>
+    <% } %>
+
+    <!-- Tab bar -->
+    <div class="flex flex-wrap gap-2 mb-8" role="tablist">
+        <% TABS.forEach(tab => { if (tab.key === 'company' && !isOfficeAdmin) return; %>
+        <button type="button" @click="setTab('<%= tab.key %>')"
+            :class="activeTab === '<%= tab.key %>' ? 'bg-<%= tab.color %>-500 text-<%= tab.color === 'amber' ? 'black' : 'white' %>' : 'bg-white/5 text-slate-400 hover:bg-white/10'"
+            class="px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <i class="fa-solid <%= tab.icon %>"></i> <%= tab.label %>
+        </button>
+        <% }) %>
+    </div>
+
+    <div x-show="activeTab === 'rates'">
+        <%- include('_panel_rates', { rates, csrfToken }) %>
+    </div>
+
+    <div x-show="activeTab === 'fx'">
+        <%- include('_panel_fx', { fxRates, csrfToken }) %>
+    </div>
+
+    <div x-show="activeTab === 'banner'">
+        <%- include('_panel_banner', { company, csrfToken }) %>
+    </div>
+
+    <% if (isOfficeAdmin) { %>
+    <div x-show="activeTab === 'company'">
+        <%- include('_panel_company', { user, company, csrfToken }) %>
+    </div>
+    <% } %>
+
+    <div x-show="activeTab === 'prohibited'">
+        <%- include('_panel_prohibited', { banned, askFirst, flash, csrfToken }) %>
+    </div>
+
+    <div x-show="activeTab === 'testimonials'">
+        <%- include('_panel_testimonials', { rows: testimonialRows, flash, csrfToken }) %>
+    </div>
+
+    <div x-show="activeTab === 'products'">
+        <%- include('../admin/products/_list_table', { products, flash }) %>
+    </div>
+
+    <div x-show="activeTab === 'shops'">
+        <%- include('../admin/shops/_list_table', { shops, flash }) %>
+    </div>
+</div>

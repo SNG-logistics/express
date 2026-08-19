@@ -1,0 +1,179 @@
+<%# Customer testimonial entries + inline edit/add forms. Shared by the
+    standalone /settings/testimonials page and the /settings/member hub. %>
+<%
+  const STATUS_META = {
+    draft:     { label: 'ฉบับร่าง',  cls: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
+    published: { label: 'เผยแพร่',   cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    hidden:    { label: 'ซ่อนไว้',   cls: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+  };
+%>
+
+<div class="rounded-xl px-4 py-3 mb-5 bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed">
+  <i class="fa-solid fa-shield-halved mr-1"></i>
+  <strong>ต้องขออนุญาตลูกค้าก่อนทุกครั้ง</strong> — ถ้ายังไม่ได้ขอ ระบบจะบันทึกเป็นฉบับร่างและไม่แสดงให้ใครเห็น
+  ใช้ชื่อเล่นหรือชื่อต้นเท่านั้น อย่าใส่ชื่อเต็ม เบอร์โทร หรือเลขพัสดุในช่องที่ลูกค้ามองเห็น
+</div>
+
+<% if (flash) { %>
+<div class="rounded-xl px-4 py-3 mb-4 text-sm font-semibold <%= flash.type === 'success'
+    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+    : 'bg-red-500/10 border border-red-500/20 text-red-300' %>">
+  <%= flash.message %>
+</div>
+<% } %>
+
+<%# Existing entries %>
+<div class="grid gap-3 mb-6">
+  <% rows.forEach(function (row) { const sm = STATUS_META[row.status] || STATUS_META.draft; %>
+  <div class="glass-panel-dark rounded-2xl p-4 border border-white/5">
+    <div class="flex items-start gap-3 flex-wrap">
+      <% if (row.photo_path) { %>
+      <img src="<%= row.photo_path %>" alt="" class="w-20 h-20 object-cover rounded-xl border border-white/10">
+      <% } %>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap mb-1">
+          <span class="font-bold text-white text-sm"><%= row.display_name %></span>
+          <span class="inline-flex px-2 py-0.5 rounded-lg border text-[10px] font-bold <%= sm.cls %>"><%= sm.label %></span>
+          <% if (row.consent_given) { %>
+          <span class="inline-flex px-2 py-0.5 rounded-lg border text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
+            <i class="fa-solid fa-check mr-1"></i> ขออนุญาตแล้ว
+          </span>
+          <% } else { %>
+          <span class="inline-flex px-2 py-0.5 rounded-lg border text-[10px] font-bold text-red-400 bg-red-500/10 border-red-500/20">
+            ยังไม่ได้ขออนุญาต
+          </span>
+          <% } %>
+        </div>
+        <% if (row.consent_given && row.consent_note) { %>
+        <p class="text-slate-500 text-[11px] mb-1">
+          การขออนุญาต: <%= row.consent_note %>
+          <% if (row.consent_by_name) { %> · โดย <%= row.consent_by_name %><% } %>
+        </p>
+        <% } %>
+        <% if (row.source_ref) { %>
+        <p class="text-slate-600 text-[11px] font-mono mb-1">อ้างอิง: <%= row.source_ref %> (ไม่แสดงให้ลูกค้า)</p>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-2 mt-3 pt-3 border-t border-white/5 text-xs">
+      <form action="/settings/testimonials/<%= row.id %>" method="post" enctype="multipart/form-data"
+        class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">ชื่อที่แสดง</span>
+          <input type="text" name="display_name" value="<%= row.display_name %>" required
+            class="w-32 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+        </label>
+        <label class="flex flex-col gap-1 flex-1 min-w-[12rem]">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">ข้อความลูกค้า</span>
+          <input type="text" name="message" value="<%= row.message || '' %>"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">อ้างอิงงาน</span>
+          <input type="text" name="source_ref" value="<%= row.source_ref || '' %>" placeholder="SNG-… / PQ-…"
+            class="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">เปลี่ยนรูป</span>
+          <input type="file" name="photo" accept="image/*" class="w-40 text-slate-400 text-[11px]">
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">สถานะ</span>
+          <select name="status" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+            <% Object.keys(STATUS_META).forEach(function (st) { %>
+            <option value="<%= st %>" <%= row.status === st ? 'selected' : '' %>><%= STATUS_META[st].label %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">ลำดับ</span>
+          <input type="number" name="sort_order" value="<%= row.sort_order %>"
+            class="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+        </label>
+        <label class="flex items-center gap-1.5 pb-2 text-slate-300">
+          <input type="checkbox" name="consent_given" value="1" <%= row.consent_given ? 'checked' : '' %>>
+          <span>ขออนุญาตแล้ว</span>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-500 uppercase">ขออนุญาตอย่างไร</span>
+          <input type="text" name="consent_note" value="<%= row.consent_note || '' %>" placeholder="เช่น ถามทาง WhatsApp"
+            class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+        </label>
+        <button type="submit"
+          class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 font-bold">
+          บันทึก
+        </button>
+      </form>
+      <form action="/settings/testimonials/<%= row.id %>/delete" method="post"
+        onsubmit="return confirm('ลบหลักฐานของ &quot;<%= row.display_name %>&quot;?');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" aria-label="ลบ"
+          class="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg px-2 py-1.5">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+  <% }); %>
+
+  <% if (!rows.length) { %>
+  <div class="glass-panel-dark rounded-2xl p-6 border border-white/5 text-center">
+    <i class="fa-solid fa-camera text-slate-600 text-2xl mb-2"></i>
+    <p class="text-slate-400 text-sm font-semibold mb-1">ยังไม่มีหลักฐานจากลูกค้า</p>
+    <p class="text-slate-600 text-xs leading-relaxed">
+      หน้าเว็บลูกค้าจะไม่แสดงส่วนนี้เลยจนกว่าจะมีของจริง —
+      เก็บรูปแกะกล่องหรือข้อความชมจากลูกค้ากลุ่มแรกที่ได้รับของแล้วมาใส่ที่นี่
+    </p>
+  </div>
+  <% } %>
+</div>
+
+<%# Add new %>
+<div class="glass-panel-dark rounded-2xl p-4 border border-white/5">
+  <h2 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-plus mr-1"></i> เพิ่มหลักฐานใหม่</h2>
+  <form action="/settings/testimonials" method="post" enctype="multipart/form-data"
+    class="flex flex-wrap items-end gap-2 text-xs">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label class="flex flex-col gap-1">
+      <span class="text-[10px] font-bold text-slate-500 uppercase">ชื่อที่แสดง <em class="text-red-400 not-italic">*</em></span>
+      <input type="text" name="display_name" required placeholder="เช่น ນາງ ນ້ອຍ"
+        class="w-32 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+    </label>
+    <label class="flex flex-col gap-1 flex-1 min-w-[12rem]">
+      <span class="text-[10px] font-bold text-slate-500 uppercase">ข้อความลูกค้า (ตามที่เขาเขียนจริง)</span>
+      <input type="text" name="message" placeholder="ไม่ต้องแปล ใส่ตามต้นฉบับ"
+        class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-[10px] font-bold text-slate-500 uppercase">อ้างอิงงาน</span>
+      <input type="text" name="source_ref" placeholder="SNG-… / PQ-…"
+        class="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-[10px] font-bold text-slate-500 uppercase">รูป</span>
+      <input type="file" name="photo" accept="image/*" class="w-40 text-slate-400 text-[11px]">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-[10px] font-bold text-slate-500 uppercase">สถานะ</span>
+      <select name="status" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+        <option value="draft">ฉบับร่าง</option>
+        <option value="published">เผยแพร่</option>
+      </select>
+    </label>
+    <label class="flex items-center gap-1.5 pb-2 text-slate-300">
+      <input type="checkbox" name="consent_given" value="1">
+      <span>ขออนุญาตแล้ว</span>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-[10px] font-bold text-slate-500 uppercase">ขออนุญาตอย่างไร</span>
+      <input type="text" name="consent_note" placeholder="เช่น ถามทาง WhatsApp 19/8"
+        class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+    </label>
+    <button type="submit"
+      class="bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl px-3.5 py-2 font-bold">
+      เพิ่ม
+    </button>
+  </form>
+</div>

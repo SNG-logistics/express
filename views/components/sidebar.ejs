@@ -239,15 +239,6 @@
     </a>
     <% } %>
 
-    <% if (can.manageProducts) { %>
-    <a href="/admin/products"
-       class="sidebar-link <%= currentPath.startsWith('/admin/products') ? 'active' : '' %>"
-       title="จัดการสินค้าออนไลน์">
-      <i class="fa-solid fa-bag-shopping text-amber-400"></i>
-      <span><%= lang === 'lo' ? 'ສິນຄ້າອອນລາຍ' : 'สินค้าออนไลน์' %></span>
-    </a>
-    <% } %>
-
     <% if (can.manageUsers) { %>
     <a href="/users"
        class="sidebar-link <%= currentPath.startsWith('/users') ? 'active' : '' %>">
@@ -256,27 +247,31 @@
     </a>
     <% } %>
 
-    <%# Section: ระบบ %>
-    <% if (can.manageRates || can.viewFinancials) { %>
-    <div class="sidebar-section-title"><%= lang === 'lo' ? 'ລະບົບ' : 'ระบบ' %></div>
+    <%# Section: ตั้งค่าหน้า Member — everything a customer eventually sees
+        (rates, FX, banner, company profile, prohibited items, testimonials,
+        online products, shops) collected in one page, kept visually apart
+        from operational/back-office links above so front-of-house and
+        back-office duties read as clearly separate. %>
+    <% if (can.manageProducts) { %>
+    <div class="sidebar-section-title"><%= lang === 'lo' ? 'ຕັ້ງຄ່າໜ້າ Member' : 'ตั้งค่าหน้า Member' %></div>
 
-
-
-    <% if (can.manageRates) { %>
-    <a href="/settings/rates"
-       class="sidebar-link <%= currentPath.startsWith('/settings') ? 'active' : '' %>">
-      <i class="fa-solid fa-gear"></i>
-      <span><%= t('nav.settings') %></span>
+    <a href="/settings/member"
+       class="sidebar-link <%= currentPath.startsWith('/settings/member') ? 'active' : '' %>"
+       title="ตั้งค่าหน้าลูกค้า/สมาชิก">
+      <i class="fa-solid fa-store text-amber-400"></i>
+      <span><%= lang === 'lo' ? 'ຕັ້ງຄ່າໜ້າ Member' : 'ตั้งค่าหน้า Member' %></span>
     </a>
     <% } %>
 
+    <%# Section: ระบบ %>
     <% if (['owner','admin','manager'].includes(userRole)) { %>
+    <div class="sidebar-section-title"><%= lang === 'lo' ? 'ລະບົບ' : 'ระบบ' %></div>
+
     <a href="/whatsapp"
        class="sidebar-link <%= currentPath.startsWith('/whatsapp') ? 'active' : '' %>">
       <i class="fa-brands fa-whatsapp text-emerald-400"></i>
       <span>WhatsApp</span>
     </a>
-    <% } %>
 
     <% } %>
 
