@@ -3,6 +3,7 @@
     { key: 'rates',        label: 'อัตราค่าส่ง',      icon: 'fa-truck-fast',      color: 'indigo' },
     { key: 'fx',            label: 'อัตราแลกเปลี่ยน',   icon: 'fa-coins',            color: 'amber' },
     { key: 'banner',        label: 'แบนเนอร์หน้าแรก',   icon: 'fa-image',            color: 'amber' },
+    { key: 'popup',         label: 'ป๊อปอัปมุมขวาล่าง', icon: 'fa-message',          color: 'pink' },
     { key: 'company',       label: 'ข้อมูลบริษัท',      icon: 'fa-building',         color: 'violet' },
     { key: 'prohibited',    label: 'ของที่รับ/ไม่รับ',  icon: 'fa-ban',              color: 'red' },
     { key: 'testimonials',  label: 'หลักฐานจากลูกค้า',  icon: 'fa-camera',           color: 'emerald' },
@@ -60,6 +61,10 @@
 
     <div x-show="activeTab === 'banner'">
         <%- include('_panel_banner', { company, csrfToken }) %>
+    </div>
+
+    <div x-show="activeTab === 'popup'">
+        <%- include('_panel_popup', { company, csrfToken }) %>
     </div>
 
     <% if (isOfficeAdmin) { %>

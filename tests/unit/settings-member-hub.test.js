@@ -66,13 +66,29 @@ test('the hub page renders all 8 tabs with real data, including the products/sho
     filename: fileURLToPath(new URL('../../views/settings/member.ejs', import.meta.url)),
   });
 
-  for (const label of ['อัตราค่าส่ง', 'อัตราแลกเปลี่ยน', 'แบนเนอร์หน้าแรก', 'ข้อมูลบริษัท',
+  for (const label of ['อัตราค่าส่ง', 'อัตราแลกเปลี่ยน', 'แบนเนอร์หน้าแรก', 'ป๊อปอัปมุมขวาล่าง', 'ข้อมูลบริษัท',
     'ของที่รับ/ไม่รับ', 'หลักฐานจากลูกค้า', 'สินค้าออนไลน์', 'ร้านค้า']) {
     assert.match(html, new RegExp(label), `missing tab label: ${label}`);
   }
   assert.match(html, /1-5 Kg/);
   assert.match(html, /Test product/);
   assert.match(html, /Test shop/);
+});
+
+test('popup routes exist, PNG-only, role-gated, and redirect back into the hub', () => {
+  assert.match(
+    routes,
+    /router\.post\('\/settings\/popup', requireLogin, requireRole\(\['admin','manager'\]\), uploadPopupImage\.single\('popup_file'\), settings\.savePopup\)/
+  );
+  assert.match(
+    routes,
+    /router\.post\('\/settings\/popup\/remove', requireLogin, requireRole\(\['admin','manager'\]\), settings\.removePopup\)/
+  );
+  assert.match(controller, /export async function savePopup/);
+  assert.match(controller, /export async function removePopup/);
+  assert.match(controller, /res\.redirect\('\/settings\/member#popup'\)/);
+  assert.match(controller, /popup_image_path/);
+  assert.match(controller, /popup_link_url/);
 });
 
 test('non-office-admin roles never see the company tab (its content is gated inside the panel)', () => {

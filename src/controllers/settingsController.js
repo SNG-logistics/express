@@ -612,6 +612,46 @@ export async function removeHomeBanner(req, res) {
     res.redirect('/settings/member#banner');
 }
 
+// ─── Corner popup (floating bottom-right image on every customer page) ───────
+
+export async function savePopup(req, res) {
+    const userId = req.session.user?.id ?? null;
+    try {
+        if (req.file) {
+            await pool.query(
+                `INSERT INTO company_settings (setting_key, setting_value, updated_by)
+                 VALUES ('popup_image_path', ?, ?)
+                 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
+                ['/uploads/popup/' + req.file.filename, userId]
+            );
+        }
+        await pool.query(
+            `INSERT INTO company_settings (setting_key, setting_value, updated_by)
+             VALUES ('popup_link_url', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
+            [(req.body.popup_link_url || '').trim(), userId]
+        );
+        req.session.flash = { type: 'success', message: 'บันทึกป๊อปอัปเรียบร้อยแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/member#popup');
+}
+
+export async function removePopup(req, res) {
+    try {
+        await pool.query(
+            `UPDATE company_settings SET setting_value = '', updated_by = ?
+              WHERE setting_key IN ('popup_image_path', 'popup_link_url')`,
+            [req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'เอาป๊อปอัปออกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/member#popup');
+}
+
 // ─── Member-facing UI settings hub ─────────────────────────────────────────
 // Everything a customer eventually sees (rates, FX, home banner, company
 // profile, prohibited items, testimonials, online products, shops

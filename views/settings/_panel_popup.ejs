@@ -1,0 +1,56 @@
+<%# Bottom-right floating popup shown on every customer page. Shared source
+    for the /settings/member hub's popup tab. %>
+<div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+    <h3 class="text-sm font-bold text-white mb-1">ป๊อปอัปมุมขวาล่าง</h3>
+    <p class="text-slate-500 text-xs mb-4 leading-relaxed">
+        แนะนำ <strong class="text-slate-300">300×300px</strong> ขึ้นไป (สี่เหลี่ยมจัตุรัสหรือแนวตั้ง) ·
+        ไฟล์ <strong class="text-slate-300">PNG เท่านั้น</strong> (พื้นหลังโปร่งใสได้) · ไม่เกิน 2MB ·
+        แสดงทุกหน้าฝั่งลูกค้า กดปิดได้ ถ้าไม่ใส่รูป จะไม่แสดงเลย
+    </p>
+
+    <div class="flex flex-wrap items-start gap-5">
+        <div class="shrink-0">
+            <% if (company.popup_image_path) { %>
+            <img src="<%= company.popup_image_path %>" alt="ป๊อปอัปปัจจุบัน"
+                 class="w-32 h-32 rounded-xl border border-white/10 object-contain bg-black/20">
+            <% } else { %>
+            <div class="w-32 h-32 rounded-xl border border-dashed border-white/15 grid place-items-center text-slate-600">
+                <span class="text-[10px]">ยังไม่มีรูป</span>
+            </div>
+            <% } %>
+        </div>
+
+        <div class="flex-1 min-w-[14rem] space-y-3">
+            <form action="/settings/popup?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post" enctype="multipart/form-data"
+                  class="flex flex-col gap-2">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <label class="flex flex-col gap-1">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">เลือกรูป (PNG เท่านั้น)</span>
+                    <input type="file" name="popup_file" accept="image/png"
+                           class="text-slate-400 text-xs">
+                </label>
+                <label class="flex flex-col gap-1">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">ลิงก์เมื่อกด (ไม่บังคับ)</span>
+                    <input type="url" name="popup_link_url" placeholder="https://..."
+                           value="<%= company.popup_link_url || '' %>"
+                           class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-amber-500 focus:border-amber-500 text-sm">
+                </label>
+                <button type="submit"
+                        class="self-start bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl px-4 py-2 text-xs font-bold">
+                    <i class="fa-solid fa-upload"></i> บันทึก
+                </button>
+            </form>
+
+            <% if (company.popup_image_path) { %>
+            <form action="/settings/popup/remove?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post"
+                  onsubmit="return confirm('เอาป๊อปอัปออกจากทุกหน้า?');">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit"
+                        class="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-xl px-3 py-1.5 text-xs font-bold">
+                    <i class="fa-solid fa-trash"></i> เอาป๊อปอัปออก
+                </button>
+            </form>
+            <% } %>
+        </div>
+    </div>
+</div>

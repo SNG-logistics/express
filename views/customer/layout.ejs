@@ -26,6 +26,23 @@
     <% } %>
     <%- body %>
   </main>
+
+  <% if (popup && popup.image) { %>
+  <div class="portal-popup"
+       x-data="{ dismissed: sessionStorage.getItem('sngPopupDismissed') === '1' }"
+       x-show="!dismissed" x-cloak>
+    <button type="button" class="portal-popup-close" aria-label="ปิด"
+            @click="dismissed = true; sessionStorage.setItem('sngPopupDismissed', '1')">&times;</button>
+    <% if (popup.link) { %>
+    <a href="<%= popup.link %>" target="_blank" rel="noopener">
+      <img src="<%= popup.image %>" alt="">
+    </a>
+    <% } else { %>
+    <img src="<%= popup.image %>" alt="">
+    <% } %>
+  </div>
+  <% } %>
+
   <%- include('./navbar') %>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

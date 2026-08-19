@@ -2,7 +2,9 @@
  * src/middleware/theme.js
  *
  * Public portal light/dark toggle — same query-param-sets-session shape as
- * i18nMiddleware. Dark is the brand default; light is an explicit opt-in.
+ * i18nMiddleware. Light is the customer-portal default for a brand-new
+ * visitor; dark is the staff-side default (moot there — the admin UI is
+ * always dark and never reads res.locals.theme).
  *
  * Usage in views:
  *   <html data-theme="<%= theme %>">
@@ -21,7 +23,10 @@ export function themeMiddleware(req, res, next) {
   }
 
   if (!theme || !SUPPORTED.includes(theme)) {
-    theme = DEFAULT_THEME;
+    // A brand-new visitor (no ?theme=, no session yet) gets light on the
+    // customer portal; dark stays the staff-side default (and is moot there
+    // anyway — the admin UI never reads res.locals.theme).
+    theme = res.locals.isMemberSubdomain ? 'light' : DEFAULT_THEME;
   }
 
   res.locals.theme = theme;

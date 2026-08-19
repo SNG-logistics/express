@@ -113,6 +113,51 @@ body {
 .bottom-nav i { font-size: 1rem; }
 .bottom-nav a.active { color: var(--portal-gold); }
 
+[x-cloak] { display: none !important; }
+
+.portal-popup {
+  position: fixed;
+  z-index: 40;
+  right: 1rem;
+  /* Clears the fixed mobile bottom-nav (~3.2rem tall + safe-area); the nav
+     goes position:static at 640px, so a smaller offset is enough there. */
+  bottom: 5.5rem;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+.portal-popup a, .portal-popup img { display: block; }
+.portal-popup img {
+  width: 5rem;
+  height: 5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,.35));
+}
+.portal-popup-close {
+  position: absolute;
+  /* Explicit z-index needed: the image's drop-shadow filter promotes it into
+     its own stacking context, and without this the later-in-DOM image would
+     paint (and hit-test) above this earlier-in-DOM absolutely-positioned
+     button despite both being visually stacked correctly at a glance. */
+  z-index: 1;
+  top: -.4rem;
+  right: -.4rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--portal-border);
+  background: var(--portal-surface);
+  color: var(--portal-text-dim);
+  font-size: .8rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.portal-popup-close:hover { color: var(--portal-text); }
+@media (min-width: 640px) {
+  .portal-popup { bottom: 1.5rem; }
+}
+
 .hero-card, .card { background: var(--portal-surface); border: 1px solid var(--portal-border); border-radius: var(--portal-radius); }
 .hero-card { padding: 2rem 1.25rem; }
 .hero-card h1, .page-heading h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); line-height: 1.15; margin: .35rem 0 .65rem; }

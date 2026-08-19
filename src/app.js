@@ -48,6 +48,7 @@ import onlineProductsRoutes from './routes/onlineProducts.js';
 import { i18nMiddleware } from './middleware/i18n.js';
 import { themeMiddleware } from './middleware/theme.js';
 import pool from './config/db.js';
+import { getCompanySettings } from './services/companySettingsService.js';
 
 // ─── DB Init (idempotent table guard) ───────────────────────────────────────
 async function initDb() {
@@ -213,18 +214,17 @@ const sessionMiddleware = session({
   });
 app.use(sessionMiddleware);
 
-// ─── i18n (Thai/Lao) ────────────────────────────────────────────────────────
-app.use(i18nMiddleware);
-
-// ─── Public portal light/dark theme toggle ───────────────────────────────────
-app.use(themeMiddleware);
-
 // ─── Member subdomain (member.<host>) — the whole customer portal lives here ─
 // Point a member.<domain> DNS record + Plesk Domain Alias at this same app
 // (no separate deploy needed) — everything below is host-based, not a second
 // copy of the app. Goal: customer traffic (home/track/calculate/shops/member)
 // and staff/admin traffic never share a host, so an old bookmark or typo on
 // the wrong side gets bounced, not served.
+//
+// Mounted BEFORE i18n/theme below (moved ahead of them deliberately) so those
+// two middlewares can read res.locals.isMemberSubdomain and pick a different
+// brand-new-visitor default for the customer portal (light/Lao) than for
+// staff (dark/Thai) — see the comments there.
 //
 // The main host's '/' bounces anonymous visitors to the customer subdomain
 // too (handled in the app.get('/', ...) route below, not the bounce list
@@ -300,6 +300,39 @@ app.use((req, res, next) => {
     return res.redirect(`//${memberHost}${req.originalUrl}`);
   }
 
+  next();
+});
+
+// ─── i18n (Thai/Lao) ────────────────────────────────────────────────────────
+app.use(i18nMiddleware);
+
+// ─── Public portal light/dark theme toggle ───────────────────────────────────
+app.use(themeMiddleware);
+
+// ─── Bottom-right corner popup (customer portal only) ────────────────────────
+// Site-wide (rendered from views/customer/layout.ejs, not any one controller),
+// so it's computed once here instead of wiring every customer-facing
+// controller to fetch it individually. A targeted 2-key query rather than
+// the full getCompanySettings() fetch, since this runs on every customer
+// request and only 2 of its ~20+ rows are relevant here.
+app.use(async (req, res, next) => {
+  if (!res.locals.isMemberSubdomain) {
+    res.locals.popup = null;
+    return next();
+  }
+  try {
+    const [rows] = await pool.query(
+      `SELECT setting_key, setting_value FROM company_settings
+        WHERE setting_key IN ('popup_image_path', 'popup_link_url')`
+    );
+    const map = Object.fromEntries(rows.map(r => [r.setting_key, r.setting_value]));
+    res.locals.popup = map.popup_image_path
+      ? { image: map.popup_image_path, link: map.popup_link_url || null }
+      : null;
+  } catch (err) {
+    console.error('[Popup] lookup failed:', err.message);
+    res.locals.popup = null;
+  }
   next();
 });
 
@@ -490,10 +523,9 @@ app.get('/', (req, res) => {
     // starting with '/member' down to whatever follows it (so clean
     // /member/login-style URLs work), but '/member' alone has nothing after
     // it but the query string, which would strip to a bare '?lang=lo' and
-    // redirect-loop back to '/'. Setting session.lang here (rather than a
-    // ?lang=lo query param) keeps every fresh bare-root visit defaulting to
-    // Lao the same way the old direct-to-/home redirect did.
-    if (req.session) req.session.lang = 'lo';
+    // redirect-loop back to '/'. No need to force session.lang here — the
+    // i18n middleware already defaults fresh customer-portal visitors to Lao
+    // (and leaves an already-chosen language alone), so this just hands off.
     return memberRoot(req, res);
   }
   return res.redirect(`//${res.locals.memberHost}/`);
@@ -512,13 +544,15 @@ app.post('/api/fix-db', (req, res) => {
 });
 
 // Business Card — public page, no auth required
-app.get('/business-card', (req, res) => {
-  res.render('business-card', { layout: false, title: 'นามบัตร | SNG Express' });
+app.get('/business-card', async (req, res) => {
+  const company = await getCompanySettings();
+  res.render('business-card', { layout: false, title: 'นามบัตร | SNG Express', company });
 });
 
 // Order Guide — printable PDF guide, no auth required
-app.get('/order-guide', (req, res) => {
-  res.render('order-guide', { layout: false, title: 'คู่มือสั่งสินค้าออนไลน์ | SNG Express' });
+app.get('/order-guide', async (req, res) => {
+  const company = await getCompanySettings();
+  res.render('order-guide', { layout: false, title: 'คู่มือสั่งสินค้าออนไลน์ | SNG Express', company });
 });
 
 // System Manual — Role-based workflow guide

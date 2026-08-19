@@ -3,6 +3,7 @@ import { requireLogin, requireRole } from '../middleware/auth.js';
 import * as settings from '../controllers/settingsController.js';
 import multer from 'multer';
 import { uploadTestimonialPhoto } from '../middleware/uploadTestimonialPhoto.js';
+import { uploadPopupImage } from '../middleware/uploadPopupImage.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -87,6 +88,9 @@ router.post('/settings/testimonials/:id/delete', requireLogin, requireRole(['adm
 
 router.post('/settings/home-banner', requireLogin, requireRole(['admin','manager']), bannerUpload.single('banner_file'), settings.uploadHomeBanner);
 router.post('/settings/home-banner/remove', requireLogin, requireRole(['admin','manager']), settings.removeHomeBanner);
+
+router.post('/settings/popup', requireLogin, requireRole(['admin','manager']), uploadPopupImage.single('popup_file'), settings.savePopup);
+router.post('/settings/popup/remove', requireLogin, requireRole(['admin','manager']), settings.removePopup);
 
 router.post('/settings/clear-test-data', requireLogin, requireRole('admin'), settings.clearTestData);
 

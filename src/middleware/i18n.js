@@ -31,6 +31,9 @@ for (const code of ['th', 'lo']) {
   }
 }
 
+// DEFAULT_LANG is the translation-fallback chain's anchor (used when a key
+// is missing from the visitor's own dict) — stays Thai, the more complete
+// dictionary, regardless of which side of the app is being served.
 const DEFAULT_LANG = 'th';
 const SUPPORTED = Object.keys(LANGS);
 
@@ -55,7 +58,10 @@ export function i18nMiddleware(req, res, next) {
   }
 
   if (!lang || !SUPPORTED.includes(lang)) {
-    lang = DEFAULT_LANG;
+    // A brand-new visitor (no ?lang=, no session yet) gets Lao on the
+    // customer portal and Thai on the staff side — res.locals.isMemberSubdomain
+    // is set by the host-detection middleware mounted just above this one.
+    lang = res.locals.isMemberSubdomain ? 'lo' : DEFAULT_LANG;
   }
 
   const dict     = LANGS[lang] || LANGS[DEFAULT_LANG];
