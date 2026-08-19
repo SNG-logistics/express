@@ -49,6 +49,17 @@
     <h2><%= t('portal.servicesTitle') %></h2>
   </div>
 
+  <%# The service marketing leads with goes first and reads as the offer, not as
+      one tile among five — Part A's "shortcut card on the portal home page". %>
+  <a class="home-buy-cta" href="/buy">
+    <span class="home-buy-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span>
+    <span class="home-buy-text">
+      <strong><%= t('buy.title') %></strong>
+      <small><%= t('buy.subtitle') %></small>
+    </span>
+    <i class="fa-solid fa-chevron-right home-buy-arrow" aria-hidden="true"></i>
+  </a>
+
   <nav class="home-services" aria-label="<%= t('portal.servicesTitle') %>">
     <a class="home-service" href="/track">
       <span class="home-service-icon"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></span>

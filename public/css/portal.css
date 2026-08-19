@@ -974,3 +974,186 @@ body {
   line-height: 1.6;
 }
 .track-pending-note i { margin-top: .2rem; flex: 0 0 auto; }
+
+/* ── Buy-for-me estimator ────────────────────────────────────────────────────
+   The answer to "what will this cost me" has to arrive before any commitment is
+   asked for, so the two figures that decide it — pay now, pay on delivery — take
+   the whole top of the result and everything else folds away beneath them. */
+
+.buy-form { padding: 1.25rem; margin-bottom: 1rem; }
+.buy-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+.buy-field { flex: 1 1 12rem; display: flex; flex-direction: column; gap: .35rem; }
+.buy-field.is-narrow { flex: 0 0 6rem; }
+.buy-field > span { font-size: .82rem; font-weight: 600; color: var(--portal-text-dim); }
+
+.buy-weights { border: none; padding: 1rem 0 0; margin: .75rem 0 0; }
+.buy-weights legend { font-size: .82rem; font-weight: 600; color: var(--portal-text-dim); padding: 0; }
+.buy-weights-hint { margin: .15rem 0 .6rem; font-size: .75rem; color: var(--portal-text-faint); }
+.buy-chip-row { display: flex; flex-wrap: wrap; gap: .45rem; }
+
+.buy-chip { position: relative; cursor: pointer; }
+.buy-chip input {
+  position: absolute; opacity: 0; width: 0; height: 0;
+}
+.buy-chip span {
+  display: block;
+  padding: .45rem .7rem .3rem;
+  border: 1.5px solid var(--portal-border);
+  border-bottom: none;
+  border-radius: .6rem .6rem 0 0;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--portal-text-dim);
+  background: var(--portal-surface-2);
+}
+.buy-chip small {
+  display: block;
+  padding: 0 .7rem .4rem;
+  border: 1.5px solid var(--portal-border);
+  border-top: none;
+  border-radius: 0 0 .6rem .6rem;
+  font-size: .68rem;
+  color: var(--portal-text-faint);
+  background: var(--portal-surface-2);
+  font-variant-numeric: tabular-nums;
+}
+.buy-chip input:checked ~ span,
+.buy-chip input:checked ~ small {
+  border-color: var(--portal-gold);
+  background: var(--portal-badge-bg);
+  color: var(--portal-text);
+}
+.buy-chip input:focus-visible ~ span { outline: 2px solid var(--portal-gold); outline-offset: 2px; }
+
+.buy-result { padding: 1.25rem; margin-bottom: 1rem; }
+.buy-empty { margin: 0; text-align: center; color: var(--portal-text-faint); font-size: .9rem; }
+.buy-estimate-label {
+  margin: 0 0 .6rem;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--portal-text-faint);
+}
+
+.buy-split { display: flex; gap: .75rem; flex-wrap: wrap; }
+.buy-split-cell {
+  flex: 1 1 10rem;
+  padding: .9rem 1rem;
+  border-radius: var(--portal-radius);
+  background: var(--portal-surface-2);
+  border: 1px solid var(--portal-border);
+}
+/* Only one number is the offer — the small amount asked for today. */
+.buy-split-cell.is-now {
+  background: var(--portal-badge-bg);
+  border-color: var(--portal-gold);
+}
+.buy-split-label { margin: 0; font-size: .78rem; font-weight: 600; color: var(--portal-text-dim); }
+.buy-split-value {
+  margin: .2rem 0 .1rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--portal-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.buy-split-value small { font-size: .8rem; font-weight: 600; color: var(--portal-text-dim); }
+.buy-split-what { margin: 0; font-size: .74rem; color: var(--portal-text-faint); }
+
+.buy-warn {
+  margin: .75rem 0 0;
+  padding: .6rem .8rem;
+  border-radius: .6rem;
+  background: var(--portal-danger-bg);
+  color: var(--portal-danger-text);
+  font-size: .8rem;
+}
+
+.buy-breakdown { margin-top: .9rem; }
+.buy-breakdown summary {
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--portal-text-dim);
+  padding: .3rem 0;
+}
+.buy-breakdown dl { margin: .5rem 0 0; display: grid; gap: .35rem; }
+.buy-breakdown dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: .85rem;
+  color: var(--portal-text-dim);
+}
+.buy-breakdown dt { margin: 0; }
+.buy-breakdown dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--portal-text); }
+.buy-breakdown .is-total {
+  border-top: 1px solid var(--portal-border);
+  padding-top: .4rem;
+  font-weight: 700;
+  color: var(--portal-text);
+}
+
+.buy-disclaimer {
+  margin: .9rem 0 1rem;
+  font-size: .76rem;
+  line-height: 1.6;
+  color: var(--portal-text-faint);
+}
+.buy-cta { display: block; width: 100%; text-align: center; text-decoration: none; }
+.buy-cta-hint { margin: .5rem 0 0; text-align: center; font-size: .76rem; color: var(--portal-text-faint); }
+
+.buy-steps { padding: 1.25rem; }
+.buy-steps h2 { margin: 0 0 .9rem; font-size: 1rem; color: var(--portal-text); }
+.buy-steps ol { margin: 0; padding: 0; list-style: none; display: grid; gap: .9rem; }
+.buy-steps li { display: flex; gap: .8rem; align-items: flex-start; }
+.buy-step-n {
+  flex: 0 0 auto;
+  width: 1.6rem; height: 1.6rem;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--portal-badge-bg);
+  color: var(--portal-gold);
+  font-size: .8rem; font-weight: 800;
+}
+.buy-steps strong { display: block; font-size: .9rem; color: var(--portal-text); }
+.buy-steps p { margin: .1rem 0 0; font-size: .82rem; color: var(--portal-text-dim); line-height: 1.55; }
+
+@media (max-width: 420px) {
+  .buy-split-value { font-size: 1.3rem; }
+}
+
+/* The buy-for-me entry point: given as one wide card above the service grid,
+   because it is the service being advertised and a tile among five reads as an
+   afterthought. */
+.home-buy-cta {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: .85rem;
+  border-radius: var(--portal-radius);
+  background: var(--portal-badge-bg);
+  border: 1.5px solid var(--portal-gold);
+  text-decoration: none;
+  color: var(--portal-text);
+}
+.home-buy-icon {
+  flex: 0 0 auto;
+  width: 2.5rem; height: 2.5rem;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--portal-gold);
+  color: var(--portal-gold-contrast);
+  font-size: 1rem;
+}
+.home-buy-text { flex: 1; min-width: 0; }
+.home-buy-text strong { display: block; font-size: .98rem; line-height: 1.3; }
+.home-buy-text small {
+  display: block;
+  margin-top: .15rem;
+  font-size: .78rem;
+  color: var(--portal-text-dim);
+  line-height: 1.45;
+}
+.home-buy-arrow { color: var(--portal-gold); flex: 0 0 auto; }

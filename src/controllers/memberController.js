@@ -794,10 +794,13 @@ export async function processAccountEdit(req, res) {
  * Requires a logged-in (OTP-verified) member.
  */
 export function showQuoteRequest(req, res) {
+  // Carried over from the public estimator at /buy, so someone who has just
+  // priced three of something does not retype the three.
+  const carriedQty = Math.floor(Number(req.query.qty));
   const values = {
     product_url: typeof req.query.url === 'string' ? req.query.url.slice(0, 1000) : '',
     product_name: '',
-    desired_qty: 1,
+    desired_qty: Number.isFinite(carriedQty) && carriedQty > 0 ? Math.min(carriedQty, 999) : 1,
     note: '',
   };
   res.render('customer/member/quote-request', {
