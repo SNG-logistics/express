@@ -97,6 +97,127 @@
     </div>
   </div>
 
+  <%#
+    Thai-leg parcels — the boxes the platform's courier brings to the SNG
+    warehouse. Deliberately sits directly under the status buttons rather than on
+    a page of its own: the tracking numbers are only on screen at the moment
+    staff finish buying, and anything that asks them to navigate elsewhere ends
+    up never being filled in.
+  %>
+  <%
+    const parcelList = typeof parcels !== 'undefined' ? parcels : [];
+    const progress = typeof parcelProgress !== 'undefined' ? parcelProgress : { total:0, expected:0, shipped:0, arrived:0, lost:0 };
+    const PARCEL_META = {
+      PENDING:   { label:'รอร้านส่ง',      cls:'text-slate-400 bg-slate-500/10 border-slate-500/20' },
+      SHIPPED:   { label:'ร้านส่งแล้ว',    cls:'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+      AT_TH_HUB: { label:'ถึงคลังไทยแล้ว', cls:'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+      LOST:      { label:'หาย / ต้องเคลม',  cls:'text-red-400 bg-red-500/10 border-red-500/20' },
+    };
+    const showParcels = !['draft','sent','rejected','cancelled'].includes(quote.status);
+  %>
+  <% if (showParcels) { %>
+  <div class="glass-panel-dark rounded-2xl p-4 mb-5 border border-white/5">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <div>
+        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">พัสดุขาไทย (ร้าน → คลัง SNG)</div>
+        <p class="text-slate-500 text-[11px] mt-0.5">เลขพัสดุนี้ใช้ภายในเท่านั้น ลูกค้าไม่เห็น — เห็นแค่ว่าของถึงไหนแล้ว</p>
+      </div>
+      <% if (progress.total) { %>
+      <span class="text-xs font-bold text-slate-300">
+        ถึงคลังแล้ว <span class="text-emerald-400"><%= progress.arrived %></span> / <%= progress.expected %> กล่อง
+        <% if (progress.lost) { %><span class="text-red-400">· หาย <%= progress.lost %></span><% } %>
+      </span>
+      <% } %>
+    </div>
+
+    <% if (parcelList.length) { %>
+    <%# Rows are divs, not a table: a <form> cannot be a child of <tr>, and
+        browsers hoist it out of the table, which silently breaks the inputs. %>
+    <div class="grid gap-2 mb-3">
+      <% parcelList.forEach(function (p) { const pm = PARCEL_META[p.status] || PARCEL_META.PENDING; %>
+      <div class="flex flex-wrap items-end gap-2 py-2 border-t border-white/5 text-xs">
+        <form action="/partner/quotes/<%= quote.id %>/parcels/<%= p.id %>" method="post"
+          class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <span class="font-mono text-slate-400 pb-1.5 w-8">#<%= p.parcel_seq %></span>
+          <input type="text" name="supplier_courier" value="<%= p.supplier_courier || '' %>"
+            placeholder="LEX TH" aria-label="ขนส่งของกล่อง <%= p.parcel_seq %>"
+            class="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+          <input type="text" name="supplier_tracking_no" value="<%= p.supplier_tracking_no || '' %>"
+            placeholder="LEXDO..." aria-label="เลขพัสดุของกล่อง <%= p.parcel_seq %>"
+            class="w-40 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200 font-mono">
+          <select name="status" aria-label="สถานะของกล่อง <%= p.parcel_seq %>"
+            class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-200">
+            <% Object.keys(PARCEL_META).forEach(function (st) { %>
+            <option value="<%= st %>" <%= p.status === st ? 'selected' : '' %>><%= PARCEL_META[st].label %></option>
+            <% }) %>
+          </select>
+          <span class="inline-flex items-center px-2 py-1 rounded-lg border text-[10px] font-bold <%= pm.cls %>">
+            <%= pm.label %>
+          </span>
+          <button type="submit"
+            class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 font-bold">
+            บันทึก
+          </button>
+        </form>
+        <form action="/partner/quotes/<%= quote.id %>/parcels/<%= p.id %>/delete" method="post"
+          onsubmit="return confirm('ลบกล่อง #<%= p.parcel_seq %> ออกจากใบนี้?');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" title="ลบกล่องนี้" aria-label="ลบกล่อง <%= p.parcel_seq %>"
+            class="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg px-2 py-1.5">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </form>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %>
+    <p class="text-slate-500 text-xs mb-3">
+      ยังไม่ได้บันทึกพัสดุ — กรอกทันทีหลังกดซื้อบนแพลตฟอร์ม ตอนที่เลขพัสดุยังอยู่บนหน้าจอ
+    </p>
+    <% } %>
+
+    <form action="/partner/quotes/<%= quote.id %>/parcels" method="post"
+      class="flex flex-wrap items-end gap-2 pt-3 border-t border-white/5">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">เลขคำสั่งซื้อร้าน</label>
+        <input type="text" name="supplier_order_no" value="<%= quote.supplier_order_no || '' %>"
+          placeholder="เลขออเดอร์ Lazada"
+          class="w-40 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono">
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ขนส่ง</label>
+        <input type="text" name="supplier_courier" placeholder="LEX TH"
+          class="w-28 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">เลขพัสดุ</label>
+        <input type="text" name="supplier_tracking_no" placeholder="LEXDO0187914739"
+          class="w-44 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono">
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ในกล่องมีอะไร</label>
+        <input type="text" name="item_note" placeholder="ไม่บังคับ"
+          class="w-36 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">สถานะ</label>
+        <select name="status"
+          class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+          <% Object.keys(PARCEL_META).forEach(function (st) { %>
+          <option value="<%= st %>" <%= st === 'SHIPPED' ? 'selected' : '' %>><%= PARCEL_META[st].label %></option>
+          <% }) %>
+        </select>
+      </div>
+      <button type="submit"
+        class="bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors">
+        <i class="fa-solid fa-plus"></i> เพิ่มกล่อง
+      </button>
+    </form>
+  </div>
+  <% } %>
+
   <div class="grid md:grid-cols-3 gap-5">
     <%# Left: Info %>
     <div class="md:col-span-2 space-y-5">

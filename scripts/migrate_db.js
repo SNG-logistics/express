@@ -66,6 +66,7 @@ const SQL_FILES = [
   'migrate_038_branch_custody.sql',
   'migrate_039_customer_geo.sql',
   'migrate_040_zone_a_free.sql',
+  'migrate_041_quotation_parcels.sql',
   // Keep LAST: canonical role enum re-asserted after any migration (incl. CRM)
   // that redeclares users.role, so owner/accounting are never dropped.
   'migrate_021_role_enum_canonical.sql',

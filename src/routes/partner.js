@@ -17,6 +17,9 @@ router.get('/partner/quotes/:id/print', requireLogin, staff, partner.printQuote)
 router.post('/partner/quotes/:id/status', requireLogin, staff, partner.updateStatus);
 router.post('/partner/quotes/:id/transition', requireLogin, staff, partner.transitionQuote);
 router.post('/partner/quotes/:id/payment', requireLogin, staff, partner.recordQuotePayment);
+router.post('/partner/quotes/:id/parcels', requireLogin, staff, partner.createParcel);
+router.post('/partner/quotes/:id/parcels/:parcelId', requireLogin, staff, partner.editParcel);
+router.post('/partner/quotes/:id/parcels/:parcelId/delete', requireLogin, staff, partner.removeParcel);
 
 // ─── Public Quote Requests (เช็คราคาสินค้าออนไลน์) ───────────────────────────
 router.get('/partner/quote-requests',     requireLogin, staff, partner.quoteRequestQueue);
