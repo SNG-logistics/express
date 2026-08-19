@@ -20,6 +20,7 @@ router.post('/branches/:id/riders/:riderId/status', requireLogin, requireRole(['
 
 // ─── JSON API — for order form ────────────────────────────────────────────────
 router.get('/api/branches/nearest', requireLogin, branches.nearestApi);
+router.get('/api/plus-code/decode', requireLogin, branches.plusCodeApi);
 
 // ─── Branch Portal — for branch_operator role ─────────────────────────────────
 router.get('/branch/dashboard', requireLogin, requireRole(['branch_operator','admin','manager']), branches.portalDashboard);

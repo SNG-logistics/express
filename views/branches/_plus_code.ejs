@@ -1,0 +1,122 @@
+<%#
+  _plus_code.ejs — Plus Code entry for a branch position.
+
+  Locals: lat, lng (current values or ''), code (a rejected code being handed
+  back for correction, or ''), plusCode (the code for the stored position, or
+  null), accent ('amber' on edit, 'cyan' on create).
+
+  Staff setting up a branch have Google Maps on a phone. A Plus Code is two
+  taps to copy; decimal coordinates are buried in a menu and get mistyped. So
+  this is the field they use — but lat/lng stay visible and stay what is
+  saved, because distance, zones and fees are all computed from them.
+%>
+<div class="space-y-4" data-plus-code-block>
+  <div>
+    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+      Plus Code <span class="text-slate-600 normal-case font-normal">(จาก Google Maps)</span>
+    </label>
+    <input type="text" name="plus_code" autocomplete="off" spellcheck="false"
+      data-plus-code-input
+      class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-<%= accent %>-500/50 text-sm font-mono uppercase"
+      placeholder="7P94XJGM+76  หรือ  JJXX+HR8"
+      value="<%= typeof code !== 'undefined' && code ? code : '' %>">
+    <p class="text-slate-600 text-xs mt-2 leading-relaxed">
+      เปิด Google Maps → กดค้างที่ตำแหน่งสาขา → คัดลอก Plus Code มาวาง
+      แล้วระบบจะแปลงเป็นพิกัดให้อัตโนมัติ · ถ้าจะพิมพ์พิกัดเอง ให้เว้นช่องนี้ว่างไว้
+    </p>
+  </div>
+
+  <div data-plus-code-status class="hidden rounded-xl px-4 py-3 text-xs leading-relaxed"></div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Latitude</label>
+      <input type="number" step="any" name="lat" data-plus-code-lat
+        class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-<%= accent %>-500/50 text-sm font-mono"
+        placeholder="17.97570000" value="<%= lat ?? '' %>">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Longitude</label>
+      <input type="number" step="any" name="lng" data-plus-code-lng
+        class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-<%= accent %>-500/50 text-sm font-mono"
+        placeholder="102.63310000" value="<%= lng ?? '' %>">
+    </div>
+  </div>
+
+  <% if (plusCode) { %>
+    <%# A branch set up by typing coordinates can be checked against Maps
+        without anyone having to convert numbers by hand. %>
+    <div class="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+      <span>พิกัดที่บันทึกไว้ตอนนี้คือ</span>
+      <code class="px-2 py-1 rounded-lg bg-white/5 text-slate-300 font-mono"><%= plusCode %></code>
+      <a href="https://www.google.com/maps/search/?api=1&amp;query=<%= lat %>,<%= lng %>"
+        target="_blank" rel="noopener"
+        class="text-<%= accent %>-400 hover:text-white">ดูบนแผนที่ →</a>
+    </div>
+  <% } %>
+</div>
+
+<script>
+(function () {
+  var block = document.currentScript.previousElementSibling;
+  while (block && !block.hasAttribute('data-plus-code-block')) block = block.previousElementSibling;
+  if (!block) return;
+
+  var input  = block.querySelector('[data-plus-code-input]');
+  var latEl  = block.querySelector('[data-plus-code-lat]');
+  var lngEl  = block.querySelector('[data-plus-code-lng]');
+  var status = block.querySelector('[data-plus-code-status]');
+  var last   = '';
+
+  function show(tone, html) {
+    status.className = 'rounded-xl px-4 py-3 text-xs leading-relaxed border '
+      + (tone === 'ok'
+        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+        : 'border-red-500/30 bg-red-500/10 text-red-200');
+    status.innerHTML = html;
+  }
+
+  // The lat/lng fields may be bound to a client framework, so write through an
+  // input event rather than assigning .value alone — otherwise the visible
+  // number and the model the form submits drift apart.
+  function setValue(el, value) {
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function lookup() {
+    var code = (input.value || '').trim();
+    if (code === last) return;
+    last = code;
+    if (!code) { status.className = 'hidden'; return; }
+
+    var url = '/api/plus-code/decode?code=' + encodeURIComponent(code);
+    // Short codes only mean something near a reference point; whatever is in
+    // the coordinate fields right now is the nearest thing to "around here".
+    if (latEl.value && lngEl.value) {
+      url += '&ref_lat=' + encodeURIComponent(latEl.value)
+           + '&ref_lng=' + encodeURIComponent(lngEl.value);
+    }
+
+    fetch(url, { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          show('err', (data && data.message) || 'อ่านรหัสนี้ไม่ได้');
+          return;
+        }
+        setValue(latEl, data.lat);
+        setValue(lngEl, data.lng);
+        show('ok',
+          'ได้พิกัด <span class="font-mono">' + data.lat + ', ' + data.lng + '</span> '
+          + '<a class="underline" target="_blank" rel="noopener" '
+          + 'href="https://www.google.com/maps/search/?api=1&query=' + data.lat + ',' + data.lng + '">'
+          + 'ตรวจบนแผนที่ก่อนบันทึก →</a>');
+      })
+      .catch(function () { show('err', 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'); });
+  }
+
+  input.addEventListener('change', lookup);
+  input.addEventListener('blur', lookup);
+})();
+</script>
