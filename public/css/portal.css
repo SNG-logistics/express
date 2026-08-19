@@ -887,3 +887,90 @@ body {
   .track-hero-status { font-size: 1.2rem; }
   .track-no-row { font-size: .8rem; }
 }
+
+/* ── Tracking: the Thai leg, and the handover into SNG's own ─────────────────
+   A purchase-agent parcel is one journey in two halves. The first half belongs
+   to someone else's system, so it reads in a cooler, quieter register than SNG's
+   own gold; the handover between them is given a line of its own because "your
+   goods are with us now" is the sentence customers are waiting for. */
+
+.track-leg { padding: 0 0 .5rem; }
+.track-leg-head {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem .25rem;
+}
+.track-leg-badge {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: .8rem;
+  flex: 0 0 auto;
+}
+.track-leg-badge.is-supplier {
+  background: var(--portal-surface-2);
+  border: 1px solid var(--portal-border);
+  color: var(--portal-text-dim);
+}
+.track-leg-title {
+  margin: 0;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--portal-text-dim);
+  letter-spacing: .02em;
+}
+.track-leg-sub {
+  margin: .1rem 0 0;
+  font-size: .88rem;
+  color: var(--portal-text);
+}
+.track-leg-count {
+  margin-left: auto;
+  font-size: .8rem;
+  color: var(--portal-text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.track-leg-count strong { color: var(--portal-text); }
+
+/* The supplier leg is another system's, so its live step stays neutral rather
+   than taking SNG's gold — that colour means "we have it". */
+.track-step.is-supplier.is-current .track-step-mark {
+  background: var(--portal-surface-2);
+  border-color: var(--portal-text-dim);
+  color: var(--portal-text);
+}
+
+.track-handover {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 0 0 1.25rem;
+  padding: .7rem 1rem;
+  border-radius: var(--portal-radius);
+  background: var(--portal-badge-bg);
+  border: 1px solid var(--portal-gold-dim);
+  color: var(--portal-text);
+  font-size: .87rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.track-handover i { color: var(--portal-gold); flex: 0 0 auto; }
+
+.track-pending-note {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  padding: .9rem 1.1rem;
+  border-radius: var(--portal-radius);
+  background: var(--portal-surface-2);
+  border: 1px dashed var(--portal-border);
+  color: var(--portal-text-dim);
+  font-size: .86rem;
+  line-height: 1.6;
+}
+.track-pending-note i { margin-top: .2rem; flex: 0 0 auto; }

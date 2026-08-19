@@ -2,90 +2,150 @@
  * src/controllers/trackingController.js
  *
  * Public tracking page — no auth required.
- * Allows customers to track their order status via job_no.
+ *
+ * A purchase-agent parcel is one journey in two halves: the shop's courier
+ * brings the goods to SNG's Thai warehouse, then SNG carries them to Laos. The
+ * customer holds a quotation number for the first half and an SNG job number
+ * only once the second begins, so this page accepts either and always shows
+ * whichever halves exist — searching by one number must never hide the other.
+ *
+ * What it deliberately never shows: the platform, the shop, or the courier's
+ * own tracking number. Those are staff-only by the owner's decision.
  */
 
 import pool from '../config/db.js';
 import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
-import { buildTrackingTimeline } from '../constants/trackingSteps.js';
+import { buildTrackingTimeline, buildSupplierTimeline } from '../constants/trackingSteps.js';
+import { parcelProgress } from '../services/quotationParcelService.js';
+
+/** Everything the view needs when nothing was found, so no branch renders undefined. */
+function emptyView(res, { error = null, title = null } = {}) {
+  return {
+    layout: 'customer/layout',
+    order: null,
+    logs: [],
+    timeline: [],
+    quotation: null,
+    supplierTimeline: [],
+    supplierProgress: null,
+    statusLabels: ORDER_STATUS_LABELS,
+    error,
+    title: title || `${res.locals.t('tracking.title')} | SNG Express`,
+  };
+}
+
+async function loadOrder(jobNo) {
+  const [[order]] = await pool.query(
+    `SELECT o.id, o.job_no, o.direction, o.status, o.service_type,
+            o.declared_weight, o.cod_amount, o.created_at, o.updated_at,
+            o.delivered_at, o.screening_status, o.quotation_id,
+            s.name AS sender_name, s.province AS sender_province,
+            r.name AS receiver_name, r.province AS receiver_province,
+            r.city AS receiver_city
+     FROM orders o
+     LEFT JOIN customers s ON s.id = o.sender_id
+     LEFT JOIN customers r ON r.id = o.receiver_id
+     WHERE o.job_no = ?`,
+    [jobNo]
+  );
+  return order || null;
+}
 
 /**
- * GET /track/:jobNo
- * Public order tracking page
+ * The Thai leg for a quotation: its customer-visible stages plus the box counts.
+ * Product name is included (it is the customer's own goods); price, deposit and
+ * supplier details are not — those live behind the member login.
+ */
+async function loadSupplierLeg(quotationId) {
+  const [[quotation]] = await pool.query(
+    `SELECT id, quote_no, product_name, desired_qty, status, created_at, updated_at
+     FROM partner_quotations WHERE id = ?`,
+    [quotationId]
+  );
+  if (!quotation) return null;
+
+  const [logs] = await pool.query(
+    `SELECT to_status, action_at FROM partner_quotation_status_logs
+     WHERE quotation_id = ? ORDER BY action_at ASC`,
+    [quotationId]
+  );
+  const [parcels] = await pool.query(
+    'SELECT status FROM quotation_parcels WHERE quotation_id = ?',
+    [quotationId]
+  );
+
+  const progress = parcelProgress(parcels);
+  return {
+    quotation,
+    supplierTimeline: buildSupplierTimeline(logs, progress),
+    supplierProgress: progress,
+  };
+}
+
+/**
+ * GET /track/:ref — ref is an SNG job number or a purchase-agent quote number.
  */
 export async function trackOrder(req, res) {
-  const jobNo = (req.params.jobNo || '').trim().toUpperCase();
+  const ref = (req.params.ref || '').trim().toUpperCase();
 
-  if (!jobNo) {
-    return res.render('customer/track', {
-      layout: 'customer/layout',
-      order: null,
-      logs: [],
-      timeline: [],
-      statusLabels: ORDER_STATUS_LABELS,
-      error: null,
-      title: `${res.locals.t('tracking.title')} | SNG Express`,
-    });
-  }
+  if (!ref) return res.render('customer/track', emptyView(res));
 
   try {
-    const [[order]] = await pool.query(
-      `SELECT o.id, o.job_no, o.direction, o.status, o.service_type,
-              o.declared_weight, o.cod_amount, o.created_at, o.updated_at,
-              o.delivered_at, o.screening_status,
-              s.name AS sender_name, s.province AS sender_province,
-              r.name AS receiver_name, r.province AS receiver_province,
-              r.city AS receiver_city
-       FROM orders o
-       LEFT JOIN customers s ON s.id = o.sender_id
-       LEFT JOIN customers r ON r.id = o.receiver_id
-       WHERE o.job_no = ?`,
-      [jobNo]
-    );
+    let order = await loadOrder(ref);
+    let quotationId = order?.quotation_id || null;
 
+    // Not a job number — try it as a quote number, and pick up the shipment it
+    // later became so one search shows the whole journey either way.
     if (!order) {
-      return res.render('customer/track', {
-        layout: 'customer/layout',
-        order: null,
-        logs: [],
-        timeline: [],
-        statusLabels: ORDER_STATUS_LABELS,
-        error: `${res.locals.t('tracking.notFoundPrefix')} "${jobNo}"`,
-        title: `${res.locals.t('tracking.title')} | SNG Express`,
-      });
+      const [[quote]] = await pool.query(
+        'SELECT id FROM partner_quotations WHERE quote_no = ?', [ref]
+      );
+      if (quote) {
+        quotationId = quote.id;
+        const [[linked]] = await pool.query(
+          'SELECT job_no FROM orders WHERE quotation_id = ? ORDER BY id DESC LIMIT 1',
+          [quote.id]
+        );
+        if (linked) order = await loadOrder(linked.job_no);
+      }
     }
 
-    // Only show non-internal log entries to public
-    const [logs] = await pool.query(
-      `SELECT to_status, action_at, note
-       FROM order_status_logs
-       WHERE order_id = ?
-         AND note NOT LIKE '%[EXCEPTION]%'
-         AND note NOT LIKE '%[INTERNAL]%'
-       ORDER BY action_at ASC`,
-      [order.id]
-    );
+    const supplier = quotationId ? await loadSupplierLeg(quotationId) : null;
+
+    if (!order && !supplier) {
+      return res.render('customer/track', emptyView(res, {
+        error: `${res.locals.t('tracking.notFoundPrefix')} "${ref}"`,
+      }));
+    }
+
+    // Internal notes stay internal even on a page that needs no login.
+    const [logs] = order
+      ? await pool.query(
+          `SELECT to_status, action_at, note
+           FROM order_status_logs
+           WHERE order_id = ?
+             AND note NOT LIKE '%[EXCEPTION]%'
+             AND note NOT LIKE '%[INTERNAL]%'
+           ORDER BY action_at ASC`,
+          [order.id]
+        )
+      : [[]];
 
     res.render('customer/track', {
-      layout: 'customer/layout',
+      ...emptyView(res),
       order,
       logs,
-      timeline: buildTrackingTimeline(logs, order),
-      statusLabels: ORDER_STATUS_LABELS,
-      error: null,
-      title: `${res.locals.t('tracking.title')} ${order.job_no} | SNG Express`,
+      timeline: order ? buildTrackingTimeline(logs, order) : [],
+      quotation: supplier?.quotation || null,
+      supplierTimeline: supplier?.supplierTimeline || [],
+      supplierProgress: supplier?.supplierProgress || null,
+      title: `${res.locals.t('tracking.title')} ${order?.job_no || supplier?.quotation.quote_no} | SNG Express`,
     });
   } catch (err) {
     console.error('[Tracking]', err);
-    res.render('customer/track', {
-      layout: 'customer/layout',
-      order: null,
-      logs: [],
-      timeline: [],
-      statusLabels: ORDER_STATUS_LABELS,
+    res.render('customer/track', emptyView(res, {
       error: res.locals.t('tracking.systemError'),
-      title: `${res.locals.t('tracking.title')} | SNG Express`,
-    });
+    }));
   }
 }
 
@@ -97,13 +157,5 @@ export async function trackLanding(req, res) {
   if (q) {
     return res.redirect(`/track/${encodeURIComponent(q)}`);
   }
-  res.render('customer/track', {
-    layout: 'customer/layout',
-    order: null,
-    logs: [],
-    timeline: [],
-    statusLabels: ORDER_STATUS_LABELS,
-    error: null,
-    title: `${res.locals.t('tracking.title')} | SNG Express`,
-  });
+  res.render('customer/track', emptyView(res));
 }

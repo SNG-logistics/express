@@ -539,7 +539,10 @@ app.get('/system-manual/print', (req, res) => {
 
 // Tracking — public page, no auth required (QR code from sticker)
 app.get('/track', tracking.trackLanding);
-app.get('/track/:jobNo', tracking.trackOrder);
+// :ref is an SNG job number or a purchase-agent quote number — one box,
+// either number, because the customer only has the quote number until a
+// shipment exists.
+app.get('/track/:ref', tracking.trackOrder);
 
 // Global 404 Handler
 app.use('*', (req, res) => {

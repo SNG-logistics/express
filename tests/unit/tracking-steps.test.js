@@ -80,3 +80,73 @@ test('every status has customer-facing wording in both Thai and Lao', () => {
   // The two files must not drift apart as statuses are added.
   assert.deepEqual(Object.keys(th.trackStep).sort(), Object.keys(lo.trackStep).sort());
 });
+
+// ── Phase 3: the Thai leg on the customer's tracking page ────────────────────
+import { buildSupplierTimeline, supplierStepIcon } from '../../src/constants/trackingSteps.js';
+
+test('the Thai leg reads newest first, like the SNG leg below it', () => {
+  const logs = [
+    { to_status: 'accepted',         action_at: '2026-08-10T09:00:00Z' },
+    { to_status: 'purchasing',       action_at: '2026-08-10T11:00:00Z' },
+    { to_status: 'purchased',        action_at: '2026-08-11T10:00:00Z' },
+    { to_status: 'supplier_shipped', action_at: '2026-08-12T14:00:00Z' },
+  ];
+  const timeline = buildSupplierTimeline(logs);
+
+  assert.deepEqual(timeline.map(s => s.status),
+    ['supplier_shipped', 'purchased', 'purchasing', 'accepted']);
+  assert.equal(timeline[0].current, true);
+  assert.equal(timeline.filter(s => s.current).length, 1);
+});
+
+test('quote negotiation and the bridge into the SNG leg are left out', () => {
+  const logs = [
+    { to_status: 'draft',     action_at: '2026-08-09T09:00:00Z' },
+    { to_status: 'sent',      action_at: '2026-08-09T10:00:00Z' },
+    { to_status: 'accepted',  action_at: '2026-08-10T09:00:00Z' },
+    { to_status: 'at_th_hub', action_at: '2026-08-13T09:00:00Z' },
+    // `ordered` is where the SNG timeline picks the story up; printing it here
+    // as well reads as a stutter.
+    { to_status: 'ordered',   action_at: '2026-08-13T10:00:00Z' },
+  ];
+  const shown = buildSupplierTimeline(logs).map(s => s.status);
+
+  assert.deepEqual(shown, ['at_th_hub', 'accepted']);
+  for (const hidden of ['draft', 'sent', 'ordered']) {
+    assert.ok(!shown.includes(hidden), hidden);
+  }
+});
+
+test('box counts ride only on the steps they explain, and only on split orders', () => {
+  const logs = [
+    { to_status: 'purchased',        action_at: '2026-08-11T10:00:00Z' },
+    { to_status: 'supplier_shipped', action_at: '2026-08-12T14:00:00Z' },
+  ];
+  const split = buildSupplierTimeline(logs, { arrived: 1, expected: 3, shipped: 2 });
+  const byStatus = Object.fromEntries(split.map(s => [s.status, s]));
+  assert.ok(byStatus.supplier_shipped.counts, 'shipped step should carry counts');
+  assert.equal(byStatus.purchased.counts, null, 'buying explains no box count');
+
+  // "1 of 1 boxes" is noise on an order that never split.
+  const single = buildSupplierTimeline(logs, { arrived: 1, expected: 1, shipped: 1 });
+  assert.equal(single.find(s => s.status === 'supplier_shipped').counts, null);
+});
+
+test('a quotation with no history yet yields an empty leg rather than throwing', () => {
+  assert.deepEqual(buildSupplierTimeline([]), []);
+  assert.deepEqual(buildSupplierTimeline(null), []);
+  assert.deepEqual(buildSupplierTimeline(undefined), []);
+});
+
+test('every customer-visible Thai-leg stage has its own icon and wording', () => {
+  const th = JSON.parse(readFileSync(new URL('../../src/i18n/th.json', import.meta.url)));
+  const lo = JSON.parse(readFileSync(new URL('../../src/i18n/lo.json', import.meta.url)));
+
+  for (const status of ['accepted', 'purchasing', 'purchased', 'supplier_shipped', 'at_th_hub']) {
+    assert.notEqual(supplierStepIcon(status), 'fa-solid fa-circle-dot', `${status} has no icon`);
+    assert.ok(th.supplierStep?.[status], `th.supplierStep.${status} missing`);
+    assert.ok(lo.supplierStep?.[status], `lo.supplierStep.${status} missing`);
+    assert.ok(th.supplierStatus?.[status], `th.supplierStatus.${status} missing`);
+    assert.ok(lo.supplierStatus?.[status], `lo.supplierStatus.${status} missing`);
+  }
+});

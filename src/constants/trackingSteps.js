@@ -58,6 +58,65 @@ export function stepIcon(status) {
   return STEP_ICONS[status] || FALLBACK_ICON;
 }
 
+// ── The Thai leg ─────────────────────────────────────────────────────────────
+// Quotation statuses, shown to the customer as the first half of one continuous
+// journey: SNG buys the goods, the shop's courier brings them to the Thai
+// warehouse, and only then does an SNG parcel exist. Kept in their own map
+// because these are quotation statuses, not order ones, and the two machines
+// are free to reuse a name.
+
+const SUPPLIER_STEP_ICONS = {
+  accepted:         'fa-solid fa-file-circle-check',
+  purchasing:       'fa-solid fa-cart-shopping',
+  purchased:        'fa-solid fa-bag-shopping',
+  supplier_shipped: 'fa-solid fa-truck-fast',
+  at_th_hub:        'fa-solid fa-warehouse',
+};
+
+/**
+ * Stages worth showing a customer who is asking where their goods are. Quote
+ * negotiation before `accepted` is not part of the journey — nothing is moving
+ * yet — and `ordered` is deliberately excluded because that is exactly where the
+ * SNG timeline picks the story up, and printing it twice reads as a stutter.
+ */
+const CUSTOMER_SUPPLIER_STAGES = Object.keys(SUPPLIER_STEP_ICONS);
+
+export function supplierStepIcon(status) {
+  return SUPPLIER_STEP_ICONS[status] || FALLBACK_ICON;
+}
+
+/**
+ * The Thai leg of the journey, newest first, from the quotation's status log.
+ *
+ * Carries no courier name, tracking number or shop — by the owner's decision the
+ * customer learns how far their goods have got and how many boxes have landed,
+ * nothing about where they were bought.
+ *
+ * @param {Array<{to_status:string, action_at:Date|string}>} logs oldest first
+ * @param {{arrived:number, expected:number, shipped:number}} [progress] box counts
+ * @returns {Array<{status:string, at:Date|string, icon:string, current:boolean, counts:object|null}>}
+ */
+export function buildSupplierTimeline(logs, progress = null) {
+  const entries = (logs || [])
+    .filter(log => CUSTOMER_SUPPLIER_STAGES.includes(log.to_status))
+    .map(log => ({ status: log.to_status, at: log.action_at }));
+
+  return entries
+    .slice()
+    .reverse()
+    .map((entry, index) => ({
+      ...entry,
+      icon: supplierStepIcon(entry.status),
+      current: index === 0,
+      // Counts only ride on the steps they explain, and only when the order
+      // actually split — "1 of 1 boxes" is noise on a single-box order.
+      counts: progress && progress.expected > 1
+        && ['supplier_shipped', 'at_th_hub'].includes(entry.status)
+        ? progress
+        : null,
+    }));
+}
+
 /**
  * @returns {'problem'|'success'|'normal'} which visual treatment a step gets.
  */

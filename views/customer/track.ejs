@@ -16,7 +16,9 @@
     <label for="track-q"><i class="fa-solid fa-magnifying-glass" style="margin-right: 4px;"></i> <%= t('tracking.searchLabel') %></label>
     <form action="/track" method="GET">
       <div>
-        <input type="text" id="track-q" class="input-portal" name="q" placeholder="<%= t('tracking.searchPlaceholder') %>" value="<%= order?.job_no || '' %>" autofocus required>
+        <input type="text" id="track-q" class="input-portal" name="q"
+          placeholder="<%= t('tracking.searchHintQuote') %>"
+          value="<%= order?.job_no || quotation?.quote_no || '' %>" autofocus required>
         <button type="submit" class="btn-gold"><i class="fa-solid fa-search"></i> <%= t('common.search') %></button>
       </div>
     </form>
@@ -28,13 +30,12 @@
   </div>
   <% } %>
 
-  <% if (order) { %>
   <%
-    const statusInfo = statusLabels[order.status] || { label: order.status, cssClass: 'new' };
-    const dirLabel = order.direction === 'TH_TO_LA' ? t('order.thToLa') : t('order.laToTh');
-    const dirFlags = order.direction === 'TH_TO_LA' ? '🇹🇭 → 🇱🇦' : '🇱🇦 → 🇹🇭';
+    // Hoisted above both legs: a purchase-agent parcel may have a Thai leg to
+    // render before any SNG shipment exists, and both need the same date format.
     const dateLocale = lang === 'lo' ? 'lo-LA' : 'th-TH';
-    
+    const hasSupplierLeg = Array.isArray(supplierTimeline) && supplierTimeline.length > 0;
+
     function fmtDate(d) {
       if (!d) return '–';
       const dt = new Date(d);
@@ -48,6 +49,65 @@
     }
   %>
 
+  <%#
+    Leg 1 — the shop's courier bringing the goods to SNG's Thai warehouse.
+    Carries no courier, tracking number or shop name: the customer learns how far
+    their goods have got and how many boxes landed, nothing about where they were
+    bought.
+  %>
+  <% if (hasSupplierLeg) { %>
+  <section class="card track-leg" style="margin-bottom: 1.25rem;">
+    <div class="track-leg-head">
+      <span class="track-leg-badge is-supplier"><i class="fa-solid fa-store"></i></span>
+      <div>
+        <p class="track-leg-title"><%= t('tracking.supplierLeg') %></p>
+        <% if (quotation) { %>
+        <p class="track-leg-sub"><%= quotation.product_name || '' %></p>
+        <% } %>
+      </div>
+      <% if (supplierProgress && supplierProgress.expected > 1) { %>
+      <span class="track-leg-count">
+        <%= t('tracking.arrivedOf') %>
+        <strong><%= supplierProgress.arrived %></strong> / <%= supplierProgress.expected %>
+        <%= t('tracking.boxes') %>
+      </span>
+      <% } %>
+    </div>
+
+    <div class="track-timeline">
+      <% supplierTimeline.forEach(function (step) { %>
+      <div class="track-step is-supplier <%= step.current ? 'is-current' : '' %>">
+        <span class="track-step-mark"><i class="<%= step.icon %>"></i></span>
+        <div class="track-step-body">
+          <p class="track-step-status"><%= t('supplierStatus.' + step.status) %></p>
+          <p class="track-step-note"><%= t('supplierStep.' + step.status) %></p>
+          <% if (step.counts) { %>
+          <p class="track-step-note">
+            <%= t('tracking.arrivedOf') %> <%= step.counts.arrived %> / <%= step.counts.expected %> <%= t('tracking.boxes') %>
+          </p>
+          <% } %>
+          <p class="track-step-time"><%= fmtDate(step.at) %></p>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+  </section>
+
+  <%# The handover — the sentence that does the most work on this page. %>
+  <% if (order) { %>
+  <div class="track-handover">
+    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+    <span><%= t('tracking.handover') %></span>
+  </div>
+  <% } %>
+  <% } %>
+
+  <% if (order) { %>
+  <%
+    const statusInfo = statusLabels[order.status] || { label: order.status, cssClass: 'new' };
+    const dirLabel = order.direction === 'TH_TO_LA' ? t('order.thToLa') : t('order.laToTh');
+    const dirFlags = order.direction === 'TH_TO_LA' ? '🇹🇭 → 🇱🇦' : '🇱🇦 → 🇹🇭';
+  %>
   <!-- Hero: where the parcel is right now, answered before anything else -->
   <div class="track-hero <%= timeline[0] ? 'is-' + timeline[0].tone : '' %>">
     <div class="track-hero-icon"><i class="<%= timeline[0]?.icon || 'fa-solid fa-box' %>"></i></div>
@@ -181,6 +241,13 @@
       });
     });
   </script>
+  <% } else if (hasSupplierLeg) { %>
+  <%# Goods still on the Thai leg — no SNG parcel exists yet, and saying so
+      plainly beats leaving the page looking half-finished. %>
+  <div class="track-pending-note">
+    <i class="fa-solid fa-hourglass-half"></i>
+    <span><%= t('tracking.notShippedYet') %></span>
+  </div>
   <% } else if (!error) { %>
   <!-- Empty state -->
   <div class="empty-state">
