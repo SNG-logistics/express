@@ -1279,18 +1279,16 @@ body {
 }
 
 /* ── Home promo banner ───────────────────────────────────────────────────────
-   6:9 as specified — a portrait frame, which on a phone fills most of the
-   screen. That is the point for a promo, but it also means the image has to be
-   the hook rather than decoration; a weak picture here costs more than it would
-   in a thin strip. Capped in height on wide screens so a desktop visitor is not
-   scrolled past everything else. */
+   16:9 landscape: wide enough to read as a banner and short enough that the
+   services below it stay on screen, which a portrait frame could not manage on
+   a phone. It also matches the shape marketing already produces artwork in, so
+   a campaign image can go straight up without being re-cropped. */
 
 .home-banner {
   position: relative;
   display: block;
-  aspect-ratio: 6 / 9;
-  max-height: 70vh;
-  margin: 0 auto 1rem;
+  aspect-ratio: 16 / 9;
+  margin: 0 0 1rem;
   border-radius: var(--portal-radius);
   overflow: hidden;
   background: var(--portal-surface-2);
@@ -1310,7 +1308,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 2.5rem .9rem .9rem;
+  padding: 2rem .9rem .75rem;
   background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0));
   color: #fff;
   font-size: .92rem;
@@ -1322,8 +1320,4 @@ body {
 .home-banner-cta i { font-size: .8em; }
 .home-banner:focus-visible { outline: 2px solid var(--portal-gold); outline-offset: 2px; }
 
-@media (min-width: 640px) {
-  /* Keep the portrait shape from spanning a wide column, where 6:9 would
-     become a very tall tower. */
-  .home-banner { max-width: 22rem; }
-}
+

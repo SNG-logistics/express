@@ -576,7 +576,7 @@ export async function deleteTestimonial(req, res) {
 }
 
 // ─── Home promo banner ────────────────────────────────────────────────────────
-// The 6:9 image on the portal home page, linking to the online product
+// The 16:9 image on the portal home page, linking to the online product
 // catalogue. Stored as a company setting so marketing can swap it for a
 // campaign without a deploy.
 

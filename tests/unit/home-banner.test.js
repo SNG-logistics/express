@@ -47,9 +47,10 @@ test('an emptied banner setting counts as no banner', () => {
   assert.ok(!renderHome({ home_banner_path: '' }).includes('home-banner'));
 });
 
-test('the frame is 6:9 as specified, and capped so it cannot swallow a desktop page', () => {
-  assert.match(CSS, /\.home-banner\s*\{[^}]*aspect-ratio:\s*6\s*\/\s*9/);
-  assert.match(CSS, /\.home-banner\s*\{[^}]*max-height:\s*70vh/);
+test('the frame is 16:9, so the services below it stay on screen', () => {
+  // A portrait banner filled a phone and pushed everything else past the fold.
+  assert.match(CSS, /\.home-banner\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
+  assert.doesNotMatch(CSS, /\.home-banner\s*\{[^}]*aspect-ratio:\s*6\s*\/\s*9/);
 });
 
 test('the call to action stays legible over whatever photo is uploaded', () => {
