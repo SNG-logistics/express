@@ -48,6 +48,37 @@
     }
   %>
 
+  <!-- Hero: where the parcel is right now, answered before anything else -->
+  <div class="track-hero <%= timeline[0] ? 'is-' + timeline[0].tone : '' %>">
+    <div class="track-hero-icon"><i class="<%= timeline[0]?.icon || 'fa-solid fa-box' %>"></i></div>
+    <div class="track-hero-body">
+      <p class="track-hero-eyebrow"><%= t('tracking.currentStatus') %></p>
+      <h2 class="track-hero-status"><%= t('status.' + order.status) %></h2>
+      <p class="track-hero-note"><%= t('trackStep.' + order.status) %></p>
+      <div class="track-hero-meta">
+        <span><i class="fa-solid fa-location-dot"></i> <%= t('tracking.deliverTo') %>
+          <strong><%= order.receiver_city || order.receiver_province || order.receiver_name || '–' %></strong>
+        </span>
+        <span><i class="fa-regular fa-clock"></i> <%= t('tracking.lastUpdate') %>
+          <strong><%= fmtDate(order.updated_at || order.created_at) %></strong>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tracking number, copyable in one tap like every courier app does -->
+  <div class="track-no-row">
+    <span class="track-no-carrier"><i class="fa-solid fa-truck-fast"></i> SNG Express · <%= dirFlags %></span>
+    <span class="track-no-value">
+      <code id="trackNo"><%= order.job_no %></code>
+      <button type="button" class="track-copy" data-copy="<%= order.job_no %>"
+        data-label="<%= t('tracking.copy') %>" data-done="<%= t('tracking.copied') %>"
+        aria-label="<%= t('tracking.copy') %>">
+        <i class="fa-regular fa-copy"></i>
+      </button>
+    </span>
+  </div>
+
   <div class="card tracking-card" style="margin-bottom: 1.5rem;">
     <!-- Order Header -->
     <div class="tracking-card-header">
@@ -100,25 +131,56 @@
       </div>
     </div>
 
-    <!-- Timeline -->
-    <div class="timeline">
-      <div style="font-weight: 700; color: var(--portal-text-dim); margin-bottom: 1rem; font-size: 0.9rem;">
-        <i class="fa-solid fa-timeline" style="margin-right: 4px;"></i> <%= t('tracking.history') %>
+    <!-- Timeline — newest first, so "where is it now" is the first thing read -->
+    <div class="track-timeline">
+      <div class="track-timeline-title">
+        <i class="fa-solid fa-timeline"></i> <%= t('tracking.history') %>
       </div>
-      <% logs.forEach((log) => { %>
-      <div class="timeline-item">
-        <div style="font-weight: 600; color: var(--portal-text);"><%= t('status.' + log.to_status) %></div>
-        <small><%= fmtDate(log.action_at) %></small>
+      <% timeline.forEach((step) => { %>
+      <div class="track-step is-<%= step.tone %> <%= step.current ? 'is-current' : '' %>">
+        <span class="track-step-mark"><i class="<%= step.icon %>"></i></span>
+        <div class="track-step-body">
+          <p class="track-step-status"><%= t('status.' + step.status) %></p>
+          <p class="track-step-note"><%= t('trackStep.' + step.status) %></p>
+          <p class="track-step-time"><%= fmtDate(step.at) %></p>
+        </div>
       </div>
       <% }); %>
-      <% if (logs.length === 0) { %>
-      <div class="timeline-item">
-        <div style="font-weight: 600; color: var(--portal-text);"><%= t('status.' + order.status) %></div>
-        <small><%= fmtDate(order.created_at) %></small>
-      </div>
-      <% } %>
     </div>
   </div>
+  <script>
+    // One-tap copy of the tracking number, the thing customers paste into chat
+    // when they ask us about a parcel. navigator.clipboard needs a secure
+    // context; where it is unavailable the button simply selects the number so
+    // a long-press copy still works, rather than failing silently.
+    document.querySelectorAll('.track-copy').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const value = btn.dataset.copy;
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          const node = document.getElementById('trackNo');
+          if (node) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+          return;
+        }
+        btn.classList.add('is-done');
+        btn.setAttribute('aria-label', btn.dataset.done);
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = 'fa-solid fa-check';
+        setTimeout(() => {
+          btn.classList.remove('is-done');
+          btn.setAttribute('aria-label', btn.dataset.label);
+          if (icon) icon.className = 'fa-regular fa-copy';
+        }, 1600);
+      });
+    });
+  </script>
   <% } else if (!error) { %>
   <!-- Empty state -->
   <div class="empty-state">

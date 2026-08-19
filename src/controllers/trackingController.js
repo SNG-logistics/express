@@ -7,6 +7,7 @@
 
 import pool from '../config/db.js';
 import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
+import { buildTrackingTimeline } from '../constants/trackingSteps.js';
 
 /**
  * GET /track/:jobNo
@@ -20,6 +21,7 @@ export async function trackOrder(req, res) {
       layout: 'customer/layout',
       order: null,
       logs: [],
+      timeline: [],
       statusLabels: ORDER_STATUS_LABELS,
       error: null,
       title: `${res.locals.t('tracking.title')} | SNG Express`,
@@ -46,6 +48,7 @@ export async function trackOrder(req, res) {
         layout: 'customer/layout',
         order: null,
         logs: [],
+        timeline: [],
         statusLabels: ORDER_STATUS_LABELS,
         error: `${res.locals.t('tracking.notFoundPrefix')} "${jobNo}"`,
         title: `${res.locals.t('tracking.title')} | SNG Express`,
@@ -67,6 +70,7 @@ export async function trackOrder(req, res) {
       layout: 'customer/layout',
       order,
       logs,
+      timeline: buildTrackingTimeline(logs, order),
       statusLabels: ORDER_STATUS_LABELS,
       error: null,
       title: `${res.locals.t('tracking.title')} ${order.job_no} | SNG Express`,
@@ -77,6 +81,7 @@ export async function trackOrder(req, res) {
       layout: 'customer/layout',
       order: null,
       logs: [],
+      timeline: [],
       statusLabels: ORDER_STATUS_LABELS,
       error: res.locals.t('tracking.systemError'),
       title: `${res.locals.t('tracking.title')} | SNG Express`,
@@ -96,6 +101,7 @@ export async function trackLanding(req, res) {
     layout: 'customer/layout',
     order: null,
     logs: [],
+    timeline: [],
     statusLabels: ORDER_STATUS_LABELS,
     error: null,
     title: `${res.locals.t('tracking.title')} | SNG Express`,

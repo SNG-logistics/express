@@ -703,3 +703,187 @@ body {
   .home-member-actions .btn-gold, .home-member-actions .btn-outline { flex: 1 1 8rem; }
   .home-contact-actions a { flex: 1 1 100%; justify-content: center; }
 }
+
+/* ── Public tracking — courier-app layout ─────────────────────────────────────
+   Someone opening this page has exactly one question: where is my parcel right
+   now. The hero answers it before any detail, the tracking number is one tap to
+   copy, and the history runs newest-first so the live step sits under the thumb
+   instead of below a scroll of old events. */
+
+.track-hero {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--portal-surface);
+  border: 1px solid var(--portal-border);
+  border-left: 4px solid var(--portal-gold);
+  border-radius: var(--portal-radius);
+  padding: 1.15rem 1.25rem;
+  margin-bottom: .75rem;
+}
+.track-hero.is-success { border-left-color: #22c55e; }
+.track-hero.is-problem { border-left-color: #ef4444; }
+
+.track-hero-icon {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  background: var(--portal-badge-bg);
+  color: var(--portal-gold);
+}
+.track-hero.is-success .track-hero-icon { background: var(--portal-success-bg); color: #22c55e; }
+.track-hero.is-problem .track-hero-icon { background: var(--portal-danger-bg); color: #ef4444; }
+
+.track-hero-body { min-width: 0; flex: 1; }
+.track-hero-eyebrow {
+  margin: 0;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--portal-text-faint);
+}
+.track-hero-status {
+  margin: .15rem 0 .3rem;
+  font-size: 1.4rem;
+  line-height: 1.25;
+  color: var(--portal-text);
+  text-wrap: balance;
+}
+.track-hero-note {
+  margin: 0 0 .75rem;
+  font-size: .9rem;
+  line-height: 1.5;
+  color: var(--portal-text-dim);
+}
+.track-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1.25rem;
+  font-size: .82rem;
+  color: var(--portal-text-dim);
+}
+.track-hero-meta strong { color: var(--portal-text); font-weight: 600; }
+.track-hero-meta i { color: var(--portal-text-faint); margin-right: .25rem; }
+
+/* Tracking number row */
+.track-no-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  background: var(--portal-surface-2);
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius);
+  padding: .7rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: .85rem;
+  color: var(--portal-text-dim);
+}
+.track-no-carrier i { margin-right: .35rem; color: var(--portal-text-faint); }
+.track-no-value { display: inline-flex; align-items: center; gap: .5rem; }
+.track-no-value code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--portal-text);
+  letter-spacing: .02em;
+}
+.track-copy {
+  border: 1px solid var(--portal-border);
+  background: transparent;
+  color: var(--portal-text-dim);
+  border-radius: .5rem;
+  padding: .3rem .5rem;
+  cursor: pointer;
+  font-size: .85rem;
+  line-height: 1;
+  transition: color .15s, border-color .15s;
+}
+.track-copy:hover, .track-copy:focus-visible { color: var(--portal-gold); border-color: var(--portal-gold-dim); }
+.track-copy.is-done { color: #22c55e; border-color: #22c55e; }
+
+/* Timeline */
+.track-timeline { padding: 1rem 1.25rem 1.25rem; }
+.track-timeline-title {
+  font-weight: 700;
+  color: var(--portal-text-dim);
+  margin-bottom: 1rem;
+  font-size: .9rem;
+}
+.track-timeline-title i { margin-right: .3rem; }
+
+.track-step { display: flex; gap: .85rem; position: relative; padding-bottom: 1.1rem; }
+/* Connector runs between marks, so the last step has no dangling tail. */
+.track-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: .84rem;
+  top: 1.9rem;
+  bottom: 0;
+  width: 2px;
+  background: var(--portal-border);
+}
+.track-step:last-child { padding-bottom: 0; }
+
+.track-step-mark {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: .7rem;
+  background: var(--portal-surface-2);
+  border: 1px solid var(--portal-border);
+  color: var(--portal-text-faint);
+  z-index: 1;
+}
+.track-step-body { min-width: 0; padding-top: .1rem; }
+.track-step-status {
+  margin: 0;
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--portal-text-dim);
+}
+.track-step-note {
+  margin: .1rem 0 0;
+  font-size: .84rem;
+  line-height: 1.5;
+  color: var(--portal-text-faint);
+}
+.track-step-time {
+  margin: .25rem 0 0;
+  font-size: .78rem;
+  color: var(--portal-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The live step is the one being looked for — give it the only strong colour
+   in the list so it is findable without reading any timestamps. */
+.track-step.is-current .track-step-mark {
+  background: var(--portal-badge-bg);
+  border-color: var(--portal-gold);
+  color: var(--portal-gold);
+}
+.track-step.is-current .track-step-status { color: var(--portal-text); font-size: 1rem; }
+.track-step.is-current .track-step-note { color: var(--portal-text-dim); }
+
+.track-step.is-current.is-success .track-step-mark {
+  background: var(--portal-success-bg); border-color: #22c55e; color: #22c55e;
+}
+.track-step.is-current.is-problem .track-step-mark {
+  background: var(--portal-danger-bg); border-color: #ef4444; color: #ef4444;
+}
+/* A failure stays visible even after later steps push it down the list. */
+.track-step.is-problem .track-step-status { color: var(--portal-danger-text); }
+
+@media (max-width: 480px) {
+  .track-hero { padding: 1rem; gap: .8rem; }
+  .track-hero-status { font-size: 1.2rem; }
+  .track-no-row { font-size: .8rem; }
+}
