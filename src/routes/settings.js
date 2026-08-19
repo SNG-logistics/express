@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireLogin, requireRole } from '../middleware/auth.js';
 import * as settings from '../controllers/settingsController.js';
 import multer from 'multer';
+import { uploadTestimonialPhoto } from '../middleware/uploadTestimonialPhoto.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -50,6 +51,11 @@ router.get('/settings/prohibited', requireLogin, requireRole(['admin','manager']
 router.post('/settings/prohibited', requireLogin, requireRole(['admin','manager']), settings.createProhibitedItem);
 router.post('/settings/prohibited/:id', requireLogin, requireRole(['admin','manager']), settings.updateProhibitedItem);
 router.post('/settings/prohibited/:id/delete', requireLogin, requireRole(['admin','manager']), settings.deleteProhibitedItem);
+
+router.get('/settings/testimonials', requireLogin, requireRole(['admin','manager']), settings.showTestimonials);
+router.post('/settings/testimonials', requireLogin, requireRole(['admin','manager']), uploadTestimonialPhoto.single('photo'), settings.createTestimonial);
+router.post('/settings/testimonials/:id', requireLogin, requireRole(['admin','manager']), uploadTestimonialPhoto.single('photo'), settings.updateTestimonial);
+router.post('/settings/testimonials/:id/delete', requireLogin, requireRole(['admin','manager']), settings.deleteTestimonial);
 
 router.post('/settings/clear-test-data', requireLogin, requireRole('admin'), settings.clearTestData);
 

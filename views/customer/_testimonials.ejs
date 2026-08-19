@@ -1,0 +1,36 @@
+<%#
+  views/customer/_testimonials.ejs — proof that real people have used this.
+
+  Renders nothing at all until somebody real has said something real. There are
+  no completed purchase-agent orders yet, and an empty "what customers say" box
+  — or worse, an invented one — would undermine the very page whose job is to
+  establish that SNG can be trusted with money up front.
+
+  Everything here has recorded consent; the service will not return a row
+  without it. Only a display name appears — never a full name, phone or order
+  number.
+
+  Expects: testimonials = [{ id, name, message, photo }], and t().
+%>
+<% const proof = typeof testimonials !== 'undefined' ? testimonials : []; %>
+<% if (proof.length) { %>
+<section class="card proof">
+  <h2 class="proof-title"><%= t('proof.title') %></h2>
+  <p class="proof-sub"><%= t('proof.subtitle') %></p>
+
+  <div class="proof-list">
+    <% proof.forEach(function (item) { %>
+    <figure class="proof-item">
+      <% if (item.photo) { %>
+      <img src="<%= item.photo %>" alt="<%= t('proof.photoAlt') %> — <%= item.name %>"
+        loading="lazy" decoding="async">
+      <% } %>
+      <figcaption>
+        <% if (item.message) { %><p class="proof-quote"><%= item.message %></p><% } %>
+        <p class="proof-name"><%= item.name %></p>
+      </figcaption>
+    </figure>
+    <% }); %>
+  </div>
+</section>
+<% } %>

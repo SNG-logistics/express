@@ -1,6 +1,7 @@
 import { findBestShippingRate } from '../services/pricingService.js';
 import { previewPurchaseAgentQuote } from '../services/purchaseAgentPricingService.js';
 import { getProhibitedItems } from '../services/prohibitedItemsService.js';
+import { getPublishedTestimonials } from '../services/testimonialsService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
 
 function numberParam(value) {
@@ -87,15 +88,17 @@ export const WEIGHT_PRESETS = Object.freeze([
  * commitment nobody has made.
  */
 export async function purchaseEstimatePage(req, res) {
-  const [company, prohibited] = await Promise.all([
+  const [company, prohibited, testimonials] = await Promise.all([
     getCompanySettings(),
     getProhibitedItems(res.locals.lang),
+    getPublishedTestimonials(),
   ]);
   return publicView(res, 'customer/buy', {
     title: 'ซื้อของจากไทย | SNG Express',
     company,
     weightPresets: WEIGHT_PRESETS,
     prohibited,
+    testimonials,
   });
 }
 

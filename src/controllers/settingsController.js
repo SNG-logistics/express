@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import { listAllProhibitedItems, invalidateProhibitedItemsCache } from '../services/prohibitedItemsService.js';
+import { listAllTestimonials, invalidateTestimonialsCache } from '../services/testimonialsService.js';
 import bcrypt from 'bcryptjs';
 import { getCompanySettings } from '../services/companySettingsService.js';
 import { findBestShippingRate } from '../services/pricingService.js';
@@ -446,4 +447,130 @@ export async function deleteProhibitedItem(req, res) {
         req.session.flash = { type: 'error', message: err.message };
     }
     res.redirect('/settings/prohibited');
+}
+
+// ─── Customer proof ───────────────────────────────────────────────────────────
+// Photos and words customers sent us. Nothing here is invented, and nothing
+// reaches a public page without recorded permission — publishing someone who
+// never agreed would damage the exact trust this feature exists to build.
+
+export async function showTestimonials(req, res) {
+    try {
+        const rows = await listAllTestimonials();
+        const flash = req.session.flash;
+        delete req.session.flash;
+        res.render('settings/testimonials', {
+            user: req.session.user,
+            title: 'หลักฐานจากลูกค้า',
+            rows,
+            flash,
+        });
+    } catch (err) {
+        console.error('[Settings] showTestimonials:', err);
+        res.status(500).send(err.message);
+    }
+}
+
+/** Consent is resolved here, not trusted from whatever the form posted. */
+function consentFields(req, existing = null) {
+    const given = req.body.consent_given ? 1 : 0;
+    if (!given) return { given: 0, note: null, by: null, at: null };
+    // Keep the original attribution once consent has been recorded — re-saving
+    // the row must not rewrite who obtained it or when.
+    if (existing?.consent_given) {
+        return {
+            given: 1,
+            note: req.body.consent_note?.trim() || existing.consent_note,
+            by: existing.consent_by,
+            at: existing.consent_at,
+        };
+    }
+    return {
+        given: 1,
+        note: req.body.consent_note?.trim() || null,
+        by: req.session.user?.id ?? null,
+        at: new Date(),
+    };
+}
+
+export async function createTestimonial(req, res) {
+    try {
+        const { display_name, message, source_ref, sort_order, status } = req.body;
+        if (!display_name?.trim()) throw new Error('ต้องระบุชื่อที่จะแสดง');
+
+        const consent = consentFields(req);
+        // Published without consent is the one combination that must never
+        // persist, so it is downgraded here rather than rejected — the staff
+        // member keeps their typing and sees why it stayed a draft.
+        const safeStatus = consent.given && status === 'published' ? 'published' : 'draft';
+
+        await pool.query(
+            `INSERT INTO testimonials
+               (display_name, message, photo_path, source_ref,
+                consent_given, consent_note, consent_by, consent_at, status, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                display_name.trim(), message?.trim() || null,
+                req.file ? '/uploads/testimonials/' + req.file.filename : null,
+                source_ref?.trim() || null,
+                consent.given, consent.note, consent.by, consent.at,
+                safeStatus, Number(sort_order) || 0,
+            ]
+        );
+        invalidateTestimonialsCache();
+        req.session.flash = safeStatus === 'published'
+            ? { type: 'success', message: 'เพิ่มและเผยแพร่แล้ว' }
+            : { type: 'success', message: 'บันทึกเป็นฉบับร่าง — ต้องยืนยันว่าขออนุญาตลูกค้าแล้วจึงเผยแพร่ได้' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/testimonials');
+}
+
+export async function updateTestimonial(req, res) {
+    const { id } = req.params;
+    try {
+        const [[existing]] = await pool.query('SELECT * FROM testimonials WHERE id = ?', [id]);
+        if (!existing) throw new Error('ไม่พบรายการนี้');
+
+        const { display_name, message, source_ref, sort_order, status } = req.body;
+        if (!display_name?.trim()) throw new Error('ต้องระบุชื่อที่จะแสดง');
+
+        const consent = consentFields(req, existing);
+        const safeStatus = consent.given && status === 'published' ? 'published'
+            : status === 'hidden' ? 'hidden' : 'draft';
+
+        await pool.query(
+            `UPDATE testimonials
+                SET display_name = ?, message = ?, source_ref = ?,
+                    consent_given = ?, consent_note = ?, consent_by = ?, consent_at = ?,
+                    status = ?, sort_order = ?
+                    ${req.file ? ', photo_path = ?' : ''}
+              WHERE id = ?`,
+            req.file
+                ? [display_name.trim(), message?.trim() || null, source_ref?.trim() || null,
+                   consent.given, consent.note, consent.by, consent.at,
+                   safeStatus, Number(sort_order) || 0,
+                   '/uploads/testimonials/' + req.file.filename, id]
+                : [display_name.trim(), message?.trim() || null, source_ref?.trim() || null,
+                   consent.given, consent.note, consent.by, consent.at,
+                   safeStatus, Number(sort_order) || 0, id]
+        );
+        invalidateTestimonialsCache();
+        req.session.flash = { type: 'success', message: 'บันทึกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/testimonials');
+}
+
+export async function deleteTestimonial(req, res) {
+    try {
+        await pool.query('DELETE FROM testimonials WHERE id = ?', [req.params.id]);
+        invalidateTestimonialsCache();
+        req.session.flash = { type: 'success', message: 'ลบแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/testimonials');
 }
