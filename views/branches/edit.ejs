@@ -164,15 +164,13 @@
       <h3 class="text-white font-semibold text-sm flex items-center gap-2">
         <i class="fa-solid fa-chart-pie text-amber-400"></i> แบ่งรายได้
       </h3>
+      <%# No warning about the rider's share here on purpose. Riders are salaried,
+          so they take no cut of the delivery fee — and the validation requires
+          Hub% + Branch% to total exactly 100, which makes a rider share
+          structurally impossible anyway. A warning that fires on every correctly
+          configured branch only teaches people to stop reading warnings. %>
       <p class="text-slate-500 text-xs leading-relaxed">
-        Hub% + Branch% ต้องรวมเป็น 100 · ส่วนที่เหลือจาก 100 คือส่วนของไรเดอร์
-        <% const riderPct = 100 - Number(branch.split_hub_pct) - Number(branch.split_branch_pct); %>
-        <% if (riderPct <= 0) { %>
-          <span class="block mt-1 text-amber-300">
-            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-            ตอนนี้ไรเดอร์ได้ส่วนแบ่ง <%= riderPct %>% จากค่าส่ง — ถ้าตั้งใจให้ไรเดอร์ได้ส่วนแบ่ง ต้องลด Hub หรือ Branch ลง
-          </span>
-        <% } %>
+        Hub% + Branch% ต้องรวมเป็น 100 · ไรเดอร์รับเงินเดือน จึงไม่ได้ส่วนแบ่งจากค่าส่ง
       </p>
 
       <div class="grid grid-cols-3 gap-3">

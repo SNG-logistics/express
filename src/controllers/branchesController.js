@@ -504,6 +504,12 @@ export async function assignOrderToBranch(orderId, branchId, conn = pool, precom
 
   const hubAmt = fee * (Number(branch.split_hub_pct) / 100);
   const branchAmt = fee * (Number(branch.split_branch_pct) / 100);
+  // Always zero today, and deliberately so: riders are paid a salary rather than
+  // a cut of the delivery fee, and the branch form requires Hub% + Branch% to
+  // total exactly 100. The column is kept rather than dropped because the
+  // remainder is the natural place a per-delivery share would land — switching
+  // to that model means relaxing that validation to "at most 100", not
+  // reworking the settlement maths.
   const riderAmt = fee - hubAmt - branchAmt;
   const deliveryNo = genDeliveryNo(orderId);
 
