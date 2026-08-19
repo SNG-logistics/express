@@ -53,6 +53,22 @@ const TEMPLATES = Object.freeze({
     `ຊື້ສຳເລັດແລ້ວ ✅ ${quoteNo} (${productName})\n` +
     `ສິນຄ້າກຳລັງຈະເຂົ້າສາງ SNG ປະເທດໄທ ແລະ ຈະສົ່ງຕໍ່ມາລາວຕາມຂັ້ນຕອນປົກກະຕິ.`,
 
+  // The two messages that fill the old silence between paying the shop and the
+  // goods reaching SNG. Box counts are included because one order often ships in
+  // several boxes, and "2 of 3" explains on its own why nothing has crossed the
+  // border yet. The shop's own tracking number is deliberately never mentioned.
+  SUPPLIER_SHIPPED: ({ quoteNo, productName, shipped, expected }) =>
+    `ຮ້ານຄ້າສົ່ງສິນຄ້າແລ້ວ 🚚 ${quoteNo} (${productName})\n` +
+    (expected > 1
+      ? `ສົ່ງອອກແລ້ວ ${shipped}/${expected} ກ່ອງ ກຳລັງເດີນທາງມາສາງ SNG ປະເທດໄທ\n`
+      : `ກຳລັງເດີນທາງມາສາງ SNG ປະເທດໄທ\n`) +
+    `ປົກກະຕິໃຊ້ເວລາປະມານ 3–5 ວັນ ເຮົາຈະແຈ້ງໃຫ້ຮູ້ເມື່ອສິນຄ້າຮອດສາງ.`,
+
+  AT_TH_HUB: ({ quoteNo, productName, arrived, expected }) =>
+    `ສິນຄ້າຮອດສາງ SNG ແລ້ວ ✅ ${quoteNo} (${productName})\n` +
+    (expected > 1 ? `ຮອດຄົບ ${arrived}/${expected} ກ່ອງ\n` : '') +
+    `ຕໍ່ໄປເຮົາຈະສົ່ງຂ້າມແດນມາລາວ ແລະ ຈະສ້າງເລກພັດສະດຸ SNG ໃຫ້ທ່ານຕິດຕາມ.`,
+
   BRIDGED: ({ jobNo, quoteNo }) =>
     `ສ້າງໃບຂົນສົ່ງແລ້ວ 📦 ເລກພັດສະດຸ: ${jobNo || ''} (ຈາກໃບສະເໝີ ${quoteNo || ''})\n` +
     `ຕິດຕາມສະຖານະໄດ້ທາງເວັບ / ແອັບ SNG.`,
@@ -67,6 +83,10 @@ const STAGE_BY_EVENT = {
   'PURCHASE_AGENT:DEPOSIT_RECORDED': 'DEPOSIT_RECORDED',
   'PURCHASE_AGENT:PURCHASING': 'PURCHASING',
   'PURCHASE_AGENT:PURCHASED': 'PURCHASED',
+  // transitionQuotation derives the event name from the status, so these two
+  // must match the SUPPLIER_SHIPPED / AT_TH_HUB statuses exactly.
+  'PURCHASE_AGENT:SUPPLIER_SHIPPED': 'SUPPLIER_SHIPPED',
+  'PURCHASE_AGENT:AT_TH_HUB': 'AT_TH_HUB',
   'PURCHASE_AGENT:BRIDGED': 'BRIDGED',
 };
 

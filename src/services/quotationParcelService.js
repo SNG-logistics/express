@@ -151,6 +151,60 @@ export async function deleteParcel(parcelId, quotationId, conn = pool) {
   return { deleted: true };
 }
 
+/**
+ * Statuses whose position on the Thai leg is owned by the parcels. Outside this
+ * band the quotation is either not there yet (`purchasing` and earlier) or past
+ * it (`ordered`, `cancelled`) and a parcel edit must not drag it back.
+ */
+const PARCEL_DRIVEN_STATUSES = new Set(['purchased', 'supplier_shipped', 'at_th_hub']);
+
+/**
+ * Push the quotation to whatever stage its boxes now imply.
+ *
+ * Called after any parcel is added, edited or removed. Staff never pick these
+ * statuses themselves — recording that a box shipped IS the status change, so
+ * there is no second screen to remember and no way for the two to disagree.
+ *
+ * @returns {Promise<{changed:boolean, from?:string, to?:string, reason?:string}>}
+ */
+export async function syncQuotationStage(quotationId, userId = null) {
+  const [[quotation]] = await pool.query(
+    'SELECT id, status FROM partner_quotations WHERE id = ?', [quotationId]
+  );
+  if (!quotation) return { changed: false, reason: 'NOT_FOUND' };
+  if (!PARCEL_DRIVEN_STATUSES.has(quotation.status)) {
+    return { changed: false, reason: 'STAGE_NOT_PARCEL_DRIVEN' };
+  }
+
+  const parcels = await listParcels(quotationId);
+  const target = deriveSupplierStage(parcels);
+  if (target === quotation.status) return { changed: false, reason: 'ALREADY_THERE' };
+
+  const progress = parcelProgress(parcels);
+  const { transitionQuotation } = await import('./quotationWorkflowService.js');
+  await transitionQuotation({
+    quotationId,
+    toStatus: target,
+    userId,
+    note: `[PARCELS] ${progress.arrived}/${progress.expected} กล่องถึงคลังไทย`,
+    // Only tell the customer about forward progress. Walking the stage back to
+    // correct a mis-marked box is bookkeeping, and messaging them "your goods
+    // have un-arrived" would do nothing but alarm them.
+    notify: isForward(quotation.status, target),
+    extraPayload: {
+      shipped: progress.shipped + progress.arrived,
+      arrived: progress.arrived,
+      expected: progress.expected,
+    },
+  });
+  return { changed: true, from: quotation.status, to: target };
+}
+
+const STAGE_ORDER = ['purchased', 'supplier_shipped', 'at_th_hub'];
+function isForward(from, to) {
+  return STAGE_ORDER.indexOf(to) > STAGE_ORDER.indexOf(from);
+}
+
 function normaliseStatus(raw) {
   const status = String(raw || 'PENDING').toUpperCase();
   if (!PARCEL_STATUSES.includes(status)) {

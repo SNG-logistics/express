@@ -62,3 +62,65 @@ test('every parcel status is handled by the stage derivation', () => {
     assert.equal(deriveSupplierStage([box(status)]), expected[status], status);
   }
 });
+
+// ── Phase 2: the derived stages inside the quotation status machine ──────────
+import { canTransitionQuotation, getNextQuotationStatuses } from '../../src/constants/transitions.js';
+import { buildPurchaseAgentMessage } from '../../src/services/purchaseAgentNotificationService.js';
+
+test('the Thai-leg stages can be skipped entirely', () => {
+  // An order whose boxes nobody recorded must still be able to become a
+  // shipment, or forgetting to fill the form would strand the quotation.
+  assert.equal(canTransitionQuotation('purchased', 'ordered'), true);
+});
+
+test('a mis-marked box can walk the stage back, but nothing walks back out of ordered', () => {
+  // deriveSupplierStage recomputes from the boxes, so correcting one that was
+  // marked arrived by mistake lowers the stage; refusing that would leave the
+  // quotation permanently overstating where the goods are.
+  assert.equal(canTransitionQuotation('at_th_hub', 'supplier_shipped'), true);
+  assert.equal(canTransitionQuotation('at_th_hub', 'purchased'), true);
+  assert.equal(canTransitionQuotation('supplier_shipped', 'purchased'), true);
+  // Once a real shipment exists there is no going back.
+  assert.equal(canTransitionQuotation('ordered', 'at_th_hub'), false);
+  assert.equal(canTransitionQuotation('ordered', 'purchased'), false);
+});
+
+test('the Thai leg runs forward in order', () => {
+  assert.equal(canTransitionQuotation('purchased', 'supplier_shipped'), true);
+  assert.equal(canTransitionQuotation('supplier_shipped', 'at_th_hub'), true);
+  // Still no jumping into the leg from before the goods were bought.
+  assert.equal(canTransitionQuotation('accepted', 'supplier_shipped'), false);
+  assert.equal(canTransitionQuotation('purchasing', 'at_th_hub'), false);
+});
+
+test('cancelling stays available throughout the Thai leg', () => {
+  for (const stage of ['purchased', 'supplier_shipped', 'at_th_hub']) {
+    assert.ok(getNextQuotationStatuses(stage).includes('cancelled'), stage);
+  }
+});
+
+test('both new stages have a customer message, and it never leaks the shop', () => {
+  const shipped = buildPurchaseAgentMessage('PURCHASE_AGENT:SUPPLIER_SHIPPED', {
+    quoteNo: 'PQ-20260819-0001', productName: 'ตุ๊กตา', shipped: 2, expected: 3,
+  });
+  const arrived = buildPurchaseAgentMessage('PURCHASE_AGENT:AT_TH_HUB', {
+    quoteNo: 'PQ-20260819-0001', productName: 'ตุ๊กตา', arrived: 3, expected: 3,
+  });
+
+  for (const text of [shipped, arrived]) {
+    assert.ok(text, 'template missing');
+    assert.ok(text.includes('PQ-20260819-0001'));
+    // The owner's decision: customers never see the platform or its tracking.
+    assert.doesNotMatch(text, /lazada|shopee|lex|flash|kerry|j&t/i);
+  }
+  assert.match(shipped, /2\/3/);
+  assert.match(arrived, /3\/3/);
+});
+
+test('a single-box order is not told about box counts', () => {
+  // "1/1 boxes" is noise; the counts only earn their place when a split happened.
+  const text = buildPurchaseAgentMessage('PURCHASE_AGENT:AT_TH_HUB', {
+    quoteNo: 'PQ-1', productName: 'ตุ๊กตา', arrived: 1, expected: 1,
+  });
+  assert.doesNotMatch(text, /1\/1/);
+});

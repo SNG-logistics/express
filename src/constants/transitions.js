@@ -54,15 +54,29 @@ const TRIP_TRANSITIONS = {
 // Same shape as the order/trip machines. `accepted → purchasing` is additionally
 // gated at the service layer on payment_status === 'PAID' (deposit covered) —
 // the graph below only encodes the status relationship itself.
+// `supplier_shipped` and `at_th_hub` cover the Thai leg — the platform's own
+// courier carrying the goods to SNG's Thai warehouse. Unlike every other status
+// here they are DERIVED from quotation_parcels (deriveSupplierStage), never
+// chosen by a person, which shapes the edges two ways:
+//
+//   * they can be skipped — `purchased → ordered` stays legal, because an order
+//     whose boxes nobody recorded must still be able to become a shipment;
+//   * they can move BACKWARDS between themselves. Correcting a box that was
+//     marked arrived by mistake lowers the derived stage, and a guard that
+//     refused it would leave the quotation permanently overstating where the
+//     goods are. Going back out of `ordered` stays forbidden — by then a real
+//     shipment exists.
 const QUOTATION_TRANSITIONS = {
-  draft:       ['sent', 'cancelled'],
-  sent:        ['accepted', 'rejected', 'cancelled'],
-  accepted:    ['purchasing', 'cancelled'],
-  purchasing:  ['purchased', 'cancelled'],
-  purchased:   ['ordered', 'cancelled'],
-  rejected:    [],
-  ordered:     [],
-  cancelled:   [],
+  draft:            ['sent', 'cancelled'],
+  sent:             ['accepted', 'rejected', 'cancelled'],
+  accepted:         ['purchasing', 'cancelled'],
+  purchasing:       ['purchased', 'cancelled'],
+  purchased:        ['supplier_shipped', 'at_th_hub', 'ordered', 'cancelled'],
+  supplier_shipped: ['at_th_hub', 'purchased', 'ordered', 'cancelled'],
+  at_th_hub:        ['supplier_shipped', 'purchased', 'ordered', 'cancelled'],
+  rejected:         [],
+  ordered:          [],
+  cancelled:        [],
 };
 
 // ─── Public API ──────────────────────────────────────────────────────────────

@@ -34,6 +34,7 @@ export async function transitionQuotation({
   note = null,
   connection = null,
   notify = true,
+  extraPayload = {},
 }) {
   const conn = connection || await pool.getConnection();
   const ownsTransaction = !connection;
@@ -100,6 +101,9 @@ export async function transitionQuotation({
         quotationId,
         eventType: `PURCHASE_AGENT:${toStatus.toUpperCase()}`,
         eventKey: `PURCHASE_AGENT:${quotation.quote_no}:${toStatus}:${logResult.insertId}`,
+        // Carries per-stage detail the standard payload cannot know — the Thai
+        // leg's box counts, for one, which turn "shipped" into "2 of 3 boxes".
+        extraPayload,
       });
     }
 

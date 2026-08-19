@@ -325,7 +325,9 @@
     "platformTikTokShop": "TikTok Shop",
     "platformAlibaba": "Alibaba",
     "platformMakro": "Makro",
-    "platformOther": "อื่นๆ"
+    "platformOther": "อื่นๆ",
+    "statusSupplierShipped": "ร้านค้าส่งของแล้ว",
+    "statusAtThHub": "ถึงคลัง SNG ไทยแล้ว"
   },
   "shops": {
     "title": "ร้านค้าเข้าร่วม",

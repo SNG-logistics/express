@@ -325,7 +325,9 @@
     "platformTikTokShop": "TikTok Shop",
     "platformAlibaba": "Alibaba",
     "platformMakro": "Makro",
-    "platformOther": "ອື່ນໆ"
+    "platformOther": "ອື່ນໆ",
+    "statusSupplierShipped": "ຮ້ານຄ້າສົ່ງສິນຄ້າແລ້ວ",
+    "statusAtThHub": "ຮອດສາງ SNG ໄທແລ້ວ"
   },
   "shops": {
     "title": "ຮ້ານຄ້າເຂົ້າຮ່ວມ",

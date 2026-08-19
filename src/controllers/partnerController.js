@@ -7,7 +7,7 @@ import { getNextQuotationStatuses } from '../constants/transitions.js';
 import { enqueuePurchaseAgentNotification, kickNotificationWorker } from '../services/notificationService.js';
 import {
     listParcels, addParcel, updateParcel, deleteParcel,
-    parcelProgress, deriveSupplierStage,
+    parcelProgress, deriveSupplierStage, syncQuotationStage,
 } from '../services/quotationParcelService.js';
 
 // Statuses a quotation may be persisted in directly at create time.
@@ -648,6 +648,7 @@ export async function createParcel(req, res) {
     try {
         await saveSupplierOrderNo(id, req.body.supplier_order_no);
         await addParcel(id, req.body, req.session.user?.id ?? null);
+        await syncQuotationStage(id, req.session.user?.id ?? null);
         req.session.flash = { type: 'success', message: 'บันทึกพัสดุขาไทยแล้ว' };
     } catch (err) {
         console.error('[Partner] createParcel:', err);
@@ -660,6 +661,7 @@ export async function editParcel(req, res) {
     const { id, parcelId } = req.params;
     try {
         await updateParcel(parcelId, id, req.body);
+        await syncQuotationStage(id, req.session.user?.id ?? null);
         req.session.flash = { type: 'success', message: 'อัปเดตพัสดุแล้ว' };
     } catch (err) {
         console.error('[Partner] editParcel:', err);
@@ -672,6 +674,7 @@ export async function removeParcel(req, res) {
     const { id, parcelId } = req.params;
     try {
         await deleteParcel(parcelId, id);
+        await syncQuotationStage(id, req.session.user?.id ?? null);
         req.session.flash = { type: 'success', message: 'ลบพัสดุแล้ว' };
     } catch (err) {
         console.error('[Partner] removeParcel:', err);

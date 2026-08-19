@@ -7,6 +7,8 @@
     rejected:   { cls:'text-red-400 bg-red-500/10 border-red-500/20',             label:'ลูกค้าปฏิเสธ',      icon:'fa-ban' },
     purchasing: { cls:'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',          label:'กำลังสั่งซื้อ',      icon:'fa-cart-shopping' },
     purchased:  { cls:'text-purple-400 bg-purple-500/10 border-purple-500/20',    label:'สั่งซื้อสำเร็จแล้ว', icon:'fa-box' },
+    supplier_shipped: { cls:'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', label:'ร้านส่งของแล้ว',   icon:'fa-truck-fast' },
+    at_th_hub:  { cls:'text-teal-400 bg-teal-500/10 border-teal-500/20',           label:'ถึงคลัง SNG ไทยแล้ว', icon:'fa-warehouse' },
     ordered:    { cls:'text-amber-400 bg-amber-500/10 border-amber-500/20',       label:'สร้างออเดอร์ขนส่งแล้ว', icon:'fa-truck' },
     cancelled:  { cls:'text-red-400 bg-red-500/10 border-red-500/20',             label:'ยกเลิก',           icon:'fa-xmark' },
   };
@@ -20,11 +22,19 @@
     rejected: 'ปฏิเสธ (แทนลูกค้า)',
     purchasing: 'เริ่มสั่งซื้อ',
     purchased: 'สั่งซื้อสำเร็จแล้ว',
+    supplier_shipped: 'ร้านส่งของแล้ว',
+    at_th_hub: 'ถึงคลัง SNG ไทยแล้ว',
     ordered: 'สร้างออเดอร์แล้ว',
     cancelled: 'ยกเลิกใบเสนอราคา',
   };
   const s = STATUS_META[quote.status] || STATUS_META.draft;
-  const nextStatusList = typeof nextStatuses !== 'undefined' ? nextStatuses : [];
+  // supplier_shipped / at_th_hub are computed from the Thai-leg boxes below and
+  // must not be offered as buttons: setting one by hand would be overwritten the
+  // next time a box is edited, leaving staff to wonder why their click undid
+  // itself. Recording the box IS how those stages are reached.
+  const PARCEL_DRIVEN = ['supplier_shipped', 'at_th_hub'];
+  const nextStatusList = (typeof nextStatuses !== 'undefined' ? nextStatuses : [])
+    .filter(ns => !PARCEL_DRIVEN.includes(ns));
   const statusLogs = typeof logs !== 'undefined' ? logs : [];
 
   const qty         = Math.max(1, Number(quote.desired_qty) || 1);
