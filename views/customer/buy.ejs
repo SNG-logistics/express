@@ -128,6 +128,13 @@
     const fmt      = new Intl.NumberFormat('<%= lang === "lo" ? "lo-LA" : "th-TH" %>');
 
     const set = (id, value) => { document.getElementById(id).textContent = fmt.format(Math.round(value)); };
+    const freeLabel = <%- JSON.stringify(t('buy.rowServiceFree')) %>;
+    // A fee the owner switched off for a promotion still arrives as the number
+    // 0 — showing "0 LAK" reads as a broken calculator, not a deal. "ฟรี" is
+    // what turns it into the selling point it is meant to be.
+    const setService = (value) => {
+      document.getElementById('rowService').textContent = value > 0 ? fmt.format(Math.round(value)) : freeLabel;
+    };
     const weight = () => Number(form.querySelector('input[name="weight"]:checked')?.value || 0);
 
     let inFlight = null;
@@ -155,7 +162,7 @@
         set('payLater', data.payOnDeliveryLak);
         set('rowProduct', data.productLak);
         set('rowShipping', data.shippingLak);
-        set('rowService', data.serviceFeeLak);
+        setService(data.serviceFeeLak);
         set('rowTotal', data.totalLak);
         heavy.hidden = data.shippingKnown;
 

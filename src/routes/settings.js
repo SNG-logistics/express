@@ -96,6 +96,7 @@ router.post('/settings/clear-test-data', requireLogin, requireRole('admin'), set
 
 // ─── Company Profile (Admin only) ─────────────────────────────────────────────
 router.post('/settings/company-profile', requireLogin, requireRole('admin'), settings.updateCompanyProfile);
+router.post('/settings/purchase-agent', requireLogin, requireRole(['admin','manager']), settings.updatePurchaseAgentSettings);
 router.post('/settings/company-logo',    requireLogin, requireRole('admin'), logoUpload.single('logo_file'), settings.uploadCompanyLogo);
 
 export default router;

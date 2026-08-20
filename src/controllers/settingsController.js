@@ -331,6 +331,59 @@ export async function updateCompanyProfile(req, res) {
     }
 }
 
+/**
+ * POST /settings/purchase-agent
+ *
+ * The buy-on-behalf service fee: MAX(minimum, product cost × percent). Both
+ * numbers already drove every quote and the customer estimator, but nothing in
+ * the app could change them — they existed only in the seed script, so the
+ * owner could not run a launch promotion without editing the database.
+ */
+export async function updatePurchaseAgentSettings(req, res) {
+    const userId = req.session.user?.id || null;
+    const back = '/settings/member#purchaseAgent';
+
+    // Blank is rejected rather than treated as zero: "I left it empty" and "I am
+    // making it free" are different intentions and must not be guessed at.
+    const read = (raw, label, max) => {
+        if (raw === undefined || raw === null || String(raw).trim() === '') {
+            throw new Error(`กรุณากรอก${label}`);
+        }
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < 0) throw new Error(`${label}ต้องเป็นตัวเลขไม่ติดลบ`);
+        if (max !== undefined && value > max) throw new Error(`${label}ต้องไม่เกิน ${max}`);
+        return value;
+    };
+
+    try {
+        const feeMin = read(req.body.fee_min_lak, 'ค่าบริการขั้นต่ำ');
+        const feePct = read(req.body.fee_pct, 'เปอร์เซ็นต์ค่าบริการ', 100);
+
+        for (const [key, value] of [
+            ['purchase_agent_fee_min_lak', String(feeMin)],
+            ['purchase_agent_fee_pct', String(feePct)],
+        ]) {
+            await pool.query(
+                'INSERT INTO company_settings (setting_key, setting_value, updated_by) VALUES (?, ?, ?) '
+                + 'ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value), updated_by=VALUES(updated_by)',
+                [key, value, userId]
+            );
+        }
+
+        req.session.flash = {
+            type: 'success',
+            message: feeMin === 0 && feePct === 0
+                ? '✅ บันทึกแล้ว — เปิดโปรโมชั่นฟรีค่าบริการสั่งซื้อแทน'
+                : `✅ บันทึกแล้ว — ค่าบริการ: ขั้นต่ำ ${feeMin.toLocaleString('en-US')} LAK หรือ ${feePct}% แล้วแต่จำนวนใดมากกว่า`,
+        };
+        res.redirect(back);
+    } catch (err) {
+        console.error('[Settings] updatePurchaseAgentSettings:', err.message);
+        req.session.flash = { type: 'error', message: err.message };
+        res.redirect(back);
+    }
+}
+
 export async function uploadCompanyLogo(req, res) {
     const userId  = req.session.user?.id || null;
     const logoKey = req.body.logo_target === 'la' ? 'company_logo_la' : 'company_logo';
