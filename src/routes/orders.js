@@ -13,6 +13,8 @@
  * │ Start crossing / border moves   │ admin, manager, dispatcher                │
  * │ Arrive dest warehouse           │ admin, manager, dispatcher, warehouse_la  │
  * │ Start delivery / mark delivered │ admin, manager, dispatcher                │
+ * │ Retry a failed delivery         │ admin, manager, dispatcher, driver_support, branch_operator │
+ * │ Release a stuck rider job       │ admin, manager, dispatcher                │
  * │ Return to sender (destructive)  │ admin, manager, dispatcher                │
  * │ Close order (irreversible)      │ admin, manager only                       │
  * │ Add payment/expense             │ admin, manager, finance, dispatcher       │
@@ -33,6 +35,7 @@ import {
   ROLES_RETURN_ORDER,
   ROLES_CLOSE_ORDER,
   ROLES_DELIVERY_WRITE,
+  ROLES_RIDER_REASSIGN,
   ROLES_READ,
 } from '../middleware/auth.js';
 import upload from '../config/upload.js';
@@ -109,6 +112,19 @@ router.post('/orders/:id/delivered',
 router.post('/orders/:id/delivery-failed',
   requireLogin, requireRole(ROLES_DELIVERY_WRITE),
   orders.markDeliveryFailed);
+
+// Retry a failed delivery — same gate as starting/completing delivery above,
+// since this is fixing that same action's broken "ส่งใหม่" button, not adding
+// a new capability.
+router.post('/orders/:id/delivery-retry',
+  requireLogin, requireRole(ROLES_DELIVERY_WRITE),
+  orders.retryFailedDelivery);
+
+// Release a stuck rider job — a genuinely new capability, so central-dispatch
+// only rather than matching the broader ROLES_DELIVERY_WRITE above.
+router.post('/orders/:id/release-rider',
+  requireLogin, requireRole(ROLES_RIDER_REASSIGN),
+  orders.releaseRiderAssignment);
 
 // ─── Destructive / irreversible actions ───────────────────────────────────────
 
