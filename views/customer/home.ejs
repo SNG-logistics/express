@@ -6,8 +6,11 @@
   const homeMember = typeof portalCurrentUser !== 'undefined' ? portalCurrentUser : null;
   const companyName = company['company_name_' + companySuffix] || company.company_name_th || 'SNG Express';
   const companyAddress = company['company_address_' + companySuffix] || company.company_address_th || '';
-  const companyPhone = company.company_phone || '';
-  const companyEmail = company.company_email || '';
+  // The phone and email used to read the shared key only, so a Lao reader got
+  // a Lao address next to a Thai mobile — and the numbers typed into Settings
+  // changed nothing here.
+  const contactPhone = companyPhone(company, lang);
+  const contactEmail = companyEmail(company, lang);
 %>
 <section class="portal-shell home-page">
   <header class="home-hero">
@@ -130,16 +133,16 @@
     <strong><%= companyName %></strong>
     <% if (companyAddress) { %><span class="home-contact-address"><%= companyAddress %></span><% } %>
     <div class="home-contact-actions">
-      <% if (companyPhone) { %>
-        <a href="tel:<%= companyPhone.replace(/\s+/g, '') %>">
+      <% if (contactPhone) { %>
+        <a href="tel:<%= telHref(contactPhone) %>">
           <i class="fa-solid fa-phone" aria-hidden="true"></i>
-          <span><%= companyPhone %></span>
+          <span><%= contactPhone %></span>
         </a>
       <% } %>
-      <% if (companyEmail) { %>
-        <a href="mailto:<%= companyEmail %>">
+      <% if (contactEmail) { %>
+        <a href="mailto:<%= contactEmail %>">
           <i class="fa-regular fa-envelope" aria-hidden="true"></i>
-          <span><%= companyEmail %></span>
+          <span><%= contactEmail %></span>
         </a>
       <% } %>
     </div>
