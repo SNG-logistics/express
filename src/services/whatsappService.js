@@ -3,6 +3,7 @@ import pool from '../config/db.js';
 import { toWaPhone } from '../utils/waPhone.js';
 
 import pino from 'pino';
+import { classifyDisconnect } from './whatsappDisconnect.js';
 
 // Variables to hold state
 let sock;
@@ -17,8 +18,12 @@ let reconnectAttempts = 0;
 // actually being dead — a snapshot of connectionStatus alone can't tell those
 // apart since DISCONNECTED flashes briefly on every routine reconnect too.
 let disconnectedSince = null;
+// CONFLICT counts as down and deliberately never clears on its own: the
+// service stops reconnecting there, so without the alert the outbox would
+// quietly stop delivering with nothing on screen to say why.
+const DOWN_STATUSES = new Set(['DISCONNECTED', 'ERROR', 'CONFLICT']);
 setInterval(() => {
-    const isDown = connectionStatus === 'DISCONNECTED' || connectionStatus === 'ERROR';
+    const isDown = DOWN_STATUSES.has(connectionStatus);
     if (isDown && !disconnectedSince) disconnectedSince = Date.now();
     if (!isDown) disconnectedSince = null;
 }, 60 * 1000);
@@ -44,6 +49,32 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Both paths are absolute, and every reader and writer uses these constants.
+ *
+ * Baileys was previously handed the bare string 'auth_info_baileys', which it
+ * resolves against process.cwd(), while every place that CLEARS the session
+ * used __dirname. Those agree only when the app happens to be started from the
+ * project root — Passenger and pm2 do not set the same working directory — so
+ * credentials could be written to one folder while "Delete session" emptied
+ * another, and the reset button appeared to do nothing at all.
+ */
+const AUTH_PATH = path.join(__dirname, '../../auth_info_baileys');
+const DISABLE_FLAG_PATH = path.join(__dirname, '../../DISABLE_WHATSAPP');
+
+const isDisabled = () => fs.existsSync(DISABLE_FLAG_PATH);
+
+function clearAuthFolder(reason) {
+    try {
+        if (fs.existsSync(AUTH_PATH)) {
+            fs.rmSync(AUTH_PATH, { recursive: true, force: true });
+            addLog(`Auth directory cleared (${reason}).`);
+        }
+    } catch (err) {
+        addLog('Error clearing auth dir: ' + err.message);
+    }
+}
+
 export const deleteSession = async () => {
     addLog('Deleting session and restarting...');
     try {
@@ -59,16 +90,7 @@ export const deleteSession = async () => {
     connectionStatus = 'DISCONNECTED';
     qrCodeData = null;
 
-    // Remove auth folder
-    const authPath = path.join(__dirname, '../../auth_info_baileys');
-    try {
-        if (fs.existsSync(authPath)) {
-            fs.rmSync(authPath, { recursive: true, force: true });
-            addLog('Auth directory deleted.');
-        }
-    } catch (e) {
-        addLog('Error deleting auth dir: ' + e.message);
-    }
+    clearAuthFolder('manual delete');
 
     // Wait and restart
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -76,8 +98,7 @@ export const deleteSession = async () => {
 };
 
 async function startSock() {
-    const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-    if (fs.existsSync(flagPath)) {
+    if (isDisabled()) {
         addLog('Start skipped: Service is manually disabled.');
         connectionStatus = 'DISABLED_MANUALLY';
         return;
@@ -88,11 +109,11 @@ async function startSock() {
     lastError = null;
     try {
         // Dynamic Import to save memory on startup
-        const { makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = await import('@whiskeysockets/baileys');
+        const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = await import('@whiskeysockets/baileys');
 
         const { version } = await fetchLatestBaileysVersion();
         addLog(`Using WA version ${version.join('.')}`);
-        const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+        const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH);
 
         sock = makeWASocket({
             printQRInTerminal: false, // We handle QR in UI
@@ -117,85 +138,43 @@ async function startSock() {
 
             if (connection === 'close') {
                 const errMsg = lastDisconnect?.error?.message || lastDisconnect?.error?.description || lastDisconnect?.error?.toString() || 'Unknown';
-                // WhatsApp only supplies a handful of QR ref tokens per pairing
-                // session. If the QR is never scanned, Baileys closes with
-                // "QR refs attempts ended" (408/timedOut). That's a normal
-                // expiry — NOT a failure — so don't count it toward the
-                // reconnect/auth-clear threshold; just quietly refresh the QR.
-                const isQrExpired = typeof errMsg === 'string' && errMsg.includes('QR refs attempts ended');
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
 
-                if (isQrExpired) {
-                    console.log('[WhatsApp] QR expired (no scan). Refreshing QR...');
-                    addLog('QR หมดอายุ (ยังไม่สแกน) กำลังสร้าง QR ใหม่...');
-                    connectionStatus = 'QR_READY';
-                    isClientReady = false;
-                    qrCodeData = null; // force the UI to render the fresh QR
-                    lastError = null;
-                    const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-                    if (fs.existsSync(flagPath)) {
-                        connectionStatus = 'DISABLED_MANUALLY';
-                        return;
-                    }
-                    setTimeout(startSock, 1500);
-                    return;
-                }
+                // The decision itself lives in whatsappDisconnect.js, where it
+                // can be tested; this block only carries it out.
+                const plan = classifyDisconnect({
+                    statusCode,
+                    errorMessage: errMsg,
+                    reconnectAttempts,
+                    manuallyDisabled: isDisabled(),
+                });
 
-                // Dynamic import makes DisconnectReason available here? 
-                // Yes, it is in the same scope (try block of startSock).
-                // But wait, makeWASocket returns sock.
-                // sock.ev.on is called.
-                // DisconnectReason comes from the destructuring at the top of the try block.
-                // So it is available.
-                const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-                console.log('[WhatsApp] Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
-                addLog(`Connection closed. Reconnecting: ${shouldReconnect}. Error: ${errMsg}`);
-
-                connectionStatus = 'DISCONNECTED';
+                console.log('[WhatsApp] Connection closed:', errMsg, '->', plan.action);
                 isClientReady = false;
                 qrCodeData = null;
-                lastError = errMsg || 'Connection Closed';
-                reconnectAttempts += 1;
+                connectionStatus = plan.status;
+                reconnectAttempts = plan.countsAsFailure ? reconnectAttempts + 1 : 0;
 
-                // Reconnect if not logged out
-                if (shouldReconnect) {
-                    const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-                    if (fs.existsSync(flagPath)) {
-                        addLog('Reconnect aborted: Service is manually disabled.');
-                        return;
-                    }
-
-                    // After a few failed reconnects, clear auth to force a fresh QR
-                    if (reconnectAttempts >= 3) {
-                        try {
-                            const authPath = path.join(__dirname, '../../auth_info_baileys');
-                            if (fs.existsSync(authPath)) {
-                                fs.rmSync(authPath, { recursive: true, force: true });
-                                addLog('Cleared auth after repeated failures; will request new QR.');
-                            }
-                        } catch (err) {
-                            addLog('Error clearing auth dir: ' + err.message);
-                        }
-                        reconnectAttempts = 0;
-                    }
-                    setTimeout(startSock, 5000); // Retry in 5s
+                if (plan.action === 'refresh-qr') {
+                    addLog('QR หมดอายุ (ยังไม่สแกน) กำลังสร้าง QR ใหม่...');
+                    lastError = null;
+                } else if (plan.action === 'stand-down') {
+                    // Scanning a new QR cannot fix this, so say what will.
+                    console.warn('[WhatsApp] Session taken over by another client (440). Standing down.');
+                    addLog('พบการเชื่อมต่อซ้ำ (conflict) — มีโปรแกรมอื่นใช้บัญชีนี้อยู่');
+                    addLog('ตรวจว่ามีแอปรันซ้ำสองที่หรือไม่ (pm2 + Plesk/Passenger) แล้วกด Restart');
+                    lastError = 'Session replaced by another client (conflict)';
                 } else {
-                    console.log('[WhatsApp] Logged out. Please scan QR again.');
-                    addLog('Logged out. Clearing session and regenerating QR...');
-                    try {
-                        const authPath = path.join(__dirname, '../../auth_info_baileys');
-                        if (fs.existsSync(authPath)) {
-                            fs.rmSync(authPath, { recursive: true, force: true });
-                            addLog('Auth directory cleared after logout.');
-                        }
-                    } catch (err) {
-                        addLog('Error clearing auth dir: ' + err.message);
-                    }
-                    // Start fresh to emit a new QR
-                    const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-                    if (!fs.existsSync(flagPath)) {
-                        setTimeout(startSock, 2000);
-                    }
+                    addLog(`Connection closed (${plan.action}). Error: ${errMsg}`);
+                    lastError = errMsg || 'Connection Closed';
                 }
+
+                if (plan.clearAuth) {
+                    clearAuthFolder(plan.action === 'reauthenticate' ? 'logged out' : 'repeated reconnect failures');
+                    reconnectAttempts = 0;
+                }
+
+                if (plan.retryInMs !== null) setTimeout(startSock, plan.retryInMs);
             } else if (connection === 'open') {
                 console.log('[WhatsApp] Connection opened');
                 addLog('Connection opened/Active');
@@ -235,8 +214,7 @@ async function startSock() {
 // Start the socket
 console.log('[WhatsApp] Initializing Baileys...');
 addLog('Initializing Service...');
-const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-if (!fs.existsSync(flagPath)) {
+if (!isDisabled()) {
     startSock(); // Enabled auto-start
 } else {
     connectionStatus = 'DISABLED_MANUALLY';
@@ -248,8 +226,7 @@ export const restartClient = async () => {
     console.log('[WhatsApp] Restarting client...');
     addLog('Manual Restart requested...');
     try {
-        const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-        if (fs.existsSync(flagPath)) fs.unlinkSync(flagPath);
+        if (isDisabled()) fs.unlinkSync(DISABLE_FLAG_PATH);
     } catch (e) {}
     try {
         sock?.end(undefined); // Close current socket
@@ -280,8 +257,7 @@ export const stopClient = async () => {
     console.log('[WhatsApp] Stopping client manually...');
     addLog('Service stopped manually.');
     try {
-        const flagPath = path.join(__dirname, '../../DISABLE_WHATSAPP');
-        fs.writeFileSync(flagPath, 'true');
+        fs.writeFileSync(DISABLE_FLAG_PATH, 'true');
     } catch (e) {}
     try {
         sock?.end(undefined);
