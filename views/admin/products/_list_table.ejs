@@ -22,6 +22,7 @@
             <th style="width: 70px;">รูปภาพ</th>
             <th>ชื่อสินค้า</th>
             <th>ป้าย / ส่วนลด</th>
+            <th>ราคา</th>
             <th>แพลตฟอร์ม</th>
             <th>สถานะ</th>
             <th style="width: 100px;">การจัดการ</th>
@@ -65,6 +66,16 @@
                   <span class="text-muted">–</span>
                 <% } %>
               </td>
+              <td>
+                <% if (product.price !== null && product.price !== undefined && product.price !== '') { %>
+                  <span style="font-weight: 700; color: <%= product?.price_color || '#E53935' %>;">฿<%= Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
+                  <% if (product.original_price !== null && product.original_price !== undefined && product.original_price !== '') { %>
+                    <span class="text-muted" style="text-decoration: line-through; font-size: 0.85em;">฿<%= Number(product.original_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
+                  <% } %>
+                <% } else { %>
+                  <span class="text-muted">–</span>
+                <% } %>
+              </td>
               <td><%= product.platform || '–' %></td>
               <td>
                 <% if (product.status === 'published') { %>
@@ -87,7 +98,7 @@
             <% }); %>
           <% } else { %>
             <tr>
-              <td colspan="6" class="text-center py-4 text-muted">
+              <td colspan="7" class="text-center py-4 text-muted">
                 ยังไม่มีสินค้าในระบบ กดปุ่ม "เพิ่มสินค้าใหม่" เพื่อเริ่มต้น
               </td>
             </tr>

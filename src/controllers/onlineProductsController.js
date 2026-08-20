@@ -10,10 +10,25 @@ import pool from '../config/db.js';
 
 const ALLOWED_PLATFORMS = new Set(['lazada', 'shopee', 'alibaba', 'tiktok_shop', 'makro', 'other']);
 const ALLOWED_STATUSES = new Set(['draft', 'published', 'hidden']);
+const PRICE_PATTERN = /^#[0-9A-Fa-f]{6}$/;
+const DEFAULT_PRICE_COLOR = '#E53935';
 
 function parseDiscountPct(raw) {
   const value = parseFloat(raw);
   return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/** Parse a selling/original price: non-negative decimal, or null when absent. */
+function parsePrice(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/** Parse a #RRGGBB hex colour, defaulting to the e-commerce red. */
+function parsePriceColor(raw) {
+  const value = String(raw || '').trim();
+  return PRICE_PATTERN.test(value) ? value.toUpperCase() : DEFAULT_PRICE_COLOR;
 }
 
 function parsePlatform(raw) {
@@ -96,8 +111,9 @@ export async function adminCreateProduct(req, res) {
   try {
     await pool.query(
       `INSERT INTO online_products
-         (name, photos, badge_label, discount_pct, product_url, platform, status, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (name, photos, badge_label, discount_pct, product_url, platform, status, sort_order,
+          price, original_price, price_color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
         photoPaths.length > 0 ? JSON.stringify(photoPaths) : null,
@@ -107,6 +123,9 @@ export async function adminCreateProduct(req, res) {
         parsePlatform(platform),
         ALLOWED_STATUSES.has(status) ? status : 'draft',
         parseInt(sort_order, 10) || 0,
+        parsePrice(req.body.price),
+        parsePrice(req.body.original_price),
+        parsePriceColor(req.body.price_color),
       ]
     );
 
@@ -153,6 +172,9 @@ export async function adminUpdateProduct(req, res) {
       'platform = ?',
       'status = ?',
       'sort_order = ?',
+      'price = ?',
+      'original_price = ?',
+      'price_color = ?',
     ];
     const values = [
       name.trim(),
@@ -162,6 +184,9 @@ export async function adminUpdateProduct(req, res) {
       parsePlatform(platform),
       ALLOWED_STATUSES.has(status) ? status : 'draft',
       parseInt(sort_order, 10) || 0,
+      parsePrice(req.body.price),
+      parsePrice(req.body.original_price),
+      parsePriceColor(req.body.price_color),
     ];
 
     // Uploading a new set replaces the gallery. With no files, omit the

@@ -96,6 +96,80 @@
 
         <hr class="my-4">
 
+        <%# ── ราคาและการแสดงผล ───────────────────────────────────────────────
+            Selling price, optional struck-through original price, and the
+            selling-price colour. Live preview driven by Alpine (already loaded
+            on the admin layout) so the admin sees exactly what the member card
+            will show before saving. %>
+        <h5 class="fw-bold mb-1">ราคาและการแสดงผล</h5>
+        <p class="text-muted small mb-3">ราคาที่แสดงบนการ์ดสินค้าที่หน้า /online — ถ้าไม่กรอกราคา ระบบจะไม่แสดงบรรทัดราคาเลย</p>
+
+        <div class="row"
+             x-data="{
+               price: '<%= product?.price ?? '' %>',
+               originalPrice: '<%= product?.original_price ?? '' %>',
+               priceColor: '<%= product?.price_color || '#E53935' %>',
+               formatBaht(value) {
+                 const n = Number(value);
+                 return Number.isFinite(n) ? n.toFixed(2) : '';
+               }
+             }">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">ราคาขาย</label>
+            <div class="input-group">
+              <input type="number" step="0.01" min="0" class="form-control" name="price"
+                     placeholder="เช่น 299" value="<%= product?.price ?? '' %>"
+                     x-model="price">
+              <span class="input-group-text">฿</span>
+            </div>
+            <small class="text-muted">รองรับทศนิยม เช่น 67.50 — ต้องมากกว่าหรือเท่ากับ 0</small>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">ราคาปกติ <span class="text-muted fw-normal">(ไม่บังคับ)</span></label>
+            <div class="input-group">
+              <input type="number" step="0.01" min="0" class="form-control" name="original_price"
+                     placeholder="เช่น 699" value="<%= product?.original_price ?? '' %>"
+                     x-model="originalPrice">
+              <span class="input-group-text">฿</span>
+            </div>
+            <small class="text-muted">แสดงราคาเดิมขีดฆ่าไว้ข้างราคาขาย เช่น ฿299 <s class="text-muted">฿699</s></small>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">สีราคา</label>
+            <div class="d-flex align-items-center gap-2">
+              <input type="color" class="form-control form-control-color" style="width: 3.25rem; height: 2.5rem;"
+                     x-model="priceColor">
+              <input type="text" class="form-control" name="price_color" placeholder="#E53935" maxlength="7"
+                     value="<%= product?.price_color || '#E53935' %>"
+                     x-model="priceColor"
+                     @input="priceColor = /^#[0-9A-Fa-f]{6}$/.test($event.target.value) ? $event.target.value.toUpperCase() : priceColor">
+            </div>
+            <small class="text-muted">รูปแบบ HEX #RRGGBB — เลือกจากจานสีหรือพิมพ์เองก็ได้ ค่าเริ่มต้น <span style="color:#E53935; font-weight:700;">#E53935</span></small>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold d-block">Preview ราคาแสดงผล</label>
+            <div class="p-3 rounded border bg-white d-flex align-items-center gap-3 flex-wrap" style="min-height: 2.5rem;">
+              <template x-if="formatBaht(price) !== ''">
+                <span style="font-size: 1.25rem; font-weight: 800; line-height: 1;"
+                      :style="{ color: /^#[0-9A-Fa-f]{6}$/.test(priceColor) ? priceColor : '#E53935' }">
+                  ฿<span x-text="formatBaht(price)"></span>
+                </span>
+              </template>
+              <template x-if="formatBaht(price) === ''">
+                <span class="text-muted" style="font-size: 1rem;">฿—</span>
+              </template>
+              <template x-if="formatBaht(originalPrice) !== ''">
+                <span class="text-muted" style="font-size: 0.95rem; font-weight: 600; text-decoration: line-through;">
+                  ฿<span x-text="formatBaht(originalPrice)"></span>
+                </span>
+              </template>
+            </div>
+            <small class="text-muted">คำนวณสดตามค่าที่กรอก — ฿399 ด้านบนเป็นราคาปกติ (เทา + ขีดฆ่า)</small>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
         <div class="d-flex justify-content-end gap-2">
           <a href="/settings/member#products" class="btn btn-secondary">ยกเลิก</a>
           <button type="submit" class="btn btn-primary">
