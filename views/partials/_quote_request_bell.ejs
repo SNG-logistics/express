@@ -1,0 +1,94 @@
+<%#
+  Header notification bell for new "check price" quote-requests from members.
+
+  Included from views/layouts/main.ejs so it appears on every /partner/* page,
+  not just the queue itself — before this, staff only found out about a new
+  request if they happened to be sitting on /partner/quote-requests.
+
+  Polls the same GET /partner/api/quote-requests/pending endpoint the queue
+  page already uses, and shares its "already alerted" bookkeeping with that
+  page via public/js/quote-alert.js — both can be on screen at once (this
+  partial renders there too), and without a shared store the same request
+  would beep twice.
+%>
+<div class="relative" x-data="quoteRequestBell()" x-init="init()">
+  <button type="button" @click="open = !open" @click.outside="open = false"
+    class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-slate-400 hover:text-white hover:bg-white/8 text-sm transition-all"
+    title="คำขอเช็คราคาใหม่" aria-label="คำขอเช็คราคาใหม่">
+    <i class="fa-solid fa-bell text-sm"></i>
+    <span x-show="requests.length > 0" x-cloak x-text="requests.length > 9 ? '9+' : requests.length"
+      class="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"></span>
+  </button>
+
+  <div x-show="open" x-cloak @keydown.escape.window="open = false"
+    class="absolute right-0 z-30 mt-2 w-80 max-h-96 overflow-y-auto rounded-xl border border-white/10 bg-slate-900 shadow-xl">
+    <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5">
+      <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">คำขอเช็คราคา</span>
+      <button type="button" @click="soundEnabled ? null : enableSound()"
+        class="flex items-center gap-1.5 text-[11px]"
+        :class="soundEnabled ? 'text-emerald-400' : 'text-amber-300 hover:text-amber-200'">
+        <i class="fa-solid" :class="soundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'"></i>
+        <span x-text="soundEnabled ? 'เปิดเสียงแล้ว' : 'เปิดเสียงแจ้งเตือน'"></span>
+      </button>
+    </div>
+
+    <template x-if="requests.length === 0">
+      <p class="px-4 py-6 text-center text-xs text-slate-600">ยังไม่มีคำขอเช็คราคาที่รอดำเนินการ</p>
+    </template>
+
+    <template x-for="r in requests" :key="r.id">
+      <a :href="'/partner/quote-requests/' + r.id + '/convert'"
+        class="block px-4 py-3 border-b border-white/5 last:border-b-0 hover:bg-white/5">
+        <p class="font-semibold text-white text-sm truncate" x-text="(r.product_name || 'สินค้าไม่ได้ระบุชื่อ') + ' × ' + (Number(r.desired_qty) || 1)"></p>
+        <p class="text-slate-400 text-xs mt-0.5" x-text="[r.first_name, r.last_name].filter(Boolean).join(' ') || r.phone_display || r.phone || 'ลูกค้าใหม่'"></p>
+      </a>
+    </template>
+
+    <div class="px-4 py-2.5 border-t border-white/5">
+      <a href="/partner/quote-requests" class="text-[11px] text-amber-400 hover:text-amber-300 font-semibold">
+        ดูคำขอทั้งหมด →
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function quoteRequestBell() {
+    return {
+      open: false,
+      requests: [],
+      soundEnabled: false,
+
+      init() {
+        this.soundEnabled = window.quoteAlert.isSoundEnabled();
+        this.poll();
+        setInterval(() => { if (!document.hidden) this.poll(); }, 15000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) this.poll(); });
+      },
+
+      enableSound() {
+        window.quoteAlert.enableSound();
+        this.soundEnabled = true;
+      },
+
+      async poll() {
+        try {
+          const response = await fetch('/partner/api/quote-requests/pending', {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+          });
+          if (!response.ok) throw new Error(`Bell polling failed: ${response.status}`);
+          const payload = await response.json();
+          const list = Array.isArray(payload.requests) ? payload.requests : [];
+
+          const freshIds = window.quoteAlert.claimBatch(list.map((r) => r.id));
+          if (freshIds.length > 0) window.quoteAlert.play();
+
+          this.requests = list;
+        } catch (error) {
+          console.warn('[Quote request bell]', error);
+        }
+      },
+    };
+  }
+</script>
