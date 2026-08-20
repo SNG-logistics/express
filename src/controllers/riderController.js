@@ -24,6 +24,7 @@ async function getAvailableOffers(riderUserId) {
   const [offers] = await pool.query(
     `SELECT do.id, do.claim_code, do.expires_at,
             o.job_no, o.cod_amount, o.last_mile_fee,
+            o.receiver_lat AS dest_lat, o.receiver_lng AS dest_lng,
             c.name AS receiver_name, c.address AS receiver_address
      FROM delivery_offer_recipients dor
      JOIN delivery_offers do ON do.id = dor.offer_id
