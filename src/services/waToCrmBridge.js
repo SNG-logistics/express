@@ -126,12 +126,15 @@ export function attachCrmBridge(sock) {
 
         const waChannelId = await getWaChannelId();
 
-        // Normalize phone for potential customer matching
-        let phoneNormalized = externalId.replace(/\D/g, '');
-        // Thai: starts with 0 → replace with 66
-        if (phoneNormalized.startsWith('0') && phoneNormalized.length <= 10) {
-          phoneNormalized = '66' + phoneNormalized.substring(1);
-        }
+        // Normalize phone for potential customer matching. Use the same
+        // shared util customers.phone_normalized and everything else in the
+        // app normalizes through — the ad-hoc regex this used to do only
+        // handled a Thai 0->66 prefix and had no Lao 020/030->856 rule at
+        // all, so a Lao number would normalize differently here than it
+        // does everywhere else and phone-matching would silently never fire
+        // for it.
+        const { toWaPhone } = await import('../utils/waPhone.js');
+        const phoneNormalized = toWaPhone(externalId) || '';
 
         if (!displayName) {
           displayName = phoneNormalized ? `+${phoneNormalized}` : `ลูกค้า WhatsApp`;

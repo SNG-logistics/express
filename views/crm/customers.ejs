@@ -24,6 +24,14 @@
       <% } %>
       <span style="color:#475569;">|</span>
       <span style="color:#64748b;font-size:0.72rem;">ทั้งหมด <%= syncStats.total_legacy.toLocaleString() %> คนในระบบขนส่ง</span>
+      <% if (syncStats.organic_unlinked > 0) { %>
+        <span style="color:#475569;">|</span>
+        <span title="ผู้ติดต่อจากแชท ที่ยังไม่เชื่อมกับข้อมูลลูกค้าในระบบขนส่ง" style="color:#fbbf24;font-weight:700;font-size:0.8rem;">⚠ CRM ยังไม่เชื่อม <%= syncStats.organic_unlinked.toLocaleString() %> คน</span>
+      <% } %>
+      <% if (syncStats.ambiguous_phones > 0) { %>
+        <span style="color:#475569;">|</span>
+        <span title="เบอร์โทรที่มีลูกค้าในระบบขนส่งซ้ำกันมากกว่า 1 แถว ระบบเชื่อมอัตโนมัติให้ไม่ได้ ต้องเลือกเอง" style="color:#f87171;font-weight:700;font-size:0.8rem;">⚠ เบอร์ซ้ำ (เชื่อมเองไม่ได้) <%= syncStats.ambiguous_phones.toLocaleString() %> เบอร์</span>
+      <% } %>
     </div>
     <% if (syncStats.unsynced > 0) { %>
     <button id="btnSyncAll" onclick="runSync()"

@@ -17,6 +17,7 @@
 
 import pool from '../config/db.js';
 import { runOnNewMessage, runOnNewConversation } from './automationService.js';
+import { findSoleCustomerMatch } from './memberLinkService.js';
 
 // ── io reference (set by app.js after Socket.io init) ────────────────────────
 let _io = null;
@@ -80,17 +81,51 @@ export async function resolveCustomerIdentity({ channelType, channelId, external
     if (byPhone) crmCustomerId = byPhone.crm_customer_id;
   }
 
-  // 3. Create new crm_customer if no match
+  // 2b. No identity yet — check whether this phone belongs to a known
+  // shipping customer, so their order history shows up in Customer 360 from
+  // the very first message rather than only after a staff member later
+  // edits/creates a customers row for them. Only auto-link on an
+  // unambiguous match (customers.phone has no UNIQUE constraint — a phone
+  // shared by 2+ active customers rows must never be guessed).
+  let legacyCustomerId = null;
+  if (!crmCustomerId && phoneNormalized) {
+    legacyCustomerId = await findSoleCustomerMatch(phoneNormalized);
+  }
+
+  // 3. Create new crm_customer if no identity match. If a crm_customers row
+  // for this legacy customer already exists — either already synced (no
+  // channel identity attached to it yet) or an organic row for the same
+  // phone (created by an earlier message, never linked) — reuse it instead
+  // of inserting a duplicate. crm_customers.legacy_customer_id has a UNIQUE
+  // constraint, so inserting a second row with the same value would fail
+  // outright if the "already synced" case were missed here.
   let isNew = false;
+  if (!crmCustomerId && legacyCustomerId) {
+    const [[existingForLegacy]] = await pool.query(
+      `SELECT id, legacy_customer_id FROM crm_customers
+       WHERE legacy_customer_id = ? OR (phone = ? AND legacy_customer_id IS NULL)
+       LIMIT 1`,
+      [legacyCustomerId, phoneNormalized]
+    );
+    if (existingForLegacy) {
+      if (!existingForLegacy.legacy_customer_id) {
+        await pool.query(
+          `UPDATE crm_customers SET legacy_customer_id = ? WHERE id = ?`,
+          [legacyCustomerId, existingForLegacy.id]
+        );
+      }
+      crmCustomerId = existingForLegacy.id;
+    }
+  }
   if (!crmCustomerId) {
     let fullName = displayName || `ลูกค้า ${channelType}`;
     if (fullName.includes('@lid') || fullName.includes('@s.whatsapp.net')) {
       fullName = phoneNormalized ? `+${phoneNormalized}` : `ลูกค้า ${channelType}`;
     }
     const [r] = await pool.query(`
-      INSERT INTO crm_customers (full_name, phone, customer_type)
-      VALUES (?, ?, 'CUSTOMER')
-    `, [fullName, phoneNormalized || null]);
+      INSERT INTO crm_customers (full_name, phone, customer_type, legacy_customer_id)
+      VALUES (?, ?, 'CUSTOMER', ?)
+    `, [fullName, phoneNormalized || null, legacyCustomerId]);
     crmCustomerId = r.insertId;
     isNew = true;
   }

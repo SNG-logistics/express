@@ -660,7 +660,7 @@ export async function syncRun(req, res) {
     const result = await bulkSyncAllLegacy();
     return res.json({
       ok: true,
-      message: `ซิงค์สำเร็จ: นำเข้าใหม่ ${result.inserted} รายการ (${result.duration_ms}ms)`,
+      message: `ซิงค์สำเร็จ: นำเข้าใหม่ ${result.inserted} รายการ, เชื่อมโยงจาก CRM เดิม ${result.linked} รายการ (${result.duration_ms}ms)`,
       ...result,
     });
   } catch (err) {

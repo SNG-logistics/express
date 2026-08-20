@@ -24,7 +24,7 @@ export async function syncOneLegacyCustomer(legacyId) {
 
   // Fetch from legacy table
   const [[src]] = await pool.query(
-    `SELECT id, name, phone, email, country, province, city, address, active
+    `SELECT id, name, phone, phone_normalized, email, country, province, city, address, active
      FROM customers WHERE id = ?`,
     [legacyId]
   );
@@ -65,6 +65,32 @@ export async function syncOneLegacyCustomer(legacyId) {
     return { created: false, crmId: existing.id };
   }
 
+  // This person may already have an organic crm_customers row — created by
+  // an earlier WhatsApp/FB/LINE message, never yet synced — for the same
+  // phone. Reconcile it in place rather than inserting a duplicate.
+  if (src.phone_normalized) {
+    const [[organic]] = await pool.query(
+      `SELECT id FROM crm_customers WHERE phone = ? AND legacy_customer_id IS NULL LIMIT 1`,
+      [src.phone_normalized]
+    );
+    if (organic) {
+      await pool.query(
+        `UPDATE crm_customers
+         SET legacy_customer_id = ?, full_name = ?, email = ?, country = ?,
+             province = ?, district = ?, address = ?, preferred_language = ?,
+             synced_from_legacy = 1, last_synced_at = NOW()
+         WHERE id = ?`,
+        [
+          legacyId, src.name, src.email,
+          src.country, src.province, src.city, src.address,
+          preferredLanguage, organic.id,
+        ]
+      );
+      console.log(`[CustomerSync] Linked organic crm_customers #${organic.id} ← customers #${legacyId}`);
+      return { created: false, crmId: organic.id };
+    }
+  }
+
   // INSERT new crm_customers record
   const [result] = await pool.query(
     `INSERT INTO crm_customers
@@ -98,6 +124,35 @@ export async function syncOneLegacyCustomer(legacyId) {
  */
 export async function bulkSyncAllLegacy() {
   const start = Date.now();
+
+  // Reconcile organic crm_customers rows (born from a WhatsApp/FB/LINE
+  // message, never yet synced) with the customers row for the same phone —
+  // run BEFORE the INSERT IGNORE below, so its own NOT IN (...) correctly
+  // sees these as already linked instead of also inserting a duplicate.
+  // The `sole` subquery only picks a phone with exactly one active
+  // customers row (customers.phone has no UNIQUE constraint, so 2+ is a
+  // real, deliberately-unresolved case); the LEFT JOIN + IS NULL guard
+  // skips any legacy_customer_id already claimed by another row, since
+  // crm_customers.legacy_customer_id is itself UNIQUE. UPDATE IGNORE so a
+  // rare same-phone collision among organic rows skips that row rather
+  // than failing the whole batch.
+  const [reconciled] = await pool.query(`
+    UPDATE IGNORE crm_customers cc
+    JOIN (
+      SELECT phone_normalized, MIN(id) AS sole_id
+      FROM customers
+      WHERE active = 1 AND phone_normalized IS NOT NULL AND phone_normalized != ''
+      GROUP BY phone_normalized
+      HAVING COUNT(*) = 1
+    ) sole ON sole.phone_normalized = cc.phone
+    LEFT JOIN crm_customers already ON already.legacy_customer_id = sole.sole_id
+    SET cc.legacy_customer_id = sole.sole_id,
+        cc.synced_from_legacy = 1,
+        cc.last_synced_at = NOW()
+    WHERE cc.legacy_customer_id IS NULL
+      AND cc.phone IS NOT NULL AND cc.phone != ''
+      AND already.id IS NULL
+  `);
 
   const [result] = await pool.query(`
     INSERT IGNORE INTO crm_customers
@@ -153,13 +208,18 @@ export async function bulkSyncAllLegacy() {
   `);
 
   const duration = Date.now() - start;
-  console.log(`[CustomerSync] bulkSync done: +${inserted} new records in ${duration}ms`);
-  return { inserted, duration_ms: duration };
+  const linked = reconciled.affectedRows || 0;
+  console.log(`[CustomerSync] bulkSync done: +${inserted} new records, ${linked} organic rows linked in ${duration}ms`);
+  return { inserted, linked, duration_ms: duration };
 }
 
 /**
- * Get sync statistics.
- * @returns {{ total_legacy: number, synced: number, unsynced: number }}
+ * Get sync statistics — plus two linkage-health figures: crm_customers rows
+ * born from a conversation that were never reconciled with a customers row
+ * (organic_unlinked), and phone numbers shared by 2+ active customers rows
+ * (ambiguous_phones) — the cases findSoleCustomerMatch will never
+ * auto-resolve, so staff need to know they exist and pick manually.
+ * @returns {{ total_legacy: number, synced: number, unsynced: number, organic_unlinked: number, ambiguous_phones: number }}
  */
 export async function getSyncStats() {
   const [[row]] = await pool.query(`
@@ -170,11 +230,19 @@ export async function getSyncStats() {
          AND c.id NOT IN (
            SELECT legacy_customer_id FROM crm_customers
            WHERE legacy_customer_id IS NOT NULL
-         ))                                                                 AS unsynced
+         ))                                                                 AS unsynced,
+      (SELECT COUNT(*) FROM crm_customers WHERE legacy_customer_id IS NULL) AS organic_unlinked,
+      (SELECT COUNT(*) FROM (
+         SELECT phone_normalized FROM customers
+         WHERE active = 1 AND phone_normalized IS NOT NULL AND phone_normalized != ''
+         GROUP BY phone_normalized HAVING COUNT(*) > 1
+       ) t)                                                                 AS ambiguous_phones
   `);
   return {
-    total_legacy: Number(row.total_legacy),
-    synced:       Number(row.synced),
-    unsynced:     Number(row.unsynced),
+    total_legacy:     Number(row.total_legacy),
+    synced:           Number(row.synced),
+    unsynced:         Number(row.unsynced),
+    organic_unlinked: Number(row.organic_unlinked),
+    ambiguous_phones: Number(row.ambiguous_phones),
   };
 }
