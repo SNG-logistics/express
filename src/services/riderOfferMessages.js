@@ -88,3 +88,19 @@ export function timedOutMessage(p = {}) {
     'ไว้มีงานใหม่จะแจ้งอีกครั้ง 🙏',
   ].filter(Boolean).join('\n');
 }
+
+/**
+ * Sent to admin/manager/dispatcher when an HQ-direct order's offer (no
+ * branch — branch_id is NULL) expires with nobody claiming it. A
+ * branch-scoped expiry already nudges the branch via expiredMessage; an
+ * HQ-direct one had nobody with the authority to manually assign a rider
+ * ever told at all, so the order could sit unassigned indefinitely with no
+ * one aware it needed attention.
+ */
+export function escalateToDispatchMessage(p = {}) {
+  return [
+    '🚨 *SNG EXPRESS — ออฟเฟอร์ HQ หมดเวลา ไม่มีไรเดอร์รับ*',
+    `พัสดุ *${p.jobNo || '-'}* ไม่มีไรเดอร์กดรับในเวลาที่กำหนด (ไม่มีสาขา)`,
+    'กรุณาเข้าระบบเพื่อมอบหมายไรเดอร์ด้วยตนเอง',
+  ].filter(Boolean).join('\n');
+}
