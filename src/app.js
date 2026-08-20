@@ -422,6 +422,8 @@ app.use((req, res, next) => {
     viewCustoms:       has('admin','manager','dispatcher','customs'),
     processCustoms:    has('admin','manager','customs'),
     customsClear:      has('admin','manager','customs'),  // used in customs/create.ejs inline buttons
+    // matches POST /orders/:id/flags/:flagId/resolve exactly (src/routes/orders.js)
+    resolveFlag:       has('admin','manager','dispatcher','warehouse_th'),
     // Scanner
     useScanner:        has('admin','manager','dispatcher','warehouse_th','warehouse_la','branch_operator','driver_support'),
     // Customers

@@ -197,7 +197,7 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
         </div>
 
         <div class="crm-chat-header-actions">
-          <% if (can.agentCrm) { %>
+          <% if (can.useInbox) { %>
           <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/status" class="crm-header-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <select name="status" class="crm-select-sm" onchange="this.form.submit()">
@@ -429,7 +429,7 @@ const channelColor = { FACEBOOK:'#60a5fa', WHATSAPP:'#34d399', LINE_OA:'#4ade80'
           <% } %>
         </div>
 
-        <% if (can.agentCrm) { %>
+        <% if (can.useInbox) { %>
         <form method="POST" action="/crm/inbox/<%= activeConversation.id %>/tag" class="crm-tag-form">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <select name="tag_id" class="crm-select-sm" style="flex:1;">
