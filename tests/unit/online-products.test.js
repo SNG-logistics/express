@@ -16,6 +16,11 @@ const [routes, controller, formView, adminListView, listTableView, cardView, mig
   readFile(new URL('../../database/migrate_045_online_products_pricing.sql', import.meta.url), 'utf8'),
 ]);
 
+const [thDict, loDict] = await Promise.all([
+  readFile(new URL('../../src/i18n/th.json', import.meta.url), 'utf8').then(JSON.parse),
+  readFile(new URL('../../src/i18n/lo.json', import.meta.url), 'utf8').then(JSON.parse),
+]);
+
 test('member catalog route is customer-authenticated', () => {
   assert.match(routes, /router\.get\('\/member\/online', requireCustomerLogin, products\.listProducts\)/);
 });
@@ -252,7 +257,7 @@ test('member cards render prices straight from the product row with colour and s
     price: 117, original_price: null, price_color: '#E53935',
   });
   assert.match(saleOnly, /฿117/);
-  assert.doesNotMatch(saleOnly, /line-through/);
+  assert.doesNotMatch(saleOnly, /product-price-was/);
   assert.match(saleOnly, /#E53935/);
 
   const both = render({
@@ -263,7 +268,7 @@ test('member cards render prices straight from the product row with colour and s
   assert.match(both, /฿117/);
   assert.match(both, /฿399/);
   assert.match(both, /#0066FF/);
-  assert.match(both, /text-decoration: line-through/);
+  assert.match(both, /class="product-price-was"/);
 
   // Decimal handling: whole numbers stay clean, decimals keep two places —
   // prices must never render as JS float soup on the card.
@@ -274,4 +279,17 @@ test('member cards render prices straight from the product row with colour and s
   });
   assert.match(decimal, /฿67\.50/);
   assert.doesNotMatch(decimal, /67\.5\b/);
+});
+
+test('the page tells customers to send the link, not to buy it themselves', () => {
+  // SNG buys on the customer's behalf. A subtitle reading "tap through and buy"
+  // sends them to check out on Lazada instead, which loses the order and leaves
+  // a parcel arriving with no job attached to it.
+  const [th, lo] = [thDict, loDict].map(d => d.online.subtitle);
+  assert.match(th, /คัดลอกลิงค์/, 'Thai must ask for the product link');
+  assert.match(th, /แอดมิน/, 'Thai must say where to send it');
+  assert.match(lo, /ຄັດລອກລິ້ງ/, 'Lao must ask for the product link');
+  assert.match(lo, /ແອດມິນ/, 'Lao must say where to send it');
+  assert.doesNotMatch(th, /และซื้อได้เลย/, 'the buy-it-yourself wording is back');
+  assert.doesNotMatch(lo, /ແລະ ຊື້ໄດ້ເລີຍ/, 'the buy-it-yourself wording is back');
 });
