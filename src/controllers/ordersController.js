@@ -5,6 +5,7 @@ import { transitionOrder, withTransaction } from '../services/orderWorkflowServi
 import { parseDimensionSum, resolveShippingRate } from '../services/pricingService.js';
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
 import { assignBranchToOrder, assignOrderToBranch, resetBranchDeliveryForRetry } from './branchesController.js';
+import { logEvent } from './riderController.js';
 import { toWaPhone } from '../utils/waPhone.js';
 import { applySavedLocationToOrder } from '../services/receiverLocationService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
@@ -923,6 +924,11 @@ export async function markDelivered(req, res) {
     await transitionOrder({ orderId: id, toStatus: 'DELIVERED', userId: req.session.user?.id,
       note, source: 'ORDER_DELIVERED', updates });
 
+    // Only the rider's own deliverJob wrote to delivery_events — an admin
+    // marking a delivery complete by hand left no trail there at all.
+    // Attribute it to the rider on the order when there is one; fall back
+    // to the confirming staff member for a partner-carrier/no-rider dispatch.
+    await logEvent(id, order.rider_id || req.session.user?.id, 'DELIVERED', note, null, null, imgPath);
 
     req.session.flash = { type: 'success', message: 'บันทึกการจัดส่งสำเร็จแล้ว' };
     res.redirect(`/orders/${id}`);

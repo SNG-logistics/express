@@ -57,7 +57,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 // ── Log delivery event ─────────────────────────────────────────────────────────
-async function logEvent(order_id, rider_id, event_type, note = '', lat = null, lng = null, photo_url = null, conn = pool) {
+export async function logEvent(order_id, rider_id, event_type, note = '', lat = null, lng = null, photo_url = null, conn = pool) {
   await conn.query(
     'INSERT INTO delivery_events (order_id, rider_id, event_type, note, lat, lng, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [order_id, rider_id, event_type, note, lat, lng, photo_url]

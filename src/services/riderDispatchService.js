@@ -18,7 +18,7 @@ import {
   kickNotificationWorker,
 } from './notificationService.js';
 import {
-  offerMessage, wonMessage, takenMessage, expiredMessage, cancelledMessage,
+  offerMessage, wonMessage, takenMessage, expiredMessage, cancelledMessage, timedOutMessage,
 } from './riderOfferMessages.js';
 
 const DEFAULT_EXPIRE_MIN = 15;
@@ -295,7 +295,15 @@ export async function notifyOfferResult(offerId) {
 }
 
 // ── Expiry / escalation ───────────────────────────────────────────────────────
-/** Close timed-out OPEN offers and notify each branch to assign manually. */
+/**
+ * Close timed-out OPEN offers, notify the branch to assign manually (when
+ * there is one), and tell every rider who was offered the job that it timed
+ * out. The branch message alone used to be the only notice sent — for an
+ * HQ-direct order (branch_id NULL) that meant expiry was completely silent,
+ * since branch_phone is NULL and the old code skipped sending anything at
+ * all in that case. Riders now always learn a job they were watching is
+ * gone, the same way they already do when an offer is cancelled outright.
+ */
 export async function expireStaleOffers() {
   const [stale] = await pool.query(
     `SELECT do.id, do.order_id, do.branch_id, o.job_no, b.phone AS branch_phone
@@ -321,8 +329,22 @@ export async function expireStaleOffers() {
         recipient: o.branch_phone,
         payload: { result: 'EXPIRED', jobNo: o.job_no },
       });
-      kickNotificationWorker(o.order_id);
     }
+    const [recips] = await pool.query(
+      `SELECT dor.rider_user_id, dor.phone FROM delivery_offer_recipients dor WHERE dor.offer_id=?`,
+      [o.id]
+    );
+    for (const r of recips) {
+      if (!r.phone) continue;
+      await enqueueRiderNotification(pool, {
+        orderId: o.order_id,
+        eventType: `RIDER_OFFER_TIMEOUT:${o.id}`,
+        eventKey: `RIDER_OFFER_TIMEOUT:${o.id}:${r.rider_user_id}`,
+        recipient: r.phone,
+        payload: { jobNo: o.job_no },
+      });
+    }
+    kickNotificationWorker(o.order_id);
   }
   return expired;
 }
@@ -338,6 +360,8 @@ export async function sendRiderNotification(row) {
     text = payload.result === 'WON' ? wonMessage(payload) : takenMessage(payload);
   } else if (row.event_type.startsWith('RIDER_OFFER_EXPIRED')) {
     text = expiredMessage(payload);
+  } else if (row.event_type.startsWith('RIDER_OFFER_TIMEOUT')) {
+    text = timedOutMessage(payload);
   } else if (row.event_type.startsWith('RIDER_OFFER_CANCELLED')) {
     text = cancelledMessage(payload);
   } else {
