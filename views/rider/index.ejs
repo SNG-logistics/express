@@ -96,6 +96,13 @@ const STATUS_LABEL = {
             <div style="font-size:12px;color:#94a3b8;line-height:1.4;"><%= (job.receiver_address || 'ไม่ระบุที่อยู่').slice(0,80) %></div>
           </div>
 
+          <% if (job.dest_lat && job.dest_lng) { %>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fa-solid fa-satellite-dish" style="color:#3b82f6;width:16px;font-size:12px;flex-shrink:0;"></i>
+            <div style="font-size:11px;font-weight:800;color:#3b82f6;">มีพิกัด GPS</div>
+          </div>
+          <% } %>
+
           <% if (hasCOD) { %>
           <div style="display:flex;align-items:center;gap:10px;">
             <i class="fa-solid fa-money-bill-wave" style="color:#22c55e;width:16px;font-size:12px;flex-shrink:0;"></i>
@@ -164,6 +171,7 @@ const STATUS_LABEL = {
         '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;">' +
           '<div style="font-size:14px;font-weight:800;color:#f1f5f9;"><i class="fa-solid fa-user-check" style="color:#94a3b8;margin-right:6px;"></i>' + esc(o.receiver_name || '—') + '</div>' +
           '<div style="font-size:12px;color:#94a3b8;"><i class="fa-solid fa-location-dot" style="margin-right:6px;"></i>' + esc((o.receiver_address || 'ไม่ระบุที่อยู่').slice(0,80)) + '</div>' +
+          (o.dest_lat && o.dest_lng ? '<div style="font-size:11px;font-weight:800;color:#3b82f6;"><i class="fa-solid fa-satellite-dish" style="margin-right:6px;"></i>มีพิกัด GPS</div>' : '') +
           (cod ? '<div style="font-size:13px;font-weight:900;color:#22c55e;"><i class="fa-solid fa-money-bill-wave" style="margin-right:6px;"></i>COD ฿' + cod + '</div>' : '') +
           (fee ? '<div style="font-size:12px;color:#fbbf24;"><i class="fa-solid fa-coins" style="margin-right:6px;"></i>ค่ารอบ ฿' + fee + '</div>' : '') +
         '</div>' +

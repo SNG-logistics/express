@@ -6,6 +6,7 @@ import { canManageBranchResource } from '../services/operationalAccessService.js
 import { canTransitionOrder } from '../constants/transitions.js';
 import { broadcastOffer } from '../services/riderDispatchService.js';
 import { decodePlusCode, encodePlusCode, isShortPlusCode } from '../utils/plusCode.js';
+import { logEvent } from './riderController.js';
 
 // ─── Haversine distance (km) ──────────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -454,20 +455,30 @@ export async function updateRiderStatus(req, res) {
     req.session.flash = { type: 'error', message: 'สถานะไรเดอร์ไม่ถูกต้อง' };
     return res.redirect(`/branches/${branch_id}`);
   }
-  await withTransaction(async (conn) => {
-    const [[rider]] = await conn.query(
-      'SELECT id, user_id FROM riders WHERE id=? AND branch_id=? FOR UPDATE',
-      [riderId, branch_id]
-    );
-    if (!rider) throw new WorkflowError('Rider not found in this branch', 404);
-    await conn.query('UPDATE riders SET status=? WHERE id=?', [status, riderId]);
-    if (rider.user_id) {
-      await conn.query(
-        'UPDATE users SET status=? WHERE id=? AND role=\'rider\'',
-        [status === 'inactive' ? 'inactive' : 'active', rider.user_id]
+  try {
+    await withTransaction(async (conn) => {
+      const [[rider]] = await conn.query(
+        'SELECT id, user_id FROM riders WHERE id=? AND branch_id=? FOR UPDATE',
+        [riderId, branch_id]
       );
-    }
-  });
+      // Realistic, not just theoretical: the rider list can go stale between
+      // page load and submit (reassigned to another branch, deactivated,
+      // deleted). Previously unguarded — this throw was an unhandled
+      // rejection that hung the request instead of showing an error, the
+      // same bug assignRider above had before it was fixed.
+      if (!rider) throw new WorkflowError('Rider not found in this branch', 404);
+      await conn.query('UPDATE riders SET status=? WHERE id=?', [status, riderId]);
+      if (rider.user_id) {
+        await conn.query(
+          'UPDATE users SET status=? WHERE id=? AND role=\'rider\'',
+          [status === 'inactive' ? 'inactive' : 'active', rider.user_id]
+        );
+      }
+    });
+  } catch (e) {
+    console.error('[Branch] updateRiderStatus:', e);
+    req.session.flash = { type: 'error', message: e.message || 'อัปเดตสถานะไรเดอร์ไม่สำเร็จ' };
+  }
   res.redirect(`/branches/${branch_id}`);
 }
 
@@ -954,7 +965,7 @@ export async function markDelivered(req, res) {
 
     await withTransaction(async (conn) => {
       const [[lockedDelivery]] = await conn.query(
-        `SELECT bd.*, o.status AS order_status, o.cod_amount
+        `SELECT bd.*, o.status AS order_status, o.cod_amount, o.rider_id AS order_rider_id
          FROM branch_deliveries bd
          JOIN orders o ON o.id=bd.order_id
          WHERE bd.id=? FOR UPDATE`,
@@ -1010,6 +1021,13 @@ export async function markDelivered(req, res) {
         },
         connection: conn,
       });
+      // Only the rider's own deliverJob wrote to delivery_events — a branch-
+      // confirmed delivery left no trail there at all. Attribute it to the
+      // rider who actually carried the parcel when the order has one on
+      // file; fall back to the confirming staff member for the rare case
+      // (partner-carrier / no-rider dispatch) where it doesn't.
+      await logEvent(orderId, lockedDelivery.order_rider_id || req.session.user.id, 'DELIVERED',
+        `Delivered to ${recipientName} (confirmed by branch)`, null, null, proofPath, conn);
       if (lockedExpectedCod > 0) {
         await conn.query(
           `INSERT INTO cod_settlements (order_id, cod_amount, status, collected_at)

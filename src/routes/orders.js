@@ -9,10 +9,10 @@
  * │ Create order                    │ admin, manager, dispatcher, warehouse, staff│
  * │ Edit order                      │ admin, manager, dispatcher                │
  * │ Print waybill                   │ All authenticated                         │
- * │ Receive at warehouse            │ admin, manager, dispatcher, warehouse_th  │
+ * │ Receive at warehouse            │ admin, manager, dispatcher, warehouse_th, warehouse_la │
  * │ Start crossing / border moves   │ admin, manager, dispatcher                │
  * │ Arrive dest warehouse           │ admin, manager, dispatcher, warehouse_la  │
- * │ Start delivery / mark delivered │ admin, manager, dispatcher                │
+ * │ Start delivery / mark delivered │ admin, manager, dispatcher, driver_support, branch_operator │
  * │ Retry a failed delivery         │ admin, manager, dispatcher, driver_support, branch_operator │
  * │ Release a stuck rider job       │ admin, manager, dispatcher                │
  * │ Return to sender (destructive)  │ admin, manager, dispatcher                │
@@ -67,9 +67,12 @@ router.post('/orders/:id/edit', requireLogin, requireRole(['admin','manager','di
 
 // ─── Status transitions — role-specific ───────────────────────────────────────
 
-// Receive at TH warehouse (TH warehouse staff + dispatcher + manager)
+// Receive at origin warehouse (TH warehouse for TH→LA orders, LA warehouse for
+// LA→TH orders — receiveOrder itself already branches on both; warehouse_la
+// was missing here even though the handler has always supported it, so an
+// LA warehouse user hit a 403 before ever reaching that logic)
 router.post('/orders/:id/receive',
-  requireLogin, requireRole(['admin','manager','dispatcher','warehouse_th']),
+  requireLogin, requireRole(['admin','manager','dispatcher','warehouse_th','warehouse_la']),
   orders.receiveOrder);
 
 // Crossing + border movements (dispatchers who plan trips)

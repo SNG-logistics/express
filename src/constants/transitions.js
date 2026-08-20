@@ -15,7 +15,15 @@ const ORDER_TRANSITIONS = {
   [ORDER_STATUS.CUSTOMS_HOLD]:      [ORDER_STATUS.CUSTOMS_CLEARED, ORDER_STATUS.CUSTOMS_REJECTED],
   [ORDER_STATUS.CUSTOMS_CLEARED]:   [ORDER_STATUS.ARRIVED_BORDER_WH],
   [ORDER_STATUS.CUSTOMS_REJECTED]:  [ORDER_STATUS.CLOSED],
-  [ORDER_STATUS.ARRIVED_BORDER_WH]: [ORDER_STATUS.AT_DEST_WH],
+  [ORDER_STATUS.ARRIVED_BORDER_WH]: [
+    ORDER_STATUS.AT_DEST_WH,
+    // customsModel.js's own header documents "CROSSING_BORDER | ARRIVED_BORDER_WH
+    // → CUSTOMS_HOLD" and CUSTOMS_ELIGIBLE_STATUSES already includes this status —
+    // this edge was simply missing, so startClearance always 409'd for a parcel
+    // whose customs need was only discovered after it physically reached the
+    // border warehouse. CUSTOMS_CLEARED → ARRIVED_BORDER_WH (below) closes the loop.
+    ORDER_STATUS.CUSTOMS_HOLD,
+  ],
   [ORDER_STATUS.AT_DEST_WH]:        [
     ORDER_STATUS.OUT_FOR_DELIVERY,
     ORDER_STATUS.BRANCH_TRANSFER,   // last-mile via branch hub

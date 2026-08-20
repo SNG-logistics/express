@@ -73,3 +73,18 @@ export function expiredMessage(p = {}) {
     'กรุณาเข้าพอร์ทัลสาขาเพื่อมอบหมายไรเดอร์เอง',
   ].filter(Boolean).join('\n');
 }
+
+/**
+ * Sent to every offered rider once their claim window closes with nobody
+ * having claimed it. expiredMessage above tells the branch to assign
+ * manually — that instruction means nothing to a rider, and for an
+ * HQ-direct order (no branch at all) it was the only message sent, so
+ * riders never learned the job they were watching had simply timed out.
+ */
+export function timedOutMessage(p = {}) {
+  return [
+    'ℹ️ *SNG EXPRESS — งานนี้หมดเวลารับแล้ว*',
+    `พัสดุ *${p.jobNo || '-'}* ไม่มีใครกดรับทันเวลา ระบบปิดงานนี้แล้ว`,
+    'ไว้มีงานใหม่จะแจ้งอีกครั้ง 🙏',
+  ].filter(Boolean).join('\n');
+}

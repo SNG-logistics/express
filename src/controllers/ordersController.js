@@ -5,6 +5,7 @@ import { transitionOrder, withTransaction } from '../services/orderWorkflowServi
 import { parseDimensionSum, resolveShippingRate } from '../services/pricingService.js';
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
 import { assignBranchToOrder, assignOrderToBranch, resetBranchDeliveryForRetry } from './branchesController.js';
+import { logEvent } from './riderController.js';
 import { toWaPhone } from '../utils/waPhone.js';
 import { applySavedLocationToOrder } from '../services/receiverLocationService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
@@ -910,6 +911,21 @@ export async function markDelivered(req, res) {
     return res.redirect(`/orders/${id}`);
   }
 
+  // This form previously had no COD field at all — riderController.deliverJob
+  // and branchesController.markDelivered both capture the amount actually
+  // collected at the door, but this one (used by dispatcher/warehouse_la/
+  // driver_support) silently dropped it. Any COD collected here needs to
+  // reach accounting the same way those two paths already do.
+  const codCollected = Number(req.body.cod_collected || 0);
+  if (!Number.isFinite(codCollected) || codCollected < 0) {
+    req.session.flash = { type: 'error', message: 'ยอด COD ไม่ถูกต้อง' };
+    return res.redirect(`/orders/${id}`);
+  }
+  if (Number(order.cod_amount) > 0 && Math.abs(codCollected - Number(order.cod_amount)) > 0.01) {
+    req.session.flash = { type: 'error', message: `ยอด COD ต้องเท่ากับ ${Number(order.cod_amount)}` };
+    return res.redirect(`/orders/${id}`);
+  }
+
   try {
     const imgPath = '/uploads/orders/' + req.file.filename;
     const note = `ส่งสำเร็จถึง ${recipientName} (บันทึกภาพ ${req.file.originalname})`;
@@ -918,11 +934,37 @@ export async function markDelivered(req, res) {
       recipient_name: recipientName,
       delivery_proof_image: imgPath,
       pod_photo_url: imgPath,
+      cod_collected_amount: codCollected,
     };
 
-    await transitionOrder({ orderId: id, toStatus: 'DELIVERED', userId: req.session.user?.id,
-      note, source: 'ORDER_DELIVERED', updates });
+    await withTransaction(async (conn) => {
+      await transitionOrder({ orderId: id, toStatus: 'DELIVERED', userId: req.session.user?.id,
+        note, source: 'ORDER_DELIVERED', updates, connection: conn });
 
+      // Only the rider's own deliverJob wrote to delivery_events — an admin
+      // marking a delivery complete by hand left no trail there at all.
+      // Attribute it to the rider on the order when there is one; fall back
+      // to the confirming staff member for a partner-carrier/no-rider dispatch.
+      await logEvent(id, order.rider_id || req.session.user?.id, 'DELIVERED', note, null, null, imgPath, conn);
+
+      if (Number(order.cod_amount) > 0) {
+        await conn.query(
+          `INSERT INTO cod_settlements (order_id, cod_amount, status, collected_at)
+           VALUES (?, ?, 'COLLECTED', NOW())
+           ON DUPLICATE KEY UPDATE status='COLLECTED', collected_at=NOW(), cod_amount=VALUES(cod_amount)`,
+          [id, order.cod_amount]
+        );
+        // Finance-only from here — ROLES_COD_REMIT stays admin/manager/finance,
+        // unchanged. This delivery just gets the collected amount in front of
+        // them to review before remitting.
+        await transitionOrder({
+          orderId: id, toStatus: 'COD_COLLECTED', userId: req.session.user?.id,
+          note: `COD ${codCollected} collected at delivery`, source: 'ORDER_DELIVERED_COD',
+          connection: conn, notify: false,
+        });
+      }
+    });
+    kickNotificationWorker(id);
 
     req.session.flash = { type: 'success', message: 'บันทึกการจัดส่งสำเร็จแล้ว' };
     res.redirect(`/orders/${id}`);

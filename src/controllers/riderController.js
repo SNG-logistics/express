@@ -24,6 +24,7 @@ async function getAvailableOffers(riderUserId) {
   const [offers] = await pool.query(
     `SELECT do.id, do.claim_code, do.expires_at,
             o.job_no, o.cod_amount, o.last_mile_fee,
+            o.receiver_lat AS dest_lat, o.receiver_lng AS dest_lng,
             c.name AS receiver_name, c.address AS receiver_address
      FROM delivery_offer_recipients dor
      JOIN delivery_offers do ON do.id = dor.offer_id
@@ -57,7 +58,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 // ── Log delivery event ─────────────────────────────────────────────────────────
-async function logEvent(order_id, rider_id, event_type, note = '', lat = null, lng = null, photo_url = null, conn = pool) {
+export async function logEvent(order_id, rider_id, event_type, note = '', lat = null, lng = null, photo_url = null, conn = pool) {
   await conn.query(
     'INSERT INTO delivery_events (order_id, rider_id, event_type, note, lat, lng, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [order_id, rider_id, event_type, note, lat, lng, photo_url]
