@@ -93,27 +93,12 @@
         พิกัด GPS สาขา
         <span class="text-slate-500 text-xs font-normal">(สำหรับ auto-assign orders)</span>
       </h3>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Latitude</label>
-          <input type="number" name="lat" step="0.00000001" x-model="lat"
-            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 text-sm font-mono"
-            placeholder="17.9757" value="<%= draft?.lat || '' %>">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Longitude</label>
-          <input type="number" name="lng" step="0.00000001" x-model="lng"
-            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 text-sm font-mono"
-            placeholder="102.6331" value="<%= draft?.lng || '' %>">
-        </div>
-      </div>
-      <!-- Map preview placeholder -->
-      <div x-show="lat && lng" class="p-3 rounded-xl bg-cyan-500/8 border border-cyan-500/15 text-cyan-400 text-xs flex items-center gap-2">
-        <i class="fa-solid fa-circle-check"></i>
-        <span>พิกัด: <span x-text="lat"></span>, <span x-text="lng"></span></span>
-        <a :href="`https://www.google.com/maps?q=${lat},${lng}`" target="_blank" class="ml-auto text-cyan-300 hover:text-white">ดูบน Map →</a>
-      </div>
-      <p class="text-slate-600 text-xs">หาพิกัดได้จาก Google Maps → คลิกขวาที่ตำแหน่ง → "พิกัด"</p>
+      <%- include('_plus_code', {
+        lat: draft?.lat || '', lng: draft?.lng || '',
+        code: draft?.plus_code || '',
+        plusCode: null,
+        accent: 'cyan',
+      }) %>
     </div>
 
     <!-- Zone + Fees -->
@@ -252,8 +237,6 @@
 <script>
 function branchForm() {
   return {
-    lat: '<%= draft?.lat || "" %>',
-    lng: '<%= draft?.lng || "" %>',
     splitPlan: '<%= draft?.split_plan || "A" %>',
     hubPct: <%= draft?.split_hub_pct || 30 %>,
     branchPct: <%= draft?.split_branch_pct || 70 %>,

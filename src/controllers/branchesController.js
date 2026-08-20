@@ -4,6 +4,7 @@ import { transitionOrder, withTransaction, WorkflowError } from '../services/ord
 import { kickNotificationWorker } from '../services/notificationService.js';
 import { canManageBranchResource } from '../services/operationalAccessService.js';
 import { broadcastOffer } from '../services/riderDispatchService.js';
+import { decodePlusCode, encodePlusCode, isShortPlusCode } from '../utils/plusCode.js';
 
 // ─── Haversine distance (km) ──────────────────────────────────────────────────
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -77,10 +78,81 @@ function numField(raw, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** A coordinate field that was left blank is absent, not zero. */
+function coordField(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Work out the position to store from what the branch form submitted.
+ *
+ * The form offers two ways in: a Plus Code copied out of Google Maps, or the
+ * latitude/longitude fields. The browser fills the coordinate fields from the
+ * code as it is typed, but that convenience is not trusted here — the code is
+ * decoded again on the server, and when one is present it wins. That makes the
+ * rule staff see on the form ("to type coordinates by hand, leave Plus Code
+ * empty") the same rule the database gets.
+ *
+ * A short code such as JJXX+HR8 repeats roughly every degree, so it only means
+ * something near a reference point. The reference is whatever coordinates the
+ * form already carries, then the branch's stored position. With neither, this
+ * refuses: recovering against a guessed reference returns a confident answer
+ * several kilometres away, which would quietly misprice every delivery from
+ * that branch.
+ *
+ * @returns {{lat:number|null, lng:number|null, error:string|null}}
+ */
+export function resolveBranchPosition(body = {}, current = {}) {
+  const typedLat = coordField(body.lat);
+  const typedLng = coordField(body.lng);
+  const raw = String(body.plus_code ?? '').trim();
+
+  if (!raw) return { lat: typedLat, lng: typedLng, error: null };
+
+  const refLat = typedLat ?? coordField(current.lat);
+  const refLng = typedLng ?? coordField(current.lng);
+  const decoded = decodePlusCode(raw, refLat, refLng);
+
+  if (decoded) return { lat: decoded.lat, lng: decoded.lng, error: null };
+
+  if (isShortPlusCode(raw)) {
+    return {
+      lat: typedLat, lng: typedLng,
+      error: `Plus Code "${raw}" เป็นรหัสแบบสั้น ต้องมีพิกัดอ้างอิงก่อน `
+        + '— ให้คัดลอกรหัสแบบเต็ม (เช่น 7P94XJGM+76) จาก Google Maps มาใส่แทน',
+    };
+  }
+  return { lat: typedLat, lng: typedLng, error: `Plus Code "${raw}" ไม่ถูกต้อง` };
+}
+
+/**
+ * GET /api/plus-code/decode?code=&ref_lat=&ref_lng=
+ * Lets the branch form show where a pasted code actually lands before it is
+ * saved. Staff-only: it is the same conversion the form does on submit.
+ */
+export function plusCodeApi(req, res) {
+  const raw = String(req.query.code ?? '').trim();
+  if (!raw) return res.status(400).json({ ok: false, message: 'ยังไม่ได้ใส่ Plus Code' });
+
+  const decoded = decodePlusCode(raw, req.query.ref_lat ?? null, req.query.ref_lng ?? null);
+  if (decoded) {
+    return res.json({ ok: true, lat: decoded.lat, lng: decoded.lng, code: decoded.code, short: decoded.wasShort });
+  }
+  if (isShortPlusCode(raw)) {
+    return res.status(422).json({
+      ok: false,
+      message: 'รหัสแบบสั้นต้องมีพิกัดอ้างอิง — คัดลอกรหัสแบบเต็ม (เช่น 7P94XJGM+76) จาก Google Maps มาใส่แทน',
+    });
+  }
+  return res.status(422).json({ ok: false, message: 'Plus Code ไม่ถูกต้อง' });
+}
+
 export async function create(req, res) {
   const {
     branch_code, name, operator_name, phone, email, address,
-    province, district, lat, lng,
+    province, district,
     zone_a_km, zone_b_km, zone_c_km,
     fee_zone_a, fee_zone_b, fee_zone_c,
     split_plan, split_hub_pct, split_branch_pct,
@@ -97,6 +169,9 @@ export async function create(req, res) {
   if (Math.abs(hubPct + branchPct - 100) > 0.01) {
     errors.push(`Hub% + Branch% ต้องรวมเป็น 100 (ปัจจุบัน ${hubPct + branchPct})`);
   }
+
+  const position = resolveBranchPosition(req.body);
+  if (position.error) errors.push(position.error);
 
   if (errors.length > 0) {
     req.session.branchDraft = req.body;
@@ -117,7 +192,7 @@ export async function create(req, res) {
         branch_code.trim().toUpperCase(), name.trim(), operator_name.trim(),
         phone || null, email || null, address || null,
         province || null, district || null,
-        lat ? Number(lat) : null, lng ? Number(lng) : null,
+        position.lat, position.lng,
         numField(zone_a_km, 5), numField(zone_b_km, 10), numField(zone_c_km, 15),
         numField(fee_zone_a, 0), numField(fee_zone_b, 25000), numField(fee_zone_c, 40000),
         split_plan || 'A', hubPct, branchPct,
@@ -149,16 +224,27 @@ export async function update(req, res) {
   const { id } = req.params;
   const {
     name, operator_name, phone, email, address,
-    province, district, lat, lng,
+    province, district,
     zone_a_km, zone_b_km, zone_c_km,
     fee_zone_a, fee_zone_b, fee_zone_c,
     split_plan, split_hub_pct, split_branch_pct,
     notes,
   } = req.body;
 
+  const [[existing]] = await pool.query('SELECT lat, lng FROM branches WHERE id=?', [id]);
+  if (!existing) {
+    req.session.flash = { type: 'error', message: 'ไม่พบสาขานี้' };
+    return res.redirect('/branches');
+  }
+
   const errors = [];
   if (!name?.trim()) errors.push('ต้องระบุชื่อสาขา');
   if (!operator_name?.trim()) errors.push('ต้องระบุชื่อเจ้าของ');
+
+  // A short Plus Code is only meaningful near somewhere; for an existing
+  // branch, its current position is the honest reference.
+  const position = resolveBranchPosition(req.body, existing);
+  if (position.error) errors.push(position.error);
 
   const zoneA = numField(zone_a_km, 5);
   const zoneB = numField(zone_b_km, 10);
@@ -193,7 +279,7 @@ export async function update(req, res) {
         name.trim(), operator_name.trim(),
         phone || null, email || null, address || null,
         province || null, district || null,
-        lat ? Number(lat) : null, lng ? Number(lng) : null,
+        position.lat, position.lng,
         zoneA, zoneB, zoneC,
         numField(fee_zone_a, 0), numField(fee_zone_b, 25000), numField(fee_zone_c, 40000),
         split_plan || 'A', hubPct, branchPct,
@@ -226,6 +312,9 @@ export async function showEdit(req, res) {
     user: req.session.user,
     title: `แก้ไขสาขา ${branch.name}`,
     branch,
+    // Shown back so a branch entered as raw coordinates can still be checked
+    // against Google Maps without converting numbers by hand.
+    branchPlusCode: encodePlusCode(branch.lat, branch.lng),
   });
 }
 

@@ -831,10 +831,15 @@
 
     <!-- ═══ FOOTER ═══ -->
     <div class="page-footer">
+      <% const guidePhone = companyPhone(company, 'th'); %>
       <div class="footer-contact-list">
-        <div class="footer-contact-item"><i class="fa-solid fa-phone"></i> 083-754-3623</div>
+        <% if (guidePhone) { %>
+          <div class="footer-contact-item"><i class="fa-solid fa-phone"></i> <%= guidePhone %></div>
+        <% } %>
         <div class="footer-contact-item"><i class="fa-brands fa-line"></i> @SNG_Express</div>
-        <div class="footer-contact-item"><i class="fa-brands fa-whatsapp"></i> 083-754-3623</div>
+        <% if (guidePhone) { %>
+          <div class="footer-contact-item"><i class="fa-brands fa-whatsapp"></i> <%= guidePhone %></div>
+        <% } %>
         <div class="footer-contact-item"><i class="fa-brands fa-facebook"></i> SNG Express ขนส่งไทย-ลาว</div>
       </div>
       <div class="footer-tagline">

@@ -49,6 +49,7 @@ import { i18nMiddleware } from './middleware/i18n.js';
 import { themeMiddleware } from './middleware/theme.js';
 import pool from './config/db.js';
 import { getCompanySettings } from './services/companySettingsService.js';
+import { companyPhone, companyEmail, telHref } from './utils/companyContact.js';
 
 // ─── DB Init (idempotent table guard) ───────────────────────────────────────
 async function initDb() {
@@ -308,6 +309,17 @@ app.use(i18nMiddleware);
 
 // ─── Public portal light/dark theme toggle ───────────────────────────────────
 app.use(themeMiddleware);
+
+// ─── Contact-detail helpers ──────────────────────────────────────────────────
+// Views pick the phone/email for the language being read rather than reaching
+// into company_settings themselves; see src/utils/companyContact.js for why
+// that is not a plain property lookup.
+app.use((req, res, next) => {
+  res.locals.companyPhone = companyPhone;
+  res.locals.companyEmail = companyEmail;
+  res.locals.telHref = telHref;
+  next();
+});
 
 // ─── Bottom-right corner popup (customer portal only) ────────────────────────
 // Site-wide (rendered from views/customer/layout.ejs, not any one controller),

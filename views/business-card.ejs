@@ -909,7 +909,9 @@
         brandSub: 'Transport & Logistics',
         companyName: 'เอส เอ็น จี\nบริการขนส่ง',
         companyDesc: 'Fast & Safe Delivery · ไทย-ลาว',
-        phone: '083-754-3623',
+        // JSON-encoded, not quoted-and-escaped: <%= %> would turn an
+        // apostrophe in a stored value into an entity and break this script.
+        phone: <%- JSON.stringify(companyPhone(company, 'th')) %>,
         address: '312 ม.11 บ้านศรีเจริญ ต.หมองกอมเกาะ\nอ.เมืองหมองคาย จ.หมองคาย 43000',
         social: 'SNG Express ขนส่งไทย-ลาว',
         slogan: 'รวดเร็ว · ปลอดภัย · ไว้ใจได้\nFast · Safe · Trusted',

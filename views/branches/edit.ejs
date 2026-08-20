@@ -90,20 +90,12 @@
           — ใส่พิกัดเพื่อให้คิดค่าส่งตามระยะจริง
         </div>
       <% } %>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Latitude</label>
-          <input type="number" step="any" name="lat"
-            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm font-mono"
-            placeholder="17.97570000" value="<%= branch.lat ?? '' %>">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Longitude</label>
-          <input type="number" step="any" name="lng"
-            class="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 text-sm font-mono"
-            placeholder="102.63310000" value="<%= branch.lng ?? '' %>">
-        </div>
-      </div>
+      <%- include('_plus_code', {
+        lat: branch.lat, lng: branch.lng,
+        code: '',
+        plusCode: typeof branchPlusCode !== 'undefined' ? branchPlusCode : null,
+        accent: 'amber',
+      }) %>
     </div>
 
     <!-- Zones & fees -->
