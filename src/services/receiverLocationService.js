@@ -25,7 +25,7 @@ import { toWaPhone } from '../utils/waPhone.js';
  * parcel is DELIVERED or CLOSED its coordinates are history — overwriting them
  * would rewrite the record of where it actually went.
  */
-const OPEN_FOR_LOCATION = [
+export const OPEN_FOR_LOCATION = [
   'AT_DEST_WH', 'BRANCH_TRANSFER', 'BRANCH_RECEIVED',
   'RIDER_ASSIGNED', 'RIDER_ACCEPTED', 'OUT_FOR_DELIVERY', 'DELIVERY_FAILED',
 ];

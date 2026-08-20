@@ -204,6 +204,20 @@ export async function transitionOrder({
         .then(m => m.autoBroadcastOnDestinationArrival(orderId))
         .catch(err => console.error('[Workflow] destination auto-broadcast failed:', err.message));
     }
+    // A customer can share a WhatsApp location pin at any point — including
+    // while this order is still in transit, well before it reaches
+    // AT_DEST_WH. saveCustomerLocation (receiverLocationService.js) only
+    // copies a pin onto orders that are already "open for location" at the
+    // exact moment it arrives; an order still crossing the border at that
+    // moment never picks it up on its own; it just sits on customers.lat/lng
+    // waiting. A brand-new order already gets a returning customer's saved
+    // pin at creation (ordersController.js) — this is the same catch-up for
+    // an order that already existed when the pin came in.
+    if (ownsTransaction && normalizedTo === 'AT_DEST_WH' && order.receiver_id) {
+      import('./receiverLocationService.js')
+        .then(m => m.applySavedLocationToOrder(orderId, order.receiver_id))
+        .catch(err => console.error('[Workflow] location catch-up failed:', err.message));
+    }
     return { order, fromStatus, toStatus: normalizedTo, changed: true, logId: logResult.insertId };
   } catch (error) {
     if (ownsTransaction) await conn.rollback();
