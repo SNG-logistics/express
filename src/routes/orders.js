@@ -12,7 +12,7 @@
  * │ Receive at warehouse            │ admin, manager, dispatcher, warehouse_th, warehouse_la │
  * │ Start crossing / border moves   │ admin, manager, dispatcher                │
  * │ Arrive dest warehouse           │ admin, manager, dispatcher, warehouse_la  │
- * │ Start delivery / mark delivered │ admin, manager, dispatcher                │
+ * │ Start delivery / mark delivered │ admin, manager, dispatcher, driver_support, branch_operator │
  * │ Retry a failed delivery         │ admin, manager, dispatcher, driver_support, branch_operator │
  * │ Release a stuck rider job       │ admin, manager, dispatcher                │
  * │ Return to sender (destructive)  │ admin, manager, dispatcher                │

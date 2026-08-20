@@ -110,10 +110,21 @@
 
   const isDispatch = ['owner','admin','manager','dispatcher'].includes(role);
 
-  const canEdit    = !isLocked && ['NEW','RECEIVED_WH_TH','RECEIVED_WH_LA'].includes(order.status) && isAdmin;
+  // dispatcher is route-permitted for edit/receive/arrived-dest/delivery/
+  // dest-office (src/routes/orders.js) — these flags used to only check
+  // isTH_WH/isLA_WH/isAdmin, leaving dispatcher with no UI for any of it.
+  const canEdit    = !isLocked && ['NEW','RECEIVED_WH_TH','RECEIVED_WH_LA'].includes(order.status) && isDispatch;
   const canReceive = !isLocked && order.status === 'NEW' &&
-    ((isTH2LA && isTH_WH) || (!isTH2LA && isLA_WH));
-  const canDeliver = !isLocked && ['AT_DEST_WH'].includes(order.status) && (isLA_WH || isAdmin);
+    (isDispatch || (isTH2LA && isTH_WH) || (!isTH2LA && isLA_WH));
+  // Split AT_DEST_WH into its two actual role sets rather than one combined
+  // canDeliver: ROLES_DELIVERY_WRITE (start delivery) also includes
+  // driver_support, but ROLES_DEST_OFFICE (branch/pickup/forward) does not —
+  // a single flag would have given driver_support buttons their route
+  // rejects.
+  const canStartDelivery = !isLocked && order.status === 'AT_DEST_WH' &&
+    (isLA_WH || isDispatch || role === 'driver_support');
+  const canDestOffice = !isLocked && order.status === 'AT_DEST_WH' && (isLA_WH || isDispatch);
+  const canDeliver = canStartDelivery || canDestOffice;
   const canClose   = !isLocked && ['DELIVERED','COD_COLLECTED'].includes(order.status) && isAdmin;
   const canReturn  = !isLocked && ['DELIVERY_FAILED'].includes(order.status) && isDispatch;
   const canReleaseRider = !isLocked && ['RIDER_ASSIGNED','RIDER_ACCEPTED'].includes(order.status) && isDispatch;
@@ -236,7 +247,7 @@
           <i class="fa-solid fa-flag-checkered"></i> ถึงด่านปลายทาง
         </button>
       </form>
-      <% } else if (order.status === 'ARRIVED_BORDER_WH' && (isLA_WH || isAdmin)) { %>
+      <% } else if (order.status === 'ARRIVED_BORDER_WH' && (isLA_WH || isDispatch)) { %>
       <form action="/orders/<%= order.id %>/arrived-dest" method="post">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button class="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-sm font-bold hover:shadow-indigo-500/25 hover:shadow-lg transition-all flex items-center gap-2">
@@ -245,12 +256,15 @@
       </form>
       <% } else if (canDeliver) { %>
       <div class="flex flex-col gap-2">
+        <% if (canStartDelivery) { %>
         <form action="/orders/<%= order.id %>/delivery" method="post">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white text-sm font-bold hover:shadow-blue-500/25 hover:shadow-lg transition-all flex items-center justify-center gap-2">
             <i class="fa-solid fa-motorcycle"></i> ออกส่งพัสดุ (ไรเดอร์)
           </button>
         </form>
+        <% } %>
+        <% if (canDestOffice) { %>
         <button type="button" onclick="document.getElementById('branchModal').style.display='flex'" class="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-white text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
           <i class="fa-solid fa-store"></i> ลงสาขา
         </button>
@@ -260,8 +274,9 @@
         <button type="button" onclick="document.getElementById('forwardModal').style.display='flex'" class="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
           <i class="fa-solid fa-truck-arrow-right"></i> ส่งต่อขนส่งเจ้าอื่น (ต่างแขวง)
         </button>
+        <% } %>
       </div>
-      <% } else if (order.status === 'OUT_FOR_DELIVERY' && (isLA_WH || isAdmin)) { %>
+      <% } else if (order.status === 'OUT_FOR_DELIVERY' && (isLA_WH || isDispatch || role === 'driver_support')) { %>
       <div class="flex flex-col gap-2">
         <button type="button" onclick="document.getElementById('deliverModal').style.display='flex'" class="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white text-sm font-bold hover:shadow-emerald-500/25 hover:shadow-lg transition-all flex items-center justify-center gap-2">
           <i class="fa-solid fa-check-double"></i> ส่งสำเร็จ
@@ -989,6 +1004,13 @@
           file:text-sm file:font-semibold file:bg-emerald-500/20 file:text-emerald-400
           hover:file:bg-emerald-500/30 transition-colors cursor-pointer bg-slate-800 border border-slate-700/80 rounded-xl p-2 outline-none">
       </div>
+
+      <% if (Number(order.cod_amount) > 0) { %>
+      <div>
+        <label class="block text-xs font-medium text-amber-400 mb-2">เก็บเงิน COD (ต้องเท่ากับ ฿<%= Number(order.cod_amount).toLocaleString() %>)</label>
+        <input type="number" name="cod_collected" step="0.01" value="<%= Number(order.cod_amount) %>" required class="w-full bg-slate-800 border border-slate-700/80 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 outline-none">
+      </div>
+      <% } %>
 
       <div class="flex gap-3 pt-4 border-t border-white/5">
         <button type="button" onclick="document.getElementById('deliverModal').style.display='none'" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition">ยกเลิก</button>
