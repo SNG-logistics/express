@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'fs';
 import ejs from 'ejs';
+import { companyPhone, companyEmail, telHref } from '../../src/utils/companyContact.js';
 
 const HOME = readFileSync(new URL('../../views/customer/home.ejs', import.meta.url), 'utf8');
 const CSS = readFileSync(new URL('../../public/css/portal.css', import.meta.url), 'utf8');
@@ -17,6 +18,8 @@ function renderHome(company = {}) {
     t, lang: 'th', company,
     portalCurrentUser: null,
     homeMember: null,
+    // Supplied app-wide by res.locals; see src/utils/companyContact.js.
+    companyPhone, companyEmail, telHref,
   });
 }
 

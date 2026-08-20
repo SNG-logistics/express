@@ -333,6 +333,13 @@
       letter-spacing: 0.03em;
     }
 
+    /* The number is a tel: link on a phone; it must not turn browser-blue
+       against the dark panel. */
+    .login-footer a {
+      color: inherit;
+      text-decoration: none;
+    }
+
     /* Feature badges */
     .feature-badges {
       display: flex;
@@ -473,7 +480,10 @@
 
     <div class="login-footer">
       <p>© 2025 SNG Express · เอส เอ็น จี บริการส่งพัสดุ ไทย-ลาว</p>
-      <p style="margin-top:0.25rem;">083-754-3623</p>
+      <% const loginPhone = typeof company !== 'undefined' ? companyPhone(company, 'th') : ''; %>
+      <% if (loginPhone) { %>
+        <p style="margin-top:0.25rem;"><a href="tel:<%= telHref(loginPhone) %>"><%= loginPhone %></a></p>
+      <% } %>
     </div>
   </div>
 </body>
