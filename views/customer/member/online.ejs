@@ -16,7 +16,7 @@
   </div>
 
   <% if (products && products.length > 0) { %>
-    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;">
+    <div class="product-grid">
       <% products.forEach(product => {
         const badgeText = product.discount_pct
           ? `${t('online.discountPrefix')} ${Number(product.discount_pct)}%`
@@ -35,10 +35,10 @@
           }
         }
       %>
-      <a href="<%= product.product_url %>" target="_blank" rel="noopener" class="card" style="text-decoration: none; color: inherit; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-        <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--portal-surface-2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+      <a href="<%= product.product_url %>" target="_blank" rel="noopener" class="card product-card">
+        <div class="product-media">
           <% if (photos.length === 1) { %>
-            <img src="<%= photos[0] %>" alt="<%= product.name %>" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="<%= photos[0] %>" alt="<%= product.name %>">
           <% } else if (photos.length > 1) { %>
             <div
               x-data="{ i: 0 }"
@@ -63,11 +63,11 @@
               </div>
             </div>
           <% } else { %>
-            <i class="fa-solid fa-bag-shopping" style="font-size: 3rem; color: var(--portal-text-faint);"></i>
+            <i class="fa-solid fa-bag-shopping product-media-empty"></i>
           <% } %>
           <% if (badgeText) { %>
-          <span style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(10, 10, 10, 0.8); border: 1px solid var(--portal-border); padding: 0.2rem 0.5rem; border-radius: 0.5rem; font-size: 0.75rem; color: #FFE000; font-weight: 700;">
-            <i class="fa-solid fa-tag" style="color: #FFE000; font-size: 0.7rem;"></i> <%= badgeText %>
+          <span class="product-badge" title="<%= badgeText %>">
+            <i class="fa-solid fa-tag"></i> <%= badgeText %>
           </span>
           <% } %>
         </div>
@@ -86,21 +86,22 @@
           const hasOriginal = product.original_price !== null && product.original_price !== undefined && String(product.original_price).trim() !== '';
           const cardPriceColor = product.price_color || '#E53935';
         %>
-        <div style="padding: 1rem; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 0.6rem;">
+        <div class="product-body">
           <div>
-            <strong style="font-size: 1.05rem; line-height: 1.35; color: var(--portal-gold); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em;"><%= product.name %></strong>
+            <strong class="product-name"><%= product.name %></strong>
             <% if (hasPrice) { %>
-            <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.45rem; flex-wrap: wrap;">
-              <span style="font-weight: 800; font-size: 1.35rem; line-height: 1.1; letter-spacing: -0.01em; color: <%- cardPriceColor %>;">฿<%= fmtPrice(product.price) %></span>
+            <div class="product-prices">
+              <%# Only the colour stays inline — it is per-product data, not styling. %>
+              <span class="product-price" style="color: <%- cardPriceColor %>;">฿<%= fmtPrice(product.price) %></span>
               <% if (hasOriginal) { %>
-              <span style="font-weight: 600; font-size: 0.9rem; line-height: 1.1; color: #9CA3AF; text-decoration: line-through;">฿<%= fmtPrice(product.original_price) %></span>
+              <span class="product-price-was">฿<%= fmtPrice(product.original_price) %></span>
               <% } %>
             </div>
             <% } %>
           </div>
           <% if (product.platform) { %>
-          <div style="font-size: 0.78rem; color: var(--portal-text-faint); border-top: 1px solid var(--portal-border); padding-top: 0.5rem;">
-            <i class="fa-solid fa-store" style="color: var(--portal-gold);"></i>
+          <div class="product-platform">
+            <i class="fa-solid fa-store"></i>
             <span><%= PLATFORM_LABELS[product.platform] || product.platform %></span>
           </div>
           <% } %>

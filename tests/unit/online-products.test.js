@@ -252,7 +252,7 @@ test('member cards render prices straight from the product row with colour and s
     price: 117, original_price: null, price_color: '#E53935',
   });
   assert.match(saleOnly, /฿117/);
-  assert.doesNotMatch(saleOnly, /line-through/);
+  assert.doesNotMatch(saleOnly, /product-price-was/);
   assert.match(saleOnly, /#E53935/);
 
   const both = render({
@@ -263,7 +263,7 @@ test('member cards render prices straight from the product row with colour and s
   assert.match(both, /฿117/);
   assert.match(both, /฿399/);
   assert.match(both, /#0066FF/);
-  assert.match(both, /text-decoration: line-through/);
+  assert.match(both, /class="product-price-was"/);
 
   // Decimal handling: whole numbers stay clean, decimals keep two places —
   // prices must never render as JS float soup on the card.
