@@ -61,7 +61,29 @@
                     <i class="fa-solid fa-circle-check"></i> ระบบแจ้งเตือนพร้อมทำงาน
                 </p>
             </div>
-            
+
+            <!-- Conflict State — another client holds the session -->
+            <div id="conflictContainer" class="hidden flex flex-col items-center justify-center w-full h-full animate-fade-in text-center px-4">
+                <div class="w-24 h-24 bg-orange-500/15 rounded-full flex items-center justify-center border-2 border-orange-500/40 mb-6">
+                    <i class="fa-solid fa-code-branch text-4xl text-orange-400"></i>
+                </div>
+                <h2 class="text-2xl font-black text-white mb-3">พบการเชื่อมต่อซ้ำ</h2>
+                <p class="text-slate-300 max-w-md leading-relaxed mb-5">
+                    มีโปรแกรมอื่นใช้บัญชี WhatsApp นี้อยู่ ระบบจึงหยุดเชื่อมต่อไว้
+                    <span class="text-orange-300">การสแกน QR ใหม่ไม่ช่วยแก้</span>
+                    เพราะทั้งสองฝั่งจะแย่งกันไปเรื่อยๆ
+                </p>
+                <div class="text-left text-sm text-slate-400 bg-black/40 border border-white/10 rounded-2xl p-5 max-w-md space-y-2">
+                    <p class="text-slate-200 font-bold mb-2">ตรวจตามนี้แล้วกด Restart</p>
+                    <p>1. แอปรันซ้ำสองที่หรือไม่ — pm2 กับ Plesk/Passenger เปิดพร้อมกัน</p>
+                    <p class="font-mono text-xs text-emerald-400/80 pl-4">ps -ef | grep -E "app\.js|passenger\.cjs" | grep -v grep</p>
+                    <p>2. มี deploy เก่าค้างอยู่อีกโฟลเดอร์หรือไม่</p>
+                    <p>3. มีเครื่องอื่นที่ก๊อป auth_info_baileys ไปใช้หรือไม่</p>
+                    <p>4. มือถือ → WhatsApp → อุปกรณ์ที่เชื่อมโยง</p>
+                </div>
+            </div>
+
+
         </div>
 
         <!-- Sidebar / Settings & Logs -->
@@ -114,6 +136,7 @@
         const text = document.getElementById('statusText');
         const qrContainer = document.getElementById('qrContainer');
         const connectedContainer = document.getElementById('connectedContainer');
+        const conflictContainer = document.getElementById('conflictContainer');
         const logsContainer = document.getElementById('logsContainer');
 
         // Update Logs
@@ -128,6 +151,7 @@
         dot.className = 'w-3 h-3 rounded-full transition-colors duration-300';
         qrContainer.classList.add('hidden');
         connectedContainer.classList.add('hidden');
+        conflictContainer.classList.add('hidden');
 
         switch(data.status) {
             case 'CONNECTED':
@@ -157,6 +181,19 @@
             case 'DISCONNECTED':
                 dot.classList.add('bg-red-500', 'shadow-[0_0_12px_rgba(239,68,68,0.8)]');
                 text.classList.replace('text-emerald-400', 'text-red-400');
+                break;
+            case 'CONFLICT':
+                // Scanning a new QR does not fix this and never did — the
+                // account is in use elsewhere, so the page has to say where to
+                // look instead of leaving a one-word status on screen.
+                dot.classList.add('bg-orange-500', 'shadow-[0_0_12px_rgba(249,115,22,0.8)]');
+                // Not classList.replace: the page can load straight into this
+                // state, where the class is still the initial slate one and a
+                // replace would silently do nothing.
+                text.classList.remove('text-slate-300', 'text-emerald-400', 'text-amber-400', 'text-red-400');
+                text.classList.add('text-orange-400');
+                text.textContent = 'CONFLICT';
+                conflictContainer.classList.remove('hidden');
                 break;
             case 'DISABLED_OOM_FIX':
                 dot.classList.add('bg-slate-500');
