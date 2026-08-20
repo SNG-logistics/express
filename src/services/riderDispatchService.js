@@ -19,6 +19,7 @@ import {
 } from './notificationService.js';
 import {
   offerMessage, wonMessage, takenMessage, expiredMessage, cancelledMessage, timedOutMessage,
+  escalateToDispatchMessage,
 } from './riderOfferMessages.js';
 
 const DEFAULT_EXPIRE_MIN = 15;
@@ -297,12 +298,13 @@ export async function notifyOfferResult(offerId) {
 // ── Expiry / escalation ───────────────────────────────────────────────────────
 /**
  * Close timed-out OPEN offers, notify the branch to assign manually (when
- * there is one), and tell every rider who was offered the job that it timed
- * out. The branch message alone used to be the only notice sent — for an
- * HQ-direct order (branch_id NULL) that meant expiry was completely silent,
- * since branch_phone is NULL and the old code skipped sending anything at
- * all in that case. Riders now always learn a job they were watching is
- * gone, the same way they already do when an offer is cancelled outright.
+ * there is one), tell every rider who was offered the job that it timed
+ * out, and — for an HQ-direct order (branch_id NULL) — escalate to central
+ * dispatch. The branch message alone used to be the only notice sent; for
+ * an HQ-direct order that meant expiry was completely silent for riders
+ * (branch_phone is NULL) AND nobody with the authority to manually assign a
+ * rider ever learned the order needed attention (a branch-scoped order at
+ * least nudges the branch — HQ-direct had no equivalent).
  */
 export async function expireStaleOffers() {
   const [stale] = await pool.query(
@@ -312,6 +314,12 @@ export async function expireStaleOffers() {
      LEFT JOIN branches b ON b.id = do.branch_id
      WHERE do.status='OPEN' AND do.expires_at IS NOT NULL AND do.expires_at < NOW()
      LIMIT 50`
+  );
+  // Fetched once, not per-offer — the recipient list doesn't depend on which
+  // offer expired, only on who currently holds a dispatch-capable role.
+  const [dispatchStaff] = await pool.query(
+    `SELECT id, phone FROM users WHERE role IN ('admin','manager','dispatcher')
+       AND status='active' AND phone IS NOT NULL AND phone != ''`
   );
   let expired = 0;
   for (const o of stale) {
@@ -344,6 +352,20 @@ export async function expireStaleOffers() {
         payload: { jobNo: o.job_no },
       });
     }
+    // Only HQ-direct orders escalate here — a branch-scoped order already
+    // has the branch itself nudged above, which is who actually holds the
+    // parcel and can act on it.
+    if (!o.branch_id) {
+      for (const staff of dispatchStaff) {
+        await enqueueRiderNotification(pool, {
+          orderId: o.order_id,
+          eventType: `RIDER_OFFER_ESCALATE:${o.id}`,
+          eventKey: `RIDER_OFFER_ESCALATE:${o.id}:${staff.id}`,
+          recipient: staff.phone,
+          payload: { jobNo: o.job_no },
+        });
+      }
+    }
     kickNotificationWorker(o.order_id);
   }
   return expired;
@@ -362,6 +384,8 @@ export async function sendRiderNotification(row) {
     text = expiredMessage(payload);
   } else if (row.event_type.startsWith('RIDER_OFFER_TIMEOUT')) {
     text = timedOutMessage(payload);
+  } else if (row.event_type.startsWith('RIDER_OFFER_ESCALATE')) {
+    text = escalateToDispatchMessage(payload);
   } else if (row.event_type.startsWith('RIDER_OFFER_CANCELLED')) {
     text = cancelledMessage(payload);
   } else {
