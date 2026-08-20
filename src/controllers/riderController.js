@@ -32,6 +32,11 @@ async function getAvailableOffers(riderUserId) {
      WHERE dor.rider_user_id = ?
        AND do.status = 'OPEN'
        AND (do.expires_at IS NULL OR do.expires_at > NOW())
+       -- Belt and braces on top of the cancellation in transitionOrder: only
+       -- these two statuses can still become RIDER_ASSIGNED, so anything else
+       -- is a job that cannot be claimed and must not be offered. Listing one
+       -- costs a rider a tap and an error they can do nothing about.
+       AND o.status IN ('AT_DEST_WH', 'BRANCH_RECEIVED')
      ORDER BY do.created_at DESC`,
     [riderUserId]
   );
@@ -127,11 +132,20 @@ export async function claimOfferHttp(req, res) {
     if (result.won) {
       return res.json({ success: true, message: 'รับงานสำเร็จ! 🎉', orderId: result.orderId });
     }
-    const msg = result.reason === 'EXPIRED' ? 'งานนี้หมดเวลาแล้ว' : 'งานนี้ถูกไรเดอร์ท่านอื่นรับไปแล้ว';
+    const CLAIM_REFUSALS = {
+      EXPIRED:     'งานนี้หมดเวลาแล้ว',
+      ORDER_MOVED: 'งานนี้ถูกจ่ายออกไปแล้ว ไม่ต้องกดรับ — สอบถามแอดมินได้',
+      TAKEN:       'งานนี้ถูกไรเดอร์ท่านอื่นรับไปแล้ว',
+    };
+    const msg = CLAIM_REFUSALS[result.reason] || CLAIM_REFUSALS.TAKEN;
     return res.status(409).json({ success: false, message: msg, reason: result.reason });
   } catch (e) {
     console.error('[Rider] claimOfferHttp:', e);
-    res.status(e.statusCode || 500).json({ success: false, message: e.message });
+    // WorkflowError messages are written for riders and are already in Thai;
+    // anything else is an internal fault whose text (a SQL error, a state-machine
+    // string) has no business on a rider's phone.
+    const message = e instanceof WorkflowError ? e.message : 'รับงานไม่สำเร็จ กรุณาลองใหม่หรือแจ้งแอดมิน';
+    res.status(e.statusCode || 500).json({ success: false, message });
   }
 }
 

@@ -1,6 +1,10 @@
 import pool from '../config/db.js';
 import { canTransitionOrder, resolveStatus } from '../constants/transitions.js';
-import { enqueueOrderNotification, kickNotificationWorker } from './notificationService.js';
+import {
+  enqueueOrderNotification,
+  enqueueRiderNotification,
+  kickNotificationWorker,
+} from './notificationService.js';
 
 const UPDATE_COLUMNS = new Set([
   'trip_id', 'dest_branch_id', 'delivery_zone', 'last_mile_fee',
@@ -39,6 +43,47 @@ function buildUpdate(updates, toStatus) {
   if (toStatus === 'DELIVERY_FAILED') clauses.push('delivery_failed_at=NOW()');
 
   return { clauses, values };
+}
+
+/**
+ * Close any OPEN rider offer on an order that can no longer be claimed, and tell
+ * the riders it was offered to.
+ *
+ * The message matters as much as the cancellation: a rider holding a broadcast on
+ * WhatsApp has no way to know the job went out by another route, and silence is
+ * what sends them back to tap a card that can only fail.
+ */
+async function cancelOpenOffers(conn, orderId, jobNo, newStatus) {
+  const [open] = await conn.query(
+    "SELECT id FROM delivery_offers WHERE order_id=? AND status='OPEN'",
+    [orderId]
+  );
+  if (open.length === 0) return;
+
+  for (const offer of open) {
+    const [closed] = await conn.query(
+      "UPDATE delivery_offers SET status='CANCELLED' WHERE id=? AND status='OPEN'",
+      [offer.id]
+    );
+    if (closed.affectedRows !== 1) continue;   // someone claimed it first
+
+    const [recipients] = await conn.query(
+      'SELECT phone FROM delivery_offer_recipients WHERE offer_id=? AND phone IS NOT NULL',
+      [offer.id]
+    );
+    for (const recipient of recipients) {
+      await enqueueRiderNotification(conn, {
+        orderId,
+        eventType: `RIDER_OFFER_CANCELLED:${offer.id}`,
+        // One key per rider — the outbox de-duplicates on event_key, so a shared
+        // key would deliver to whoever happened to be inserted first and drop
+        // the rest silently.
+        eventKey: `RIDER_OFFER_CANCELLED:${offer.id}:${recipient.phone}`,
+        recipient: recipient.phone,
+        payload: { result: 'CANCELLED', jobNo, status: newStatus },
+      });
+    }
+  }
 }
 
 export async function transitionOrder({
@@ -97,6 +142,22 @@ export async function transitionOrder({
 
     if (typeof afterTransition === 'function') {
       await afterTransition(conn, order, normalizedTo);
+    }
+
+    // An open rider offer only means something while the order can still become
+    // RIDER_ASSIGNED. Once it moves past that — a warehouse Auto-Scan straight to
+    // OUT_FOR_DELIVERY, a partner-carrier dispatch, a self-pickup — the job on the
+    // rider's screen is dead, and the old code left it there: the rider tapped it,
+    // claimOffer flipped the offer to CLAIMED and then failed the impossible
+    // transition, rolling the whole thing back to OPEN so the dead card returned.
+    //
+    // Runs pre-commit on `conn` for the same reason as the referral hook below:
+    // most callers pass their own connection and never reach the post-commit
+    // hooks at the end of this function, and a stale offer is exactly this bug.
+    // The status='OPEN' guard leaves the claim path alone — claimOffer has
+    // already set CLAIMED in this same transaction before it transitions here.
+    if (!canTransitionOrder(normalizedTo, 'RIDER_ASSIGNED')) {
+      await cancelOpenOffers(conn, orderId, order.job_no, normalizedTo);
     }
 
     if (notify) {

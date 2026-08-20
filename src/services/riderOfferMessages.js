@@ -51,6 +51,20 @@ export function takenMessage(p = {}) {
   ].filter(Boolean).join('\n');
 }
 
+/**
+ * Sent to every offered rider when the job is withdrawn because the parcel left
+ * by another route — dispatched at the counter, handed to a partner carrier,
+ * collected by the customer. Distinct from takenMessage: nobody won it, and the
+ * rider should stop waiting rather than watch for the next claim.
+ */
+export function cancelledMessage(p = {}) {
+  return [
+    'ℹ️ *SNG EXPRESS — งานนี้ถูกยกเลิก*',
+    `พัสดุ *${p.jobNo || '-'}* ถูกจ่ายออกไปทางอื่นแล้ว จึงไม่ต้องกดรับ`,
+    'ขออภัยในความไม่สะดวก ไว้มีงานใหม่จะแจ้งอีกครั้ง 🙏',
+  ].filter(Boolean).join('\n');
+}
+
 /** Sent to the branch when an offer expires with no rider claiming it. */
 export function expiredMessage(p = {}) {
   return [
