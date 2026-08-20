@@ -12,11 +12,14 @@
  */
 import pool from '../config/db.js';
 import { transitionOrder, withTransaction, WorkflowError } from './orderWorkflowService.js';
+import { canTransitionOrder } from '../constants/transitions.js';
 import {
   enqueueRiderNotification,
   kickNotificationWorker,
 } from './notificationService.js';
-import { offerMessage, wonMessage, takenMessage, expiredMessage } from './riderOfferMessages.js';
+import {
+  offerMessage, wonMessage, takenMessage, expiredMessage, cancelledMessage,
+} from './riderOfferMessages.js';
 
 const DEFAULT_EXPIRE_MIN = 15;
 // Unambiguous alphabet (no O/0/I/1) for claim codes.
@@ -188,6 +191,16 @@ export async function claimOffer(offerId, riderUserId, source = 'SYSTEM') {
       throw new WorkflowError('งานนี้ไม่ได้เสนอให้คุณ', 403);
     }
 
+    // The parcel may have been dispatched by another route while this offer sat
+    // open. Checking here turns that into an ordinary "no" alongside TAKEN and
+    // EXPIRED; without it the claim below succeeded, the transition at the end
+    // threw, and the rollback put the offer back to OPEN so the same dead card
+    // could be tapped again — with a raw state-machine error each time.
+    const [[order]] = await conn.query('SELECT status FROM orders WHERE id=? FOR UPDATE', [offer.order_id]);
+    if (!order || !canTransitionOrder(order.status, 'RIDER_ASSIGNED')) {
+      return { won: false, reason: 'ORDER_MOVED', offer };
+    }
+
     // Atomic winner selection — only one UPDATE can flip OPEN → CLAIMED.
     const [claim] = await conn.query(
       "UPDATE delivery_offers SET status='CLAIMED', claimed_by=?, claimed_at=NOW() WHERE id=? AND status='OPEN'",
@@ -325,6 +338,8 @@ export async function sendRiderNotification(row) {
     text = payload.result === 'WON' ? wonMessage(payload) : takenMessage(payload);
   } else if (row.event_type.startsWith('RIDER_OFFER_EXPIRED')) {
     text = expiredMessage(payload);
+  } else if (row.event_type.startsWith('RIDER_OFFER_CANCELLED')) {
+    text = cancelledMessage(payload);
   } else {
     text = offerMessage(payload);
   }
@@ -368,17 +383,31 @@ export async function tryClaimFromWhatsApp(phoneRaw, text) {
   }
   if (!target) return { handled: false };
 
+  // Every outcome answers. This message was intercepted before the CRM inbox, so
+  // saying nothing means the rider's reply vanishes: they typed the code, got no
+  // acknowledgement, and had no way to tell a claimed job from a broken one.
+  const reply = async (text) => {
+    try {
+      const { sendTextMessage } = await import('./whatsappService.js');
+      await sendTextMessage(phoneRaw, text);
+    } catch (sendErr) {
+      console.error('[RiderDispatch] claim reply failed:', sendErr.message);
+    }
+  };
+
   try {
     const res = await claimOffer(target.offer_id, target.rider_user_id, 'WHATSAPP');
     if (!res.won) {
-      // Losing claim attempt still counts as handled (don't pollute CRM), and
-      // the notifyOfferResult TAKEN message already tells the rider it's gone.
-      const { sendTextMessage } = await import('./whatsappService.js');
-      await sendTextMessage(phoneRaw, 'ℹ️ งานนี้ถูกไรเดอร์ท่านอื่นรับไปแล้ว หรือหมดเวลาแล้ว').catch(() => {});
+      // A losing claim still counts as handled (don't pollute CRM). The winner
+      // gets wonMessage from notifyOfferResult; this covers everyone else.
+      await reply(res.reason === 'ORDER_MOVED'
+        ? 'ℹ️ งานนี้ถูกจ่ายออกไปแล้ว ไม่ต้องกดรับ — สอบถามแอดมินได้'
+        : 'ℹ️ งานนี้ถูกไรเดอร์ท่านอื่นรับไปแล้ว หรือหมดเวลาแล้ว');
     }
     return { handled: true, won: res.won };
   } catch (e) {
     console.error('[RiderDispatch] tryClaimFromWhatsApp failed:', e.message);
+    await reply('⚠️ รับงานไม่สำเร็จ กรุณาลองใหม่ หรือกดรับในแอป SNG Rider');
     return { handled: true, error: e.message };
   }
 }

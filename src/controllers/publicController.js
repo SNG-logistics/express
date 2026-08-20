@@ -3,6 +3,8 @@ import { previewPurchaseAgentQuote } from '../services/purchaseAgentPricingServi
 import { getProhibitedItems } from '../services/prohibitedItemsService.js';
 import { getPublishedTestimonials } from '../services/testimonialsService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
+import { getLatestRate } from '../services/exchangeRateService.js';
+import pool from '../config/db.js';
 
 function numberParam(value) {
   const parsed = Number(value || 0);
@@ -121,10 +123,21 @@ export async function purchaseEstimate(req, res) {
     // Cross-border shipping is charged on the parcel, so it scales with the
     // total weight of the order rather than per item.
     const shipping = await findBestShippingRate({ weightKg: weightKg * qty });
+
+    // shipping_rates.price is BAHT — the settings screen that maintains it is
+    // labelled (THB) and prefixed ฿. It used to be passed straight into a field
+    // named _lak and added to a kip total, so a ฿25 cross-border leg showed as
+    // "25" beside figures like 479,500 and vanished from the price. Converted at
+    // the plain THB_LAK rate, without the FX spread: this is SNG's own charge,
+    // not money being exchanged on the customer's behalf, so the spread has no
+    // business riding on it.
+    const rate = await getLatestRate(pool, 'THB_LAK');
+    const shippingLak = Math.ceil((shipping.price || 0) * rate);
+
     const quote = await previewPurchaseAgentQuote({
       product_price_thb: priceThb,
       desired_qty: qty,
-      sng_shipping_lak: shipping.price || 0,
+      sng_shipping_lak: shippingLak,
     });
 
     return res.json({
@@ -133,7 +146,7 @@ export async function purchaseEstimate(req, res) {
       payNowLak: quote.productLak,           // deposit = converted product cost only
       payOnDeliveryLak: quote.totalLak - quote.productLak,
       productLak: quote.productLak,
-      shippingLak: shipping.price || 0,
+      shippingLak,
       serviceFeeLak: quote.serviceFeeLak,
       totalLak: quote.totalLak,
       rate: quote.effectiveRate,

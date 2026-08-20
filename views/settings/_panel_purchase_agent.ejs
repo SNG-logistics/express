@@ -1,0 +1,78 @@
+<%# Service fee for the buy-on-behalf service. These two numbers set the price
+    every customer sees on /buy and every staff quote starts from, and until now
+    they could only be changed in the database. %>
+<%
+  const feeMin = company.purchase_agent_fee_min_lak;
+  const feePct = company.purchase_agent_fee_pct;
+  // Blank means "never configured" and the pricing service falls back to the
+  // defaults; 0 means the owner switched the fee off. The form must show them
+  // differently or a promotion looks like a missing setting.
+  const minValue = feeMin === undefined || feeMin === null || String(feeMin).trim() === '' ? 20000 : Number(feeMin);
+  const pctValue = feePct === undefined || feePct === null || String(feePct).trim() === '' ? 6 : Number(feePct);
+  const isFree = minValue === 0 && pctValue === 0;
+%>
+<div class="glass-panel-dark rounded-2xl p-5 border border-white/5">
+    <h3 class="text-sm font-bold text-white mb-1">ค่าบริการสั่งซื้อแทน</h3>
+    <p class="text-slate-500 text-xs mb-4 leading-relaxed">
+        คิดแบบ <strong class="text-slate-300">มากกว่าระหว่าง</strong> ขั้นต่ำ กับ เปอร์เซ็นต์ของค่าสินค้า —
+        ใส่ <strong class="text-emerald-400">0 ทั้งสองช่อง</strong> เพื่อทำโปรโมชั่นฟรีค่าบริการ
+        · มีผลกับใบเสนอราคาใหม่และหน้า <a href="/buy" target="_blank" class="text-amber-400 hover:text-amber-300">คำนวณของลูกค้า</a> ทันที
+        · ใบเสนอราคาที่ออกไปแล้วยังใช้ราคาเดิม
+    </p>
+
+    <form action="/settings/purchase-agent" method="post" class="space-y-4"
+          x-data="{ min: <%= minValue %>, pct: <%= pctValue %>, sample: 500000 }">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    ค่าบริการขั้นต่ำ (LAK)
+                </span>
+                <input type="number" name="fee_min_lak" min="0" step="1000" required
+                       x-model.number="min"
+                       class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-amber-500 focus:border-amber-500 text-sm font-mono">
+                <span class="text-[10px] text-slate-600">ออเดอร์เล็กจะถูกคิดเท่านี้เป็นอย่างน้อย</span>
+            </label>
+
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    เปอร์เซ็นต์ของค่าสินค้า (%)
+                </span>
+                <input type="number" name="fee_pct" min="0" max="100" step="0.1" required
+                       x-model.number="pct"
+                       class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-amber-500 focus:border-amber-500 text-sm font-mono">
+                <span class="text-[10px] text-slate-600">ออเดอร์ใหญ่จะถูกคิดตามเปอร์เซ็นต์นี้แทน</span>
+            </label>
+        </div>
+
+        <%# The formula is a MAX of two numbers, which is hard to hold in your
+            head. Showing the fee on a sample order turns "6% or 20,000" into a
+            figure the owner can compare with what the competition charges. %>
+        <div class="rounded-xl bg-black/30 border border-white/10 px-4 py-3 text-xs">
+            <div class="flex items-center gap-2 flex-wrap text-slate-400">
+                <span>ถ้าค่าสินค้า</span>
+                <input type="number" x-model.number="sample" min="0" step="50000"
+                       class="w-32 bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs font-mono">
+                <span>LAK ลูกค้าจะจ่ายค่าบริการ</span>
+                <strong class="font-mono text-base"
+                        :class="Math.max(min, sample * pct / 100) === 0 ? 'text-emerald-400' : 'text-amber-400'"
+                        x-text="Math.max(min, sample * pct / 100) === 0
+                          ? 'ฟรี'
+                          : Math.round(Math.max(min, sample * pct / 100)).toLocaleString('en-US') + ' LAK'"></strong>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-wrap">
+            <button type="submit"
+                    class="bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl px-5 py-2.5 text-xs font-bold">
+                <i class="fa-solid fa-floppy-disk"></i> บันทึกค่าบริการ
+            </button>
+            <% if (isFree) { %>
+            <span class="text-emerald-400 text-xs font-semibold">
+                <i class="fa-solid fa-gift"></i> ตอนนี้เปิดโปรโมชั่นฟรีค่าบริการอยู่ — ลูกค้าจะเห็นคำว่า "ฟรี"
+            </span>
+            <% } %>
+        </div>
+    </form>
+</div>

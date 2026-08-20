@@ -83,10 +83,24 @@ export function calculatePurchaseAgentQuote({
   };
 }
 
+/**
+ * Read a configured fee, distinguishing "not set" from "deliberately zero".
+ *
+ * `Number(x) || fallback` cannot express a free service, because 0 is falsy —
+ * so a launch promotion saved as 0 came back out as the 20,000 default and the
+ * customer was quoted a fee the owner had switched off. Same trap that once
+ * made a free delivery zone impossible to save.
+ */
+export function feeSetting(raw, fallback) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
 function normalizeSettings(settings = {}) {
   return {
-    feeMinLak: Number(settings.purchase_agent_fee_min_lak) || PURCHASE_AGENT_FEE_MIN_LIMIT_LAK,
-    feePct: Number(settings.purchase_agent_fee_pct) || PURCHASE_AGENT_FEE_PCT_DEFAULT,
+    feeMinLak: feeSetting(settings.purchase_agent_fee_min_lak, PURCHASE_AGENT_FEE_MIN_LIMIT_LAK),
+    feePct: feeSetting(settings.purchase_agent_fee_pct, PURCHASE_AGENT_FEE_PCT_DEFAULT),
   };
 }
 

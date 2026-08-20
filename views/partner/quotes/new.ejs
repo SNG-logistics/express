@@ -351,7 +351,13 @@ function quoteCalc() {
         const r = await fetch(`/api/shipping-price?weight=${w}`);
         const d = await r.json();
         if (d.price > 0) {
-          this.autoSngLak = d.price;
+          // The rate table is kept in BAHT (the settings screen labels it THB
+          // and prefixes ฿), so the raw price cannot be suggested for a field
+          // marked LAK — ฿25 offered as "25 LAK" is off by a factor of ~500.
+          // Plain rate, no FX spread: this is our own charge, not money being
+          // exchanged for the customer.
+          const rate = parseFloat(this.form.exchange_rate) || 0;
+          this.autoSngLak = rate > 0 ? Math.ceil(d.price * rate) : null;
         }
       } catch(e) { console.warn('shipping fetch failed', e); }
     },

@@ -5,6 +5,7 @@
     { key: 'banner',        label: 'แบนเนอร์หน้าแรก',   icon: 'fa-image',            color: 'amber' },
     { key: 'popup',         label: 'ป๊อปอัปมุมขวาล่าง', icon: 'fa-message',          color: 'pink' },
     { key: 'company',       label: 'ข้อมูลบริษัท',      icon: 'fa-building',         color: 'violet' },
+    { key: 'purchaseAgent', label: 'ค่าบริการสั่งซื้อแทน', icon: 'fa-hand-holding-dollar', color: 'emerald' },
     { key: 'prohibited',    label: 'ของที่รับ/ไม่รับ',  icon: 'fa-ban',              color: 'red' },
     { key: 'testimonials',  label: 'หลักฐานจากลูกค้า',  icon: 'fa-camera',           color: 'emerald' },
     { key: 'products',      label: 'สินค้าออนไลน์',     icon: 'fa-bag-shopping',     color: 'amber' },
@@ -72,6 +73,10 @@
         <%- include('_panel_company', { user, company, csrfToken }) %>
     </div>
     <% } %>
+
+    <div x-show="activeTab === 'purchaseAgent'">
+        <%- include('_panel_purchase_agent', { company, csrfToken }) %>
+    </div>
 
     <div x-show="activeTab === 'prohibited'">
         <%- include('_panel_prohibited', { banned, askFirst, flash, csrfToken }) %>

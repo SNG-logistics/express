@@ -2,7 +2,10 @@ import pool from '../config/db.js';
 import { withTransaction } from '../services/orderWorkflowService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
 import { getLatestRate } from '../services/exchangeRateService.js';
-import { previewPurchaseAgentQuote, resolvePurchaseAgentQuote } from '../services/purchaseAgentPricingService.js';
+import {
+    previewPurchaseAgentQuote, resolvePurchaseAgentQuote, feeSetting,
+    PURCHASE_AGENT_FEE_MIN_LIMIT_LAK, PURCHASE_AGENT_FEE_PCT_DEFAULT,
+} from '../services/purchaseAgentPricingService.js';
 import { transitionQuotation } from '../services/quotationWorkflowService.js';
 import { getNextQuotationStatuses } from '../constants/transitions.js';
 import { enqueuePurchaseAgentNotification, kickNotificationWorker } from '../services/notificationService.js';
@@ -108,8 +111,10 @@ export async function newForm(req, res) {
             branches,
             fx_rate: fxRate,
             shippingRates,
-            fee_min_lak: settings.purchase_agent_fee_min_lak || 20000,
-            fee_pct: settings.purchase_agent_fee_pct || 6,
+            // feeSetting, not `|| default`: a fee deliberately set to 0 for a
+            // launch promotion is falsy, and would come back out as 20,000.
+            fee_min_lak: feeSetting(settings.purchase_agent_fee_min_lak, PURCHASE_AGENT_FEE_MIN_LIMIT_LAK),
+            fee_pct: feeSetting(settings.purchase_agent_fee_pct, PURCHASE_AGENT_FEE_PCT_DEFAULT),
             request: null,
             error: null
         });
@@ -572,8 +577,10 @@ export async function convertRequest(req, res) {
             branches,
             fx_rate: fxRate,
             shippingRates,
-            fee_min_lak: settings.purchase_agent_fee_min_lak || 20000,
-            fee_pct: settings.purchase_agent_fee_pct || 6,
+            // feeSetting, not `|| default`: a fee deliberately set to 0 for a
+            // launch promotion is falsy, and would come back out as 20,000.
+            fee_min_lak: feeSetting(settings.purchase_agent_fee_min_lak, PURCHASE_AGENT_FEE_MIN_LIMIT_LAK),
+            fee_pct: feeSetting(settings.purchase_agent_fee_pct, PURCHASE_AGENT_FEE_PCT_DEFAULT),
             request,
             error: null
         });
