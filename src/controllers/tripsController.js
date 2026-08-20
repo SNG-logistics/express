@@ -548,18 +548,30 @@ export async function detachOrder(req, res) {
   }
 
   const revertStatus = trip.direction === 'LA_TO_TH' ? 'RECEIVED_WH_LA' : 'RECEIVED_WH_TH';
-  await withTransaction(async (conn) => {
-    await conn.query('DELETE FROM trip_orders WHERE trip_id=? AND order_id=?', [id, orderId]);
-    if (order.status === 'ON_TRUCK') {
-      await transitionOrder({ orderId, toStatus: revertStatus, userId: req.session.user?.id,
-        note: `Detached from trip ${trip.trip_no}`, source: 'TRIP_DETACH',
-        updates: { trip_id: null }, connection: conn, force: true, notify: false });
-    } else {
-      await conn.query('UPDATE orders SET trip_id=NULL WHERE id=?', [orderId]);
-    }
-  });
-
-  req.session.flash = { type: 'success', message: `ถอดออเดอร์ ${order.job_no} ออกจากรอบรถแล้ว` };
+  try {
+    await withTransaction(async (conn) => {
+      await conn.query('DELETE FROM trip_orders WHERE trip_id=? AND order_id=?', [id, orderId]);
+      if (order.status === 'ON_TRUCK') {
+        // force:true bypasses the normal graph (this is a deliberate backward
+        // correction, not a forward edge) but transitionOrder still throws
+        // STALE_ORDER if the row changed between the lock and this update —
+        // e.g. a scanner/rider action landed on the order in the same moment
+        // this detach was clicked. Without this try/catch that throw was an
+        // unhandled rejection: no async-error middleware in this Express 4
+        // app, so the request just hung instead of telling the dispatcher to
+        // reload and retry.
+        await transitionOrder({ orderId, toStatus: revertStatus, userId: req.session.user?.id,
+          note: `Detached from trip ${trip.trip_no}`, source: 'TRIP_DETACH',
+          updates: { trip_id: null }, connection: conn, force: true, notify: false });
+      } else {
+        await conn.query('UPDATE orders SET trip_id=NULL WHERE id=?', [orderId]);
+      }
+    });
+    req.session.flash = { type: 'success', message: `ถอดออเดอร์ ${order.job_no} ออกจากรอบรถแล้ว` };
+  } catch (err) {
+    console.error('[Trip detachOrder]', err);
+    req.session.flash = { type: 'error', message: err.message };
+  }
   res.redirect(`/trips/${id}`);
 }
 

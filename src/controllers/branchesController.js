@@ -455,20 +455,30 @@ export async function updateRiderStatus(req, res) {
     req.session.flash = { type: 'error', message: 'สถานะไรเดอร์ไม่ถูกต้อง' };
     return res.redirect(`/branches/${branch_id}`);
   }
-  await withTransaction(async (conn) => {
-    const [[rider]] = await conn.query(
-      'SELECT id, user_id FROM riders WHERE id=? AND branch_id=? FOR UPDATE',
-      [riderId, branch_id]
-    );
-    if (!rider) throw new WorkflowError('Rider not found in this branch', 404);
-    await conn.query('UPDATE riders SET status=? WHERE id=?', [status, riderId]);
-    if (rider.user_id) {
-      await conn.query(
-        'UPDATE users SET status=? WHERE id=? AND role=\'rider\'',
-        [status === 'inactive' ? 'inactive' : 'active', rider.user_id]
+  try {
+    await withTransaction(async (conn) => {
+      const [[rider]] = await conn.query(
+        'SELECT id, user_id FROM riders WHERE id=? AND branch_id=? FOR UPDATE',
+        [riderId, branch_id]
       );
-    }
-  });
+      // Realistic, not just theoretical: the rider list can go stale between
+      // page load and submit (reassigned to another branch, deactivated,
+      // deleted). Previously unguarded — this throw was an unhandled
+      // rejection that hung the request instead of showing an error, the
+      // same bug assignRider above had before it was fixed.
+      if (!rider) throw new WorkflowError('Rider not found in this branch', 404);
+      await conn.query('UPDATE riders SET status=? WHERE id=?', [status, riderId]);
+      if (rider.user_id) {
+        await conn.query(
+          'UPDATE users SET status=? WHERE id=? AND role=\'rider\'',
+          [status === 'inactive' ? 'inactive' : 'active', rider.user_id]
+        );
+      }
+    });
+  } catch (e) {
+    console.error('[Branch] updateRiderStatus:', e);
+    req.session.flash = { type: 'error', message: e.message || 'อัปเดตสถานะไรเดอร์ไม่สำเร็จ' };
+  }
   res.redirect(`/branches/${branch_id}`);
 }
 
