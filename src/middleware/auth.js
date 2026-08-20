@@ -171,6 +171,10 @@ export const ROLES_COD_REMIT     = ['admin', 'manager', 'finance'];
 export const ROLES_CLOSE_ORDER   = ['admin', 'manager'];
 /** Order RETURN — destructive business action */
 export const ROLES_RETURN_ORDER  = ['admin', 'manager', 'dispatcher'];
+/** Release a stuck rider assignment back into the delivery pool — a new
+ *  capability, so it starts at the same central-dispatch level as RETURN
+ *  rather than being handed to branch_operator on day one. */
+export const ROLES_RIDER_REASSIGN = ['admin', 'manager', 'dispatcher'];
 /** Customer service — read-only order tracking & customer lookup */
 export const ROLES_CUSTOMER_SERVICE = ['admin', 'manager', 'customer_service'];
 /** Read-only dashboard (all operational roles) */

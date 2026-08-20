@@ -116,6 +116,7 @@
   const canDeliver = !isLocked && ['AT_DEST_WH'].includes(order.status) && (isLA_WH || isAdmin);
   const canClose   = !isLocked && ['DELIVERED','COD_COLLECTED'].includes(order.status) && isAdmin;
   const canReturn  = !isLocked && ['DELIVERY_FAILED'].includes(order.status) && isDispatch;
+  const canReleaseRider = !isLocked && ['RIDER_ASSIGNED','RIDER_ACCEPTED'].includes(order.status) && isDispatch;
   const canAddPayment = !isLocked && isFinance;
   const canDelPayment = !isLocked && isAdmin;
 
@@ -272,7 +273,7 @@
 
       <% } else if (canReturn) { %>
       <div class="flex gap-2">
-        <form action="/orders/<%= order.id %>/delivery" method="post">
+        <form action="/orders/<%= order.id %>/delivery-retry" method="post">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="px-4 py-3 rounded-xl bg-blue-500/15 border border-blue-500/25 text-blue-300 text-sm font-semibold hover:bg-blue-500/25 transition-all text-xs">
             <i class="fa-solid fa-redo"></i> ส่งใหม่
@@ -282,6 +283,16 @@
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="px-4 py-3 rounded-xl bg-slate-700/50 border border-white/10 text-slate-300 text-sm font-semibold hover:bg-slate-600/50 transition-all text-xs">
             <i class="fa-solid fa-reply"></i> คืนผู้ส่ง
+          </button>
+        </form>
+      </div>
+      <% } else if (canReleaseRider) { %>
+      <div class="flex gap-2">
+        <form action="/orders/<%= order.id %>/release-rider" method="post"
+          onsubmit="return confirm('ปลดไรเดอร์ที่ค้างงานนี้ และส่งกลับเข้าคิวให้ไรเดอร์คนอื่นรับแทน?')">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="px-4 py-3 rounded-xl bg-amber-500/15 border border-amber-500/25 text-amber-300 text-sm font-semibold hover:bg-amber-500/25 transition-all text-xs">
+            <i class="fa-solid fa-user-slash"></i> ปลดไรเดอร์ / มอบหมายใหม่
           </button>
         </form>
       </div>

@@ -4,7 +4,7 @@ import { canTransitionOrder } from '../constants/transitions.js';
 import { transitionOrder, withTransaction } from '../services/orderWorkflowService.js';
 import { parseDimensionSum, resolveShippingRate } from '../services/pricingService.js';
 import { enqueueOrderNotification, kickNotificationWorker } from '../services/notificationService.js';
-import { assignBranchToOrder, assignOrderToBranch } from './branchesController.js';
+import { assignBranchToOrder, assignOrderToBranch, resetBranchDeliveryForRetry } from './branchesController.js';
 import { toWaPhone } from '../utils/waPhone.js';
 import { applySavedLocationToOrder } from '../services/receiverLocationService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
@@ -1388,6 +1388,113 @@ export async function returnToSender(req, res) {
     });
 
     req.session.flash = { type: 'success', message: 'Order set to Return to Sender' };
+    res.redirect(`/orders/${id}`);
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+    res.redirect(`/orders/${id}`);
+  }
+}
+
+/**
+ * POST /orders/:id/delivery-retry
+ * ส่งพัสดุที่ "ส่งไม่สำเร็จ" กลับเข้าคิวจัดส่งใหม่ (DELIVERY_FAILED → AT_DEST_WH)
+ *
+ * This is the button labelled "ส่งใหม่" on the order detail page. It used to
+ * post to the same route as starting a fresh delivery (startDelivery above),
+ * which requires status AT_DEST_WH — a DELIVERY_FAILED order is never
+ * AT_DEST_WH, so that guard rejected the retry every single time it was
+ * clicked. This is a separate action rather than a loosened startDelivery
+ * guard, because AT_DEST_WH-only is the correct requirement for starting a
+ * delivery and must not be relaxed.
+ *
+ * DELIVERY_FAILED → AT_DEST_WH is already a legal transition
+ * (src/constants/transitions.js), and transitionOrder's own post-commit hook
+ * already re-broadcasts to riders the moment an order reaches AT_DEST_WH —
+ * this only has to make that one transition; everything downstream already
+ * works. The branch_deliveries reset runs first and is allowed to commit on
+ * its own before the transition, so the auto-broadcast (which reads that row
+ * moments after this commits) sees it already back to PENDING rather than the
+ * stale FAILED row from the attempt that just failed.
+ */
+export async function retryFailedDelivery(req, res) {
+  const { id } = req.params;
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) {
+    req.session.flash = { type: 'error', message: 'Order not found' };
+    return res.redirect('/orders');
+  }
+  if (order.status !== 'DELIVERY_FAILED') {
+    req.session.flash = { type: 'error', message: 'คำสั่งนี้ไม่ได้อยู่ในสถานะส่งไม่สำเร็จ' };
+    return res.redirect(`/orders/${id}`);
+  }
+
+  try {
+    await resetBranchDeliveryForRetry(pool, id);
+    await transitionOrder({
+      orderId: id,
+      toStatus: 'AT_DEST_WH',
+      userId: req.session.user?.id,
+      note: 'ส่งพัสดุกลับเข้าคิวจัดส่งใหม่หลังส่งไม่สำเร็จ',
+      source: 'ORDER_RETRY_DELIVERY',
+    });
+    req.session.flash = { type: 'success', message: 'ส่งพัสดุกลับเข้าคิวจัดส่งแล้ว กำลังเปิดรับไรเดอร์ใหม่' };
+    res.redirect(`/orders/${id}`);
+  } catch (err) {
+    req.session.flash = { type: 'error', message: err.message };
+    res.redirect(`/orders/${id}`);
+  }
+}
+
+/**
+ * POST /orders/:id/release-rider
+ * ปลดไรเดอร์ที่ค้างงาน (RIDER_ASSIGNED/RIDER_ACCEPTED) แล้วส่งงานกลับเข้าคิวให้คนอื่นรับ
+ *
+ * Once a rider is assigned, only that rider can move the job forward — every
+ * rider action checks rider_id ownership. If a rider goes unresponsive, the
+ * order was stuck with no way out, and the rider was stuck too: their own
+ * status flips to 'busy' at assignment and stays there (riderController.js's
+ * toggleStatus refuses to let a busy rider go offline), since only a
+ * successful deliver/fail ever clears it. Nothing anywhere frees either side.
+ *
+ * Frees the rider, resets any branch_deliveries row the same way a delivery
+ * retry does, and sends the order back to whichever stage makes it
+ * re-offerable to riders again — the transition also re-triggers the normal
+ * auto-broadcast for that stage, so this doesn't duplicate that logic.
+ */
+export async function releaseRiderAssignment(req, res) {
+  const { id } = req.params;
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+  if (!order) {
+    req.session.flash = { type: 'error', message: 'Order not found' };
+    return res.redirect('/orders');
+  }
+  if (!['RIDER_ASSIGNED', 'RIDER_ACCEPTED'].includes(order.status)) {
+    req.session.flash = { type: 'error', message: 'คำสั่งนี้ไม่ได้อยู่ในสถานะรอไรเดอร์รับงาน' };
+    return res.redirect(`/orders/${id}`);
+  }
+
+  // A branch-assigned order re-broadcasts on BRANCH_RECEIVED; an HQ-direct one
+  // (no destination branch at all) re-broadcasts on AT_DEST_WH — going back to
+  // whichever one it actually came from, rather than always AT_DEST_WH, is
+  // what keeps a branch-scoped job re-offered to that branch's own riders
+  // instead of being handed to HQ.
+  const backTo = order.dest_branch_id ? 'BRANCH_RECEIVED' : 'AT_DEST_WH';
+
+  try {
+    if (order.rider_id) {
+      await pool.query(`UPDATE riders SET status='active' WHERE user_id=?`, [order.rider_id]);
+    }
+    await resetBranchDeliveryForRetry(pool, id);
+    await transitionOrder({
+      orderId: id,
+      toStatus: backTo,
+      userId: req.session.user?.id,
+      note: 'ปลดไรเดอร์ที่ค้างงาน ส่งกลับเข้าคิวให้ไรเดอร์อื่นรับแทน',
+      source: 'ORDER_RELEASE_RIDER',
+      updates: { rider_id: null },
+      force: true, // RIDER_ASSIGNED/RIDER_ACCEPTED → BRANCH_RECEIVED isn't a normal forward edge
+    });
+    req.session.flash = { type: 'success', message: 'ปลดไรเดอร์แล้ว งานกลับเข้าคิวให้รับใหม่' };
     res.redirect(`/orders/${id}`);
   } catch (err) {
     req.session.flash = { type: 'error', message: err.message };

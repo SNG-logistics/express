@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { transitionOrder, withTransaction, WorkflowError } from '../services/orderWorkflowService.js';
 import { kickNotificationWorker } from '../services/notificationService.js';
 import { canManageBranchResource } from '../services/operationalAccessService.js';
+import { canTransitionOrder } from '../constants/transitions.js';
 import { broadcastOffer } from '../services/riderDispatchService.js';
 import { decodePlusCode, encodePlusCode, isShortPlusCode } from '../utils/plusCode.js';
 
@@ -563,6 +564,58 @@ export async function assignBranchToOrder(orderId, conn = pool) {
  * the BRANCH_RECEIVED scan (which only applies to parcels forwarded on from the
  * main warehouse).
  */
+/**
+ * True once a branch actually has a parcel in hand, not merely routed to it.
+ *
+ * assignOrderToBranch creates the branch_deliveries PENDING row the moment an
+ * order reaches AT_DEST_WH — before it has been put on a truck, let alone
+ * arrived — so bd.status='PENDING' alone cannot mean "the branch has it."
+ * There are two real arrival signals, one per route: takeBranchCustody stamps
+ * received_at immediately when a branch unloads a truck itself; the ordinary
+ * hub → branch transfer never stamps received_at at all (its BRANCH_RECEIVED
+ * transition is what proves arrival instead — see the comment on that
+ * transition's afterTransition in scannerController.js). Neither signal alone
+ * covers both routes, so this checks both.
+ */
+function branchHasCustody(bd, orderStatus) {
+  return Boolean(bd.received_at) || orderStatus === 'BRANCH_RECEIVED';
+}
+
+/**
+ * Puts a branch_deliveries row back to PENDING after the order it belongs to
+ * is sent back into the delivery pipeline — a failed delivery being retried,
+ * or a stuck rider assignment being released.
+ *
+ * failJob leaves the row at status='FAILED' with rider_id still pointing at
+ * the rider who failed it. Both places that link a new rider to this row
+ * (assignRider above, and claimOffer's mirror update) gate on
+ * WHERE status='PENDING' — so without this reset, a retried or reassigned
+ * order delivers correctly through `orders`, but branch_deliveries (and the
+ * branch dashboard that reads it) stays stuck at FAILED forever. History
+ * (fail_reason, notes, fail_count) is left alone; only what would block a
+ * fresh assign/claim cycle is cleared.
+ *
+ * No-ops for an HQ-direct order with no branch_deliveries row at all.
+ *
+ * Also stamps received_at when it is still NULL. autoBroadcastOnDestinationArrival
+ * refuses to broadcast to a branch until that column is set — but it is only
+ * ever stamped by the self-unload route (takeBranchCustody); an order forwarded
+ * from the hub and scanned in via the ordinary BRANCH_RECEIVED path never gets
+ * it at all (that transition proves arrival a different way). Without this, a
+ * retry for that second, more common path would flip the order back to
+ * AT_DEST_WH and then silently fail to re-broadcast — the parcel would sit
+ * retried but unadvertised. COALESCE leaves a genuine earlier timestamp alone.
+ */
+export async function resetBranchDeliveryForRetry(conn, orderId) {
+  await conn.query(
+    `UPDATE branch_deliveries
+     SET rider_id=NULL, status='PENDING', assigned_at=NULL, picked_up_at=NULL,
+         recipient_name=NULL, proof_image=NULL, received_at=COALESCE(received_at, NOW())
+     WHERE order_id=?`,
+    [orderId]
+  );
+}
+
 export async function takeBranchCustody(orderId, branchId, conn = pool) {
   const result = await assignOrderToBranch(orderId, branchId, conn);
   await conn.query(
@@ -706,7 +759,16 @@ export async function portalDashboard(req, res) {
      FROM branch_deliveries bd
      JOIN orders o ON o.id = bd.order_id
      LEFT JOIN customers c ON c.id = o.receiver_id
-     WHERE bd.branch_id=? AND bd.status IN ('PENDING','ASSIGNED','PICKED_UP')
+     WHERE bd.branch_id=?
+       AND (
+         bd.status IN ('ASSIGNED','PICKED_UP')
+         -- A PENDING row exists from the moment the order is routed here, which
+         -- can be well before the parcel is physically at the branch (still on
+         -- a truck). Only surface it once received_at is stamped (self-unload)
+         -- or the BRANCH_RECEIVED scan has happened (hub-forwarded) — see
+         -- branchHasCustody. Once assigned/picked up it clearly already arrived.
+         OR (bd.status='PENDING' AND (bd.received_at IS NOT NULL OR o.status='BRANCH_RECEIVED'))
+       )
      ORDER BY bd.zone ASC, bd.created_at ASC`, [branchId]
   );
 
@@ -725,7 +787,12 @@ export async function assignRider(req, res) {
   const { deliveryId } = req.params;
   const { rider_id }   = req.body;
   const sessionBranchId = req.session.user?.branch_id;
-  const [[bd]] = await pool.query('SELECT * FROM branch_deliveries WHERE id=?', [deliveryId]);
+  const [[bd]] = await pool.query(
+    `SELECT bd.*, o.status AS order_status
+     FROM branch_deliveries bd JOIN orders o ON o.id = bd.order_id
+     WHERE bd.id=?`,
+    [deliveryId]
+  );
   if (!bd) {
     req.session.flash = { type: 'error', message: 'ไม่พบรายการนี้' };
     return res.redirect('/branch/dashboard');
@@ -733,34 +800,56 @@ export async function assignRider(req, res) {
   if (req.session.user?.role === 'branch_operator' && String(bd.branch_id) !== String(sessionBranchId)) {
     return res.status(403).render('errors/403', { user: req.session.user, title: 'Forbidden', requiredRoles: ['branch_operator'] });
   }
+  // Two distinct reasons a job can't be assigned yet, and they need different
+  // messages: "hasn't arrived" is a normal thing to see while a truck is still
+  // en route; "already moved on" means someone else handled it another way.
+  // Conflating them into claimOffer's generic ORDER_MOVED wording is what
+  // confused riders when broadcastDelivery below sent an offer too early.
+  if (!canTransitionOrder(bd.order_status, 'RIDER_ASSIGNED')) {
+    req.session.flash = { type: 'error', message: 'ออเดอร์นี้ถูกดำเนินการไปทางอื่นแล้ว มอบหมายไรเดอร์ไม่ได้อีก' };
+    return res.redirect('/branch/dashboard');
+  }
+  if (!branchHasCustody(bd, bd.order_status)) {
+    req.session.flash = { type: 'error', message: 'พัสดุยังไม่ถึงสาขา รอสแกนรับเข้าสาขาก่อน' };
+    return res.redirect('/branch/dashboard');
+  }
 
-  await withTransaction(async (conn) => {
-    const [[rider]] = await conn.query(
-      `SELECT id, user_id FROM riders
-       WHERE id=? AND branch_id=? AND status='active' FOR UPDATE`,
-      [rider_id, bd.branch_id]
-    );
-    if (!rider?.user_id) throw new WorkflowError('Rider has no active login account', 409);
-    const [deliveryUpdate] = await conn.query(
-      `UPDATE branch_deliveries SET rider_id=?, status='ASSIGNED', assigned_at=NOW()
-       WHERE id=? AND status='PENDING'`,
-      [rider_id, deliveryId]
-    );
-    if (deliveryUpdate.affectedRows !== 1) throw new WorkflowError('Delivery is no longer pending', 409);
-    await conn.query(`UPDATE riders SET status='busy' WHERE id=?`, [rider_id]);
-    await transitionOrder({
-      orderId: bd.order_id,
-      toStatus: 'RIDER_ASSIGNED',
-      userId: req.session.user.id,
-      note: 'Rider assigned by branch',
-      source: 'BRANCH_ASSIGN',
-      updates: { rider_id: rider.user_id, assigned_at: new Date() },
-      connection: conn,
+  try {
+    await withTransaction(async (conn) => {
+      const [[rider]] = await conn.query(
+        `SELECT id, user_id FROM riders
+         WHERE id=? AND branch_id=? AND status='active' FOR UPDATE`,
+        [rider_id, bd.branch_id]
+      );
+      if (!rider?.user_id) throw new WorkflowError('Rider has no active login account', 409);
+      const [deliveryUpdate] = await conn.query(
+        `UPDATE branch_deliveries SET rider_id=?, status='ASSIGNED', assigned_at=NOW()
+         WHERE id=? AND status='PENDING'`,
+        [rider_id, deliveryId]
+      );
+      if (deliveryUpdate.affectedRows !== 1) throw new WorkflowError('Delivery is no longer pending', 409);
+      await conn.query(`UPDATE riders SET status='busy' WHERE id=?`, [rider_id]);
+      await transitionOrder({
+        orderId: bd.order_id,
+        toStatus: 'RIDER_ASSIGNED',
+        userId: req.session.user.id,
+        note: 'Rider assigned by branch',
+        source: 'BRANCH_ASSIGN',
+        updates: { rider_id: rider.user_id, assigned_at: new Date() },
+        connection: conn,
+      });
     });
-  });
-  kickNotificationWorker(bd.order_id);
-
-  req.session.flash = { type: 'success', message: 'มอบหมายไรเดอร์แล้ว' };
+    kickNotificationWorker(bd.order_id);
+    req.session.flash = { type: 'success', message: 'มอบหมายไรเดอร์แล้ว' };
+  } catch (e) {
+    // Previously missing entirely — a WorkflowError thrown in here (order
+    // moved on between the checks above and the transaction, rider taken by
+    // another assignment, etc.) was an unhandled rejection: with no
+    // async-error middleware in this Express 4 app, the request just hung
+    // instead of showing the branch operator anything.
+    console.error('[Branch] assignRider:', e);
+    req.session.flash = { type: 'error', message: e.message || 'มอบหมายไรเดอร์ไม่สำเร็จ' };
+  }
   res.redirect('/branch/dashboard');
 }
 
@@ -770,7 +859,12 @@ export async function assignRider(req, res) {
  */
 export async function broadcastDelivery(req, res) {
   const { deliveryId } = req.params;
-  const [[bd]] = await pool.query('SELECT * FROM branch_deliveries WHERE id=?', [deliveryId]);
+  const [[bd]] = await pool.query(
+    `SELECT bd.*, o.status AS order_status
+     FROM branch_deliveries bd JOIN orders o ON o.id = bd.order_id
+     WHERE bd.id=?`,
+    [deliveryId]
+  );
   if (!bd) {
     req.session.flash = { type: 'error', message: 'ไม่พบรายการนี้' };
     return res.redirect('/branch/dashboard');
@@ -784,6 +878,20 @@ export async function broadcastDelivery(req, res) {
   }
   if (bd.status !== 'PENDING') {
     req.session.flash = { type: 'error', message: 'รายการนี้ไม่ได้อยู่ในสถานะรอมอบหมายแล้ว' };
+    return res.redirect('/branch/dashboard');
+  }
+  // bd.status='PENDING' alone doesn't mean the parcel is here — that row is
+  // created the moment the order reaches AT_DEST_WH, before it's even been put
+  // on a truck to this branch. Without this check, broadcastOffer below would
+  // silently open a real WhatsApp offer to riders for a parcel that hasn't
+  // arrived, and a rider who then claimed it would be told "already dispatched
+  // elsewhere" (claimOffer's ORDER_MOVED) — the wrong reason for the refusal.
+  if (!canTransitionOrder(bd.order_status, 'RIDER_ASSIGNED')) {
+    req.session.flash = { type: 'error', message: 'ออเดอร์นี้ถูกดำเนินการไปทางอื่นแล้ว เปิดรับงานไม่ได้อีก' };
+    return res.redirect('/branch/dashboard');
+  }
+  if (!branchHasCustody(bd, bd.order_status)) {
+    req.session.flash = { type: 'error', message: 'พัสดุยังไม่ถึงสาขา รอสแกนรับเข้าสาขาก่อน' };
     return res.redirect('/branch/dashboard');
   }
 
