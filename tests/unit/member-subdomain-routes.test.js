@@ -41,3 +41,41 @@ test('bare subdomain root forces every visitor into the member area, not the pub
   assert.match(memberController, /req\.session\?\.customer\) return res\.redirect\(CUSTOMER_HOME\)/);
   assert.match(memberController, /return res\.redirect\('\/member\/login'\)/);
 });
+
+test('member subdomain rewrite also restores sub-paths, not just the bare entries', () => {
+  // isMemberBarePath must exist and be a prefix match, mirroring
+  // isCustomerDirectPath just above it — an exact-only check here is the bug
+  // that 404'd a customer accepting/rejecting a quote: the redirect target
+  // /quote-requests/123/quotation never equals the bare '/quote-requests'
+  // entry, so '/member' never got restored on the way back in, and the
+  // request fell through to the customer-not-found catch-all.
+  assert.match(appSource, /function isMemberBarePath\(path\)/);
+  assert.match(appSource, /if \(isMemberBarePath\(req\.path\)\)/);
+  assert.doesNotMatch(appSource, /MEMBER_BARE_PATHS\.includes\(req\.path\)/,
+    'the exact-match check must not still be reachable');
+
+  // Reproduce the fixed predicate against the real array declared in app.js,
+  // rather than trusting the regex match alone — this is what actually failed
+  // before the fix.
+  const barePaths = appSource.match(/const MEMBER_BARE_PATHS = \[([\s\S]*?)\];/)[1]
+    .match(/'([^']+)'/g).map(s => s.slice(1, -1));
+  const isMemberBarePath = path => barePaths.some(p => path === p || path.startsWith(p + '/'));
+
+  // The exact bug report and its sibling (accept and reject share one target).
+  assert.equal(isMemberBarePath('/quote-requests/123/quotation'), true);
+  assert.equal(isMemberBarePath('/quote-requests/123/accept'), true);
+  assert.equal(isMemberBarePath('/quote-requests/123/reject'), true);
+  // Same class of bug, different route: /member/orders/:jobNo/sticker.
+  assert.equal(isMemberBarePath('/orders/SNG-260818-7561/sticker'), true);
+  // Bare entries still match exactly, unchanged.
+  assert.equal(isMemberBarePath('/quote-requests'), true);
+  assert.equal(isMemberBarePath('/quote-request'), true);
+  assert.equal(isMemberBarePath('/orders'), true);
+  // '/quote-request' must not swallow '/quote-requests' or its sub-paths —
+  // the trailing '/' in the prefix check is what keeps them apart.
+  assert.equal(isMemberBarePath('/quote-requestsXYZ'), false);
+  // A path that merely starts with the same letters as an entry, but isn't
+  // actually a sub-path of it, must not match.
+  assert.equal(isMemberBarePath('/quote-requests-export'), false);
+  assert.equal(isMemberBarePath('/dashboard'), false, 'staff-only paths must still fall through to 404');
+});

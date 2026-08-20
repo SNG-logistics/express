@@ -26,6 +26,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <% if (can && can.viewPartner) { %>
+    <script src="/js/quote-alert.js"></script>
+  <% } %>
 
   <!-- Premium Design System — loads AFTER Tailwind utilities -->
   <link rel="stylesheet" href="/css/luxury.css?v=<%= Date.now() %>">
@@ -76,6 +79,11 @@
               <i class="fa-solid fa-barcode text-xs"></i>
               <span class="text-xs font-medium"><%= t('nav.scanner') %></span>
             </a>
+            <% } %>
+
+            <!-- New quote-request alert bell -->
+            <% if (can && can.viewPartner) { %>
+              <%- include('../partials/_quote_request_bell') %>
             <% } %>
 
             <!-- Language Toggle -->

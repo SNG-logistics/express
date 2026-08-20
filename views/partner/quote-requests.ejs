@@ -147,31 +147,14 @@
   (() => {
     const alerts = document.getElementById('quoteRequestAlerts');
     const soundToggle = document.getElementById('quoteAlertSoundToggle');
-    const knownRequestIds = new Set(<%- JSON.stringify(requests.map(request => String(request.id))) %>);
-    let soundEnabled = false;
-    let audioContext;
+    // Seed the shared "already seen" store from this page's own initial list
+    // before any polling starts, same as the old in-memory Set did — a
+    // request already sitting in the table on load must not alert just
+    // because this page has never polled before. Shared with the header
+    // bell (public/js/quote-alert.js) so the two don't double-beep for the
+    // same request when both are on screen at once.
+    window.quoteAlert.claimBatch(<%- JSON.stringify(requests.map(request => String(request.id))) %>);
     let polling = false;
-
-    function playAlertSound() {
-      if (!soundEnabled) return;
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return;
-      audioContext ||= new AudioContextClass();
-      const now = audioContext.currentTime;
-
-      [0, 0.22].forEach((delay, index) => {
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        oscillator.type = 'sine';
-        oscillator.frequency.value = index ? 880 : 660;
-        gain.gain.setValueAtTime(0.0001, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.16, now + delay + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.18);
-        oscillator.connect(gain).connect(audioContext.destination);
-        oscillator.start(now + delay);
-        oscillator.stop(now + delay + 0.19);
-      });
-    }
 
     function customerLabel(request) {
       const name = [request.first_name, request.last_name].filter(Boolean).join(' ').trim();
@@ -219,15 +202,14 @@
         if (!response.ok) throw new Error(`Request alert polling failed: ${response.status}`);
 
         const payload = await response.json();
-        const newRequests = (Array.isArray(payload.requests) ? payload.requests : [])
-          .filter((request) => !knownRequestIds.has(String(request.id)))
+        const allRequests = Array.isArray(payload.requests) ? payload.requests : [];
+        const freshIds = new Set(window.quoteAlert.claimBatch(allRequests.map((r) => String(r.id))));
+        const newRequests = allRequests
+          .filter((request) => freshIds.has(String(request.id)))
           .sort((first, second) => new Date(first.created_at) - new Date(second.created_at));
 
-        newRequests.forEach((request) => {
-          knownRequestIds.add(String(request.id));
-          showRequestAlert(request);
-        });
-        if (newRequests.length) playAlertSound();
+        newRequests.forEach(showRequestAlert);
+        if (newRequests.length) window.quoteAlert.play();
       } catch (error) {
         console.warn('[Quote request alerts]', error);
       } finally {
@@ -235,10 +217,12 @@
       }
     }
 
-    soundToggle.addEventListener('click', () => {
-      soundEnabled = true;
+    if (window.quoteAlert.isSoundEnabled()) {
       soundToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>เปิดเสียงแล้ว</span>';
-      playAlertSound();
+    }
+    soundToggle.addEventListener('click', () => {
+      window.quoteAlert.enableSound();
+      soundToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>เปิดเสียงแล้ว</span>';
     });
 
     setInterval(pollPendingRequests, 15000);

@@ -35,7 +35,15 @@ test('staff queue alerts describe the request and open its pre-filled quotation 
     /\/partner\/quote-requests\/\$\{encodeURIComponent\(request\.id\)\}\/convert/
   );
   assert.match(queueView, /quoteAlertSoundToggle/);
-  assert.match(queueView, /AudioContext/);
+  // The beep and the "already alerted" bookkeeping moved to public/js/quote-alert.js,
+  // shared with the header bell (both poll the same endpoint and can be on
+  // screen together) — see quote-alert-shared.test.js. This page must use
+  // that shared object rather than keep its own copy of either concern.
+  assert.match(queueView, /window\.quoteAlert\.claimBatch/);
+  assert.match(queueView, /window\.quoteAlert\.play\(\)/);
+  assert.match(queueView, /window\.quoteAlert\.enableSound\(\)/);
+  assert.doesNotMatch(queueView, /AudioContext/, 'the beep must not be duplicated on this page');
+  assert.doesNotMatch(queueView, /knownRequestIds/, 'dedupe must go through the shared store, not a local Set');
 });
 
 test('staff quote queue renders the alert shell when there are no existing requests', () => {

@@ -251,6 +251,16 @@ function isCustomerDirectPath(path) {
   return CUSTOMER_DIRECT_PATHS.some(p => path === p || (p !== '/' && path.startsWith(p + '/')));
 }
 
+// Same prefix-match as isCustomerDirectPath above — an exact-only check here
+// missed every sub-path, e.g. a customer redirected to
+// /quote-requests/123/quotation (accept/reject a quote) or following a link to
+// /orders/SNG-.../sticker: neither equals a bare MEMBER_BARE_PATHS entry, so
+// neither got '/member' restored, and both fell through to the customer 404 —
+// even though the flash message just above it said the action had succeeded.
+function isMemberBarePath(path) {
+  return MEMBER_BARE_PATHS.some(p => path === p || path.startsWith(p + '/'));
+}
+
 function shouldBounceFromMainHost(path) {
   return MAIN_HOST_BOUNCE_PATHS.some(p => path === p || path.startsWith(p + '/'));
 }
@@ -265,7 +275,7 @@ app.use((req, res, next) => {
   res.locals.memberHost = memberHost;
 
   if (isMemberSubdomain) {
-    if (MEMBER_BARE_PATHS.includes(req.path)) {
+    if (isMemberBarePath(req.path)) {
       // /login, /register, /profile, ... → the real routes live under /member.
       req.url = '/member' + req.url;
     } else if (!isCustomerDirectPath(req.path)) {
