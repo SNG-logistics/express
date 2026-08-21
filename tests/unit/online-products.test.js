@@ -81,7 +81,7 @@ test('admin views read photos defensively and use the first image as the cover',
   assert.match(formHtml, /src="\/uploads\/products\/cover\.jpg"/);
   assert.match(formHtml, /src="\/uploads\/products\/second\.jpg"/);
 
-  const listHtml = ejs.render(adminListView, { products: [product], flash: null }, {
+  const listHtml = ejs.render(adminListView, { products: [product], flash: null, csrfToken: 'token' }, {
     filename: fileURLToPath(new URL('../../views/admin/products/index.ejs', import.meta.url)),
   });
   assert.match(listHtml, /src="\/uploads\/products\/cover\.jpg"/);
@@ -220,7 +220,7 @@ test('admin form renders the price/colour section with defaults and a live previ
 
 test('admin list table shows selling and struck-through original prices, and hides absent prices', () => {
   const renderList = (products, flash = null) =>
-    ejs.render(listTableView, { products, flash }, {
+    ejs.render(listTableView, { products, flash, csrfToken: 'token' }, {
       filename: fileURLToPath(new URL('../../views/admin/products/_list_table.ejs', import.meta.url)),
     });
 
@@ -279,6 +279,42 @@ test('member cards render prices straight from the product row with colour and s
   });
   assert.match(decimal, /฿67\.50/);
   assert.doesNotMatch(decimal, /67\.5\b/);
+});
+
+// ─── Delete ─────────────────────────────────────────────────────────────────
+
+test('delete route exists, is role-gated the same as create/update, and is a plain POST (no method-override)', () => {
+  const deleteLine = routes.split('\n').find(l => l.includes("router.post('/admin/products/:id/delete',"));
+  assert.ok(deleteLine, 'delete route must exist');
+  assert.match(deleteLine, /requireRole\('admin', 'manager'\)/);
+});
+
+test('adminDeleteProduct is a plain hard delete with flash feedback, not a status flip', () => {
+  const fn = controller.slice(controller.indexOf('export async function adminDeleteProduct'));
+  assert.match(fn, /DELETE FROM online_products WHERE id = \?/);
+  assert.match(fn, /req\.session\.flash = result\.affectedRows > 0/);
+  assert.match(fn, /res\.redirect\('\/admin\/products'\)/);
+});
+
+test('the list table renders a delete button per row, with CSRF protection and a confirm guard', () => {
+  const html = ejs.render(listTableView, {
+    products: [{ id: 9, name: `Product with a ' quote and "double" quotes`, product_url: 'https://a.example', photos: null, status: 'draft' }],
+    flash: null,
+    csrfToken: 'tok123',
+  }, {
+    filename: fileURLToPath(new URL('../../views/admin/products/_list_table.ejs', import.meta.url)),
+  });
+  assert.match(html, /action="\/admin\/products\/9\/delete" method="post"/);
+  assert.match(html, /<input type="hidden" name="_csrf" value="tok123">/);
+  assert.match(html, /onsubmit="return confirm\('ลบสินค้านี้ถาวร\?'\)"/);
+  // The product name must never be interpolated straight into the inline
+  // onsubmit JS string — a name containing a quote character would break out
+  // of it (HTML-entity-escaping a JS string boundary does not protect it,
+  // since the browser decodes entities before the JS parser ever sees them).
+  // The name legitimately appears elsewhere in the row (the name column) —
+  // this checks only the onsubmit attribute itself is free of it.
+  const onsubmitAttr = html.match(/onsubmit="[^"]*"/)[0];
+  assert.doesNotMatch(onsubmitAttr, /quote/);
 });
 
 test('the page tells customers to send the link, not to buy it themselves', () => {

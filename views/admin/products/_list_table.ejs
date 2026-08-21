@@ -90,9 +90,16 @@
                 <a href="/admin/products/<%= product.id %>/edit" class="btn btn-sm btn-outline-primary me-1" title="แก้ไข">
                   <i class="fa-solid fa-pen-to-square"></i>
                 </a>
-                <a href="<%= product.product_url %>" target="_blank" class="btn btn-sm btn-outline-secondary" title="เปิดลิงก์สินค้า">
+                <a href="<%= product.product_url %>" target="_blank" class="btn btn-sm btn-outline-secondary me-1" title="เปิดลิงก์สินค้า">
                   <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 </a>
+                <form action="/admin/products/<%= product.id %>/delete" method="post" class="d-inline"
+                  onsubmit="return confirm('ลบสินค้านี้ถาวร?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="ลบสินค้า">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </form>
               </td>
             </tr>
             <% }); %>
