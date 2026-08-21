@@ -27,5 +27,6 @@ router.get('/admin/products/new', requireLogin, requireRole('admin', 'manager'),
 router.post('/admin/products', requireLogin, requireRole('admin', 'manager'), uploadProductPhoto.array('photos', 6), products.adminCreateProduct);
 router.get('/admin/products/:id/edit', requireLogin, requireRole('admin', 'manager'), products.adminShowEdit);
 router.post('/admin/products/:id', requireLogin, requireRole('admin', 'manager'), uploadProductPhoto.array('photos', 6), products.adminUpdateProduct);
+router.post('/admin/products/:id/delete', requireLogin, requireRole('admin', 'manager'), products.adminDeleteProduct);
 
 export default router;

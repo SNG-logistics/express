@@ -211,3 +211,23 @@ export async function adminUpdateProduct(req, res) {
     res.redirect('/admin/products');
   }
 }
+
+/**
+ * POST /admin/products/:id/delete
+ * Nothing else in the app references online_products by id (no FK, no
+ * quote-request link — those store the product name/link as free text), so
+ * this is a plain hard delete rather than a status flip.
+ */
+export async function adminDeleteProduct(req, res) {
+  const productId = req.params.id;
+  try {
+    const [result] = await pool.query(`DELETE FROM online_products WHERE id = ?`, [productId]);
+    req.session.flash = result.affectedRows > 0
+      ? { type: 'success', message: 'ลบสินค้าเรียบร้อยแล้ว' }
+      : { type: 'error', message: 'ไม่พบสินค้านี้' };
+  } catch (err) {
+    console.error('[Admin Delete Product]', err);
+    req.session.flash = { type: 'error', message: 'ลบสินค้าไม่สำเร็จ' };
+  }
+  res.redirect('/admin/products');
+}
