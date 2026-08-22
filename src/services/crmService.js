@@ -116,12 +116,12 @@ export async function getConversationTags(conversationId) {
 /**
  * Post a message (agent reply) into a conversation.
  */
-export async function createMessage({ conversationId, senderType = 'AGENT', senderUserId, senderName, messageType = 'TEXT', contentText, attachmentUrl }) {
+export async function createMessage({ conversationId, senderType = 'AGENT', senderUserId, senderName, messageType = 'TEXT', contentText, attachmentUrl, attachmentName }) {
   const [result] = await pool.query(`
     INSERT INTO crm_messages
-      (conversation_id, sender_type, sender_user_id, sender_name, message_type, content_text, attachment_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `, [conversationId, senderType, senderUserId || null, senderName || null, messageType, contentText || null, attachmentUrl || null]);
+      (conversation_id, sender_type, sender_user_id, sender_name, message_type, content_text, attachment_url, attachment_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [conversationId, senderType, senderUserId || null, senderName || null, messageType, contentText || null, attachmentUrl || null, attachmentName || null]);
 
   // Update conversation's last_message_at + set first_response_at if this is first agent reply
   await pool.query(`
@@ -172,6 +172,14 @@ export async function assignConversation({ conversationId, toAgentId, toQueueId,
       (conversation_id, from_user_id, to_user_id, from_queue_id, to_queue_id, reason, assigned_by)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `, [conversationId, fromAgentId || null, toAgentId || null, fromQueueId || null, toQueueId || null, reason || null, assignedBy || null]);
+}
+
+export async function markConversationRead(conversationId) {
+  await pool.query(
+    `UPDATE crm_messages SET delivery_status = 'READ'
+     WHERE conversation_id = ? AND sender_type = 'CUSTOMER' AND delivery_status != 'READ'`,
+    [conversationId]
+  );
 }
 
 export async function getUnreadCount(agentId, role) {
@@ -443,12 +451,12 @@ export async function saveChannel({ channelType, channelName, pageId, accessToke
 // ������ Quick Reply CRUD ������������������������������������������������������������������������������������������������������������������
 
 export async function listQuickReplies(opts = {}) {
-  // Backward-compat: accepts string lang or object { search, category }
-  if (typeof opts === 'string') opts = {};
-  // Backward-compat: accepts string lang or object { search, category }
-  const { search, category } = (typeof opts === "string") ? {} : opts;
+  // Backward-compat: accepts a bare string lang ('th'/'lo') or an options object
+  if (typeof opts === 'string') opts = { language: opts };
+  const { search, category, language } = opts;
   const conditions = ['is_active = 1'];
   const params = [];
+  if (language) { conditions.push('language = ?'); params.push(language); }
   if (search)   { conditions.push('(title LIKE ? OR content_text LIKE ? OR shortcut_key LIKE ?)'); params.push('%'+search+'%', '%'+search+'%', '%'+search+'%'); }
   if (category) { conditions.push('category = ?'); params.push(category); }
   const where = conditions.join(' AND ');

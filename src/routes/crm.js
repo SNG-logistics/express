@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import { requireLogin } from '../middleware/auth.js';
+import { uploadCrmAttachment } from '../middleware/uploadCrmAttachment.js';
 import {
   ROLES_CRM_VIEW,
   ROLES_CRM_AGENT,
@@ -67,7 +68,7 @@ router.get('/crm/inbox/:id', (req, res, next) => {
   return ctrl.conversation(req, res, next);
 });
 
-router.post('/crm/inbox/:id/reply', (req, res, next) => {
+router.post('/crm/inbox/:id/reply', uploadCrmAttachment.single('attachment'), (req, res, next) => {
   const denied = requireCrmAccess(res, req.session.user, ROLES_CRM_AGENT);
   if (denied) return;
   return ctrl.sendMessage(req, res, next);
@@ -260,5 +261,3 @@ router.post('/api/crm/sync/run', (req, res, next) => {
 
 
 export default router;
-
-

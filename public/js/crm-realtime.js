@@ -119,13 +119,20 @@ const CrmRealtime = (() => {
   }
 
   // ── Sidebar badge update ────────────────────────────────────────────────────
+  function setSidebarBadgeCount(count) {
+    const badge = document.getElementById('crm-unread-badge');
+    if (!badge) return;
+    const n = Number(count) || 0;
+    badge.textContent = n > 0 ? String(n) : '';
+    badge.style.display = n > 0 ? 'inline-block' : 'none';
+  }
+
   function updateSidebarBadge(increment = true) {
     const badge = document.getElementById('crm-unread-badge');
     if (!badge) return;
     const current = parseInt(badge.textContent) || 0;
     const next = increment ? current + 1 : 0;
-    badge.textContent = next > 0 ? next : '';
-    badge.style.display = next > 0 ? 'inline-block' : 'none';
+    setSidebarBadgeCount(next);
   }
 
   // ── Conversation list flash ────────────────────────────────────────────────
@@ -215,6 +222,14 @@ const CrmRealtime = (() => {
       _socket.on('disconnect', () => {
         console.log('[CRM RT] Disconnected');
       });
+
+      // Seed the sidebar badge from the real server-side count. Without this
+      // the badge only ever grows by socket events (+1 each) and never shows
+      // the true number of open conversations with unread messages.
+      fetch('/api/crm/inbox/unread', { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : { count: 0 }))
+        .then(data => setSidebarBadgeCount(data.count))
+        .catch(() => { /* badge stays hidden on failure */ });
 
       // ── Inbound events ──────────────────────────────────────────────────────
 
