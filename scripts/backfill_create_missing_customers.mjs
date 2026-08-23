@@ -13,6 +13,8 @@ import pool from '../src/config/db.js';
 import { linkOrCreateCustomerForAccount } from '../src/services/memberLinkService.js';
 
 async function main() {
+  console.log('[Backfill Missing Customers] Starting...');
+
   const [accounts] = await pool.query(
     `SELECT id FROM customer_accounts WHERE status = 'active' AND legacy_customer_id IS NULL ORDER BY id`
   );
@@ -32,7 +34,11 @@ async function main() {
 
 main()
   .catch((error) => {
-    console.error('[Backfill Missing Customers] Failed:', error.message);
+    // Logged to both streams: some host panels (e.g. Plesk's "Run Node.js
+    // commands" box) only display stdout, so a stderr-only message can look
+    // like the command produced no output at all.
+    console.log('[Backfill Missing Customers] Failed:', error.message);
+    console.error('[Backfill Missing Customers] Failed:', error.stack || error.message);
     process.exitCode = 1;
   })
   .finally(() => pool.end());

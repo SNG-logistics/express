@@ -18,7 +18,8 @@
     "test:db": "node --test tests/db-integration.test.js",
     "check-db": "node scripts/check_migration.mjs",
     "migrate-crm": "node scripts/run_crm_migration.mjs",
-    "check-crm": "node scripts/run_crm_migration.mjs --check"
+    "check-crm": "node scripts/run_crm_migration.mjs --check",
+    "backfill-customers": "node scripts/backfill_create_missing_customers.mjs"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc14",
