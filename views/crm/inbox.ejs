@@ -601,7 +601,7 @@ function handleReplyKeydown(e) {
     document.getElementById('suggestPanel').style.display = 'none';
   }
   if (e.ctrlKey && e.key === 'Enter') {
-    document.getElementById('replyForm')?.submit();
+    document.getElementById('replyForm')?.requestSubmit();
   }
 }
 
@@ -661,6 +661,32 @@ async function refreshQuickReplies(lang) {
   } catch (err) {
     console.error('[CRM] quick reply refresh failed:', err.message);
   }
+}
+
+// ── Reply form submit ────────────────────────────────────────────────────
+// enctype="multipart/form-data" means express.json()/urlencoded() never see
+// _csrf in req.body — the app's CSRF check runs before multer parses the
+// body, so a plain multipart POST always failed with a false "session
+// expired". Sending the token via the X-CSRF-Token header (which the CSRF
+// middleware also accepts) sidesteps that ordering issue entirely.
+const replyForm = document.getElementById('replyForm');
+if (replyForm) {
+  replyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const csrfToken = replyForm.querySelector('input[name="_csrf"]').value;
+    try {
+      const res = await fetch(replyForm.action, {
+        method: 'POST',
+        body: new FormData(replyForm),
+        credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': csrfToken },
+      });
+      window.location.href = res.url || replyForm.action.replace(/\/reply$/, '');
+    } catch (err) {
+      console.error('[CRM] reply send failed:', err);
+      window.location.reload();
+    }
+  });
 }
 
 // ── Attachment picker (reply form) ──────────────────────────────────────────
