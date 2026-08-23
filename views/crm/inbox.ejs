@@ -642,14 +642,20 @@ async function refreshQuickReplies(lang) {
     const replies = await res.json();
     const body = document.querySelector('#qrPanel .crm-qr-body');
     if (!body) return;
+    // Unlike the server-rendered drawer (EJS auto-escapes <%= %>), this
+    // rebuild goes through innerHTML directly, so a quick reply's own text
+    // must be escaped by hand or it becomes live HTML.
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
     body.innerHTML = replies.length
       ? replies.map(qr => `
-        <div class="crm-qr-item" onclick="useQuickReply(this.dataset.text)" data-text="${qr.content_text.replace(/"/g, '&quot;')}">
+        <div class="crm-qr-item" onclick="useQuickReply(this.dataset.text)" data-text="${esc(qr.content_text)}">
           <div class="crm-qr-top">
-            ${qr.shortcut_key ? `<span class="crm-qr-shortcut">${qr.shortcut_key}</span>` : ''}
-            <span class="crm-qr-title">${qr.title}</span>
+            ${qr.shortcut_key ? `<span class="crm-qr-shortcut">${esc(qr.shortcut_key)}</span>` : ''}
+            <span class="crm-qr-title">${esc(qr.title)}</span>
           </div>
-          <div class="crm-qr-preview">${qr.content_text.substring(0, 90)}...</div>
+          <div class="crm-qr-preview">${esc(qr.content_text.substring(0, 90))}...</div>
         </div>`).join('')
       : '<div class="crm-qr-empty">ยังไม่มีรายการ Quick Reply</div>';
   } catch (err) {

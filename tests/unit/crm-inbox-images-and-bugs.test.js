@@ -87,6 +87,15 @@ test('reply route wires the multer upload middleware for field "attachment"', ()
   assert.match(replyRoute, /ctrl\.sendMessage/, 'middleware must sit on the reply route that calls sendMessage');
 });
 
+test('reply route checks the CRM-agent role before multer parses the upload', () => {
+  const replyRoute = ROUTES.slice(ROUTES.indexOf("/crm/inbox/:id/reply"), ROUTES.indexOf('/crm/inbox/:id/assign'));
+  const accessAt = replyRoute.indexOf('requireCrmAccess');
+  const multerAt = replyRoute.indexOf('uploadCrmAttachment.single');
+  assert.ok(accessAt > -1 && multerAt > -1, 'missing role check or multer middleware');
+  assert.ok(accessAt < multerAt,
+    'the role check must run before multer writes an unauthorized upload to disk');
+});
+
 test('inbox reply form is multipart with a hidden attachment input + preview + paperclip trigger', () => {
   const formStart = INBOX_VIEW.indexOf('id="replyForm"');
   const formEnd = INBOX_VIEW.indexOf('</form>', formStart);
@@ -178,4 +187,21 @@ test('BUG3: setReplyLanguage refreshes the quick-reply drawer via the API with t
   const refreshCallAt = script.indexOf('refreshQuickReplies(lang);');
   assert.ok(setLangAt > -1 && refreshCallAt > setLangAt,
     'setReplyLanguage must invoke the drawer refresh');
+});
+
+test('refreshQuickReplies escapes each quick reply before building innerHTML from it', () => {
+  const fn = INBOX_VIEW.slice(
+    INBOX_VIEW.indexOf('async function refreshQuickReplies'),
+    INBOX_VIEW.indexOf('// ── Attachment picker')
+  );
+
+  // A hand-rolled escaper must exist and be applied to every field that gets
+  // interpolated into innerHTML — the server-rendered drawer gets this for
+  // free from EJS's <%= %>, but this client-side rebuild does not.
+  assert.match(fn, /replace\(\/\[&<>"'\]\/g/, 'must define an HTML-entity escaper');
+  const escCallSites = fn.match(/esc\(qr\.\w+/g) || [];
+  assert.ok(escCallSites.length >= 3,
+    `expected content_text, title and shortcut_key all passed through esc(), got: ${escCallSites.join(', ')}`);
+  assert.doesNotMatch(fn, /\$\{qr\.title\}/, 'qr.title must not be interpolated raw');
+  assert.doesNotMatch(fn, /\$\{qr\.content_text/, 'qr.content_text must not be interpolated raw');
 });

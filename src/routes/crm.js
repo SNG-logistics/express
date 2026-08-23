@@ -68,9 +68,14 @@ router.get('/crm/inbox/:id', (req, res, next) => {
   return ctrl.conversation(req, res, next);
 });
 
-router.post('/crm/inbox/:id/reply', uploadCrmAttachment.single('attachment'), (req, res, next) => {
+router.post('/crm/inbox/:id/reply', (req, res, next) => {
+  // Check the role before multer touches the request body — otherwise an
+  // authenticated-but-unauthorized user's file would already be written to
+  // disk by the time this check runs.
   const denied = requireCrmAccess(res, req.session.user, ROLES_CRM_AGENT);
   if (denied) return;
+  return next();
+}, uploadCrmAttachment.single('attachment'), (req, res, next) => {
   return ctrl.sendMessage(req, res, next);
 });
 
