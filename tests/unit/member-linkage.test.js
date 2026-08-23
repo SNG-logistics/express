@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const [
   service, otp, partner, customers, routes, form, list, migration, backfill,
-  migration033, migration034, inviteTokenService, waPhone, member,
+  migration033, migration034, inviteTokenService, waPhone, member, backfillCreate,
 ] = await Promise.all([
   readFile(new URL('../../src/services/memberLinkService.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/services/otpService.js', import.meta.url), 'utf8'),
@@ -20,6 +20,7 @@ const [
   readFile(new URL('../../src/services/inviteTokenService.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/utils/waPhone.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/controllers/memberController.js', import.meta.url), 'utf8'),
+  readFile(new URL('../../scripts/backfill_create_missing_customers.mjs', import.meta.url), 'utf8'),
 ]);
 
 test('member lookup service refuses ambiguous legacy-customer phone matches', () => {
@@ -28,10 +29,20 @@ test('member lookup service refuses ambiguous legacy-customer phone matches', ()
   assert.match(service, /return rows\.length === 1 \? rows\[0\]\.id : null/);
 });
 
-test('OTP activation auto-links only an unlinked account through the sole-match lookup', () => {
-  assert.match(otp, /findSoleCustomerMatch\(account\.phone\)/);
-  assert.match(otp, /WHERE id = \? AND legacy_customer_id IS NULL/);
-  assert.match(otp, /legacy_customer_id auto-link failed/);
+test('OTP activation delegates linking to the shared memberLinkService helper', () => {
+  assert.match(otp, /import \{ linkOrCreateCustomerForAccount \} from '\.\/memberLinkService\.js';/);
+  assert.match(otp, /linkOrCreateCustomerForAccount\(accountId\)/);
+});
+
+test('linkOrCreateCustomerForAccount links a sole match, else auto-creates a customers row', () => {
+  assert.match(service, /export async function linkOrCreateCustomerForAccount\(accountId, conn = pool\)/);
+  assert.match(service, /if \(!account \|\| account\.legacy_customer_id\) return null;/);
+  assert.match(service, /findSoleCustomerMatch\(account\.phone, conn\)/);
+  assert.match(service, /INSERT INTO customers \(type, name, phone, phone_normalized, country\)/);
+  assert.match(service, /'person'/);
+  assert.match(service, /isLaoPhone\(account\.phone\) \? 'Laos' : 'Thailand'/);
+  assert.match(service, /syncOneLegacyCustomer\(legacyId\)/);
+  assert.match(service, /WHERE id = \? AND legacy_customer_id IS NULL/);
 });
 
 test('quotation conversion derives customer_account_id from the source request server-side', () => {
@@ -61,6 +72,12 @@ test('migration and backfill preserve relational linkage contracts', () => {
   assert.match(backfill, /findSoleCustomerMatch\(account\.phone, conn\)/);
   assert.match(backfill, /WHERE id = \? AND legacy_customer_id IS NULL/);
   assert.match(backfill, /Linked \$\{linked\}, skipped \$\{skipped\}/);
+});
+
+test('missing-customers backfill reuses linkOrCreateCustomerForAccount for already-registered accounts', () => {
+  assert.match(backfillCreate, /import \{ linkOrCreateCustomerForAccount \} from '\.\.\/src\/services\/memberLinkService\.js';/);
+  assert.match(backfillCreate, /WHERE status = 'active' AND legacy_customer_id IS NULL/);
+  assert.match(backfillCreate, /linkOrCreateCustomerForAccount\(account\.id\)/);
 });
 
 test('linking identity is a stricter permission than routine customer-service tasks', () => {
