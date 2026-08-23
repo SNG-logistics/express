@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
 import { sendTextMessage } from './whatsappService.js';
 import { toWaPhone, isLaoPhone } from '../utils/waPhone.js';
-import { findSoleCustomerMatch } from './memberLinkService.js';
+import { linkOrCreateCustomerForAccount } from './memberLinkService.js';
 
 const OTP_EXPIRY_MINUTES = 5;
 const COOLDOWN_SECONDS = 60;
@@ -159,27 +159,10 @@ export async function verifyOtp({ accountId, _phoneRaw, purpose = 'REGISTER', co
       [accountId]
     );
 
-    // Best-effort legacy linkage (PUBLIC_PORTAL_PLAN.md §4.2, never actually
-    // wired up before this). Only auto-link when exactly ONE customers row
-    // shares this phone — ambiguous (0 or 2+ matches) is left unlinked, and
-    // a failure here must never block the registration itself.
-    try {
-      const [[account]] = await pool.query(
-        `SELECT phone, legacy_customer_id FROM customer_accounts WHERE id = ?`,
-        [accountId]
-      );
-      if (account && !account.legacy_customer_id) {
-        const legacyId = await findSoleCustomerMatch(account.phone);
-        if (legacyId) {
-          await pool.query(
-            `UPDATE customer_accounts SET legacy_customer_id = ? WHERE id = ? AND legacy_customer_id IS NULL`,
-            [legacyId, accountId]
-          );
-        }
-      }
-    } catch (linkErr) {
-      console.error('[OTP] legacy_customer_id auto-link failed:', linkErr.message);
-    }
+    // Legacy linkage (PUBLIC_PORTAL_PLAN.md §4.2). Links to the existing
+    // customers row when exactly one shares this phone, otherwise creates a
+    // fresh one — see memberLinkService.linkOrCreateCustomerForAccount.
+    await linkOrCreateCustomerForAccount(accountId);
   }
 
   return { success: true };
