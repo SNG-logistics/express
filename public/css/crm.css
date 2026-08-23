@@ -606,6 +606,12 @@ main:has(.crm-inbox-layout) {
   margin: 0;
   padding: 0;
 }
+.crm-msg-image {
+  max-width: 260px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+}
 .crm-msg-meta {
   font-size: 0.63rem;
   color: var(--crm-text-muted);
@@ -825,11 +831,61 @@ main:has(.crm-inbox-layout) {
   margin-top: 10px;
   gap: 10px;
 }
-.crm-reply-hints { display: flex; gap: 6px; }
+.crm-reply-hints { display: flex; gap: 6px; align-items: center; }
 .crm-hint-pill {
   font-size: 0.65rem;
   color: var(--crm-text-muted);
 }
+.crm-attach-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--crm-border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s ease;
+}
+.crm-attach-btn:hover {
+  border-color: var(--crm-accent);
+  color: var(--crm-accent);
+}
+
+/* Attachment preview (reply form) */
+.crm-attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-radius-sm);
+}
+.crm-attachment-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--crm-border-strong);
+}
+.crm-attachment-name {
+  font-size: 0.72rem;
+  color: var(--crm-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.crm-attachment-remove {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--crm-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 4px;
+}
+.crm-attachment-remove:hover { color: var(--crm-red); }
 .crm-hint-pill kbd {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--crm-border);
@@ -1569,5 +1625,3 @@ main:has(.crm-inbox-layout) {
 
   .crm-kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
-
-

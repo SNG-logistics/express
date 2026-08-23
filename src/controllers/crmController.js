@@ -87,8 +87,10 @@ export async function conversation(req, res) {
       return res.redirect('/crm/inbox');
     }
 
-    // Mark messages as read
-    // (In production this would also emit a socket event)
+    // Opening the conversation marks its customer messages as read — do it
+    // before rendering so the unread badge in the sidebar/list is already
+    // correct on this very render.
+    await svc.markConversationRead(convId);
 
     return crmRender(res, 'inbox', {
       title: `${conv.customer_name} — Inbox | CRM`,
@@ -110,23 +112,35 @@ export async function sendMessage(req, res) {
     const user = req.session.user;
     const convId = req.params.id;
     const { message_text } = req.body;
+    const hasFile = Boolean(req.file);
 
-    if (!message_text?.trim()) {
-      req.session.flash = { type: 'error', message: 'กรุณาพิมพ์ข้อความ' };
+    if (!message_text?.trim() && !hasFile) {
+      req.session.flash = { type: 'error', message: 'กรุณาพิมพ์ข้อความหรือแนบรูปภาพ' };
       return res.redirect(`/crm/inbox/${convId}`);
     }
+
+    const messageType = hasFile ? 'IMAGE' : 'TEXT';
+    const attachmentUrl = hasFile ? `/uploads/crm/${req.file.filename}` : null;
+    const attachmentName = hasFile ? req.file.originalname : null;
+    const contentText = message_text?.trim() || null;
 
     const messageId = await svc.createMessage({
       conversationId: convId,
       senderType: 'AGENT',
       senderUserId: user.id,
       senderName: user.name || user.username,
-      messageType: 'TEXT',
-      contentText: message_text.trim(),
+      messageType,
+      contentText,
+      attachmentUrl,
+      attachmentName,
     });
 
     // Send the outbound message via integrated channel
-    const sendResult = await sendOutbound({ conversationId: convId, text: message_text.trim() });
+    const sendResult = await sendOutbound({
+      conversationId: convId,
+      text: contentText,
+      imagePath: attachmentUrl,
+    });
     if (sendResult && !sendResult.sent) {
       console.warn(`[CRM] sendOutbound failed for conversation ${convId}: ${sendResult.reason}`);
       // Update message delivery status to FAILED
@@ -146,7 +160,9 @@ export async function assign(req, res) {
   try {
     const user = req.session.user;
     const convId = req.params.id;
-    const { agent_id, queue_id, reason } = req.body;
+    // The inbox form submits the field as to_agent_id — reading agent_id here
+    // made every assignment look empty and silently CLEAR assigned_agent_id.
+    const { to_agent_id: agent_id, queue_id, reason } = req.body;
 
     const conv = await svc.getConversation(convId);
     await svc.assignConversation({

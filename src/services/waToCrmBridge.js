@@ -61,7 +61,21 @@ export function attachCrmBridge(sock) {
         } else if (msgContent?.imageMessage) {
           messageType = 'IMAGE';
           contentText = msgContent.imageMessage.caption || null;
-          attachmentUrl = '[WhatsApp Image]';
+          try {
+            const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+            const buffer = await downloadMediaMessage(msg, 'buffer', {});
+            const ext = (msgContent.imageMessage.mimetype || '').includes('png') ? '.png' : '.jpg';
+            const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+            const fs = await import('fs');
+            const path = await import('path');
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'whatsapp');
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, filename), buffer);
+            attachmentUrl = `/uploads/whatsapp/${filename}`;
+          } catch (dlErr) {
+            console.error('[WA→CRM] image download failed:', dlErr.message);
+            attachmentUrl = '[WhatsApp Image]'; // fallback: keep caption/placeholder visible instead of dropping the message
+          }
         } else if (msgContent?.documentMessage) {
           messageType = 'FILE';
           contentText = msgContent.documentMessage.fileName || null;

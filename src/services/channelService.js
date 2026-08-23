@@ -287,7 +287,7 @@ export async function ingestInboundMessage({
  * Send a reply back through the correct channel.
  * Called by crmController.sendMessage after inserting the crm_message.
  */
-export async function sendOutbound({ conversationId, text }) {
+export async function sendOutbound({ conversationId, text, imagePath }) {
   const [[conv]] = await pool.query(`
     SELECT c.*, ci.external_user_id, ch.channel_type AS ch_type
     FROM crm_conversations c
@@ -302,17 +302,22 @@ export async function sendOutbound({ conversationId, text }) {
 
   switch (conv.channel_type) {
     case 'WHATSAPP':
-      return sendWhatsApp(conv.external_user_id, text);
+      return sendWhatsApp(conv.external_user_id, text, imagePath);
     case 'FACEBOOK':
+      // No image upload path for FB yet (no access token configured in this
+      // deployment) — fail fast so the message is marked FAILED instead of
+      // silently dropping the attachment.
+      if (imagePath) return { sent: false, reason: 'image_unsupported_channel' };
       return sendFacebook(conv.external_user_id, text, conv.channel_id);
     case 'LINE_OA':
+      if (imagePath) return { sent: false, reason: 'image_unsupported_channel' };
       return sendLine(conv.external_user_id, text, conv.channel_id);
     default:
       return { sent: false, reason: 'unknown_channel' };
   }
 }
 
-async function sendWhatsApp(externalUserId, text) {
+async function sendWhatsApp(externalUserId, text, imagePath) {
   try {
     const { getSock } = await import('./whatsappService.js');
     const sock = getSock();
@@ -324,6 +329,15 @@ async function sendWhatsApp(externalUserId, text) {
       const phone = jid.replace(/\D/g, '');
       jid = phone + '@s.whatsapp.net';
     }
+
+    if (imagePath) {
+      const fs = await import('fs');
+      const path = await import('path');
+      const absPath = path.join(process.cwd(), 'public', imagePath.replace(/^\//, ''));
+      await sock.sendMessage(jid, { image: fs.readFileSync(absPath), caption: text || undefined });
+      return { sent: true };
+    }
+
     await sock.sendMessage(jid, { text });
     return { sent: true };
   } catch (err) {

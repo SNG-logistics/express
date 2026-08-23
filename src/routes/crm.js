@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import { requireLogin } from '../middleware/auth.js';
+import { uploadCrmAttachment } from '../middleware/uploadCrmAttachment.js';
 import {
   ROLES_CRM_VIEW,
   ROLES_CRM_AGENT,
@@ -68,8 +69,13 @@ router.get('/crm/inbox/:id', (req, res, next) => {
 });
 
 router.post('/crm/inbox/:id/reply', (req, res, next) => {
+  // Check the role before multer touches the request body — otherwise an
+  // authenticated-but-unauthorized user's file would already be written to
+  // disk by the time this check runs.
   const denied = requireCrmAccess(res, req.session.user, ROLES_CRM_AGENT);
   if (denied) return;
+  return next();
+}, uploadCrmAttachment.single('attachment'), (req, res, next) => {
   return ctrl.sendMessage(req, res, next);
 });
 
@@ -260,5 +266,3 @@ router.post('/api/crm/sync/run', (req, res, next) => {
 
 
 export default router;
-
-
