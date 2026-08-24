@@ -64,6 +64,21 @@
   </a>
   <% } %>
 
+  <%# Horoscope feature promo banner — shown only when staff have uploaded
+      one, same as the shopping banner above. Links straight to the
+      login-gated /member/horoscope; a guest who taps it is sent to log in
+      first (same as tapping the account icon), which is expected since the
+      horoscope page itself has no public/guest mode. %>
+  <% const horoscopeBanner = company.horoscope_banner_path; %>
+  <% if (horoscopeBanner) { %>
+  <a class="home-banner" href="/member/horoscope">
+    <img src="<%= horoscopeBanner %>" alt="<%= t('portal.horoscopeBannerAlt') %>" decoding="async">
+    <span class="home-banner-cta">
+      <%= t('portal.horoscopeBannerCta') %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+    </span>
+  </a>
+  <% } %>
+
   <div class="home-section-heading">
     <h2><%= t('portal.servicesTitle') %></h2>
   </div>

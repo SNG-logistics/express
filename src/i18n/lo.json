@@ -196,7 +196,9 @@
     "callNow": "ໂທຫາພວກເຮົາ",
     "emailUs": "ສົ່ງອີເມວ",
     "bannerAlt": "ສິນຄ້າອອນລາຍຈາກໄທ",
-    "bannerCta": "ເບິ່ງສິນຄ້າທັງໝົດ"
+    "bannerCta": "ເບິ່ງສິນຄ້າທັງໝົດ",
+    "horoscopeBannerAlt": "ເບິ່ງດວງມື້ນີ້",
+    "horoscopeBannerCta": "ເບິ່ງດວງຂອງຂ້ອຍ"
   },
   "tracking": {
     "title": "ຕິດຕາມພັດສະດຸ",

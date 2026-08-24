@@ -196,7 +196,9 @@
     "callNow": "โทรหาเรา",
     "emailUs": "ส่งอีเมล",
     "bannerAlt": "สินค้าออนไลน์จากไทย",
-    "bannerCta": "ดูสินค้าทั้งหมด"
+    "bannerCta": "ดูสินค้าทั้งหมด",
+    "horoscopeBannerAlt": "ดูดวงวันนี้",
+    "horoscopeBannerCta": "ดูดวงของฉัน"
   },
   "tracking": {
     "title": "ติดตามพัสดุ",

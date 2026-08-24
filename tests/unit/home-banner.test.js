@@ -8,6 +8,9 @@ const HOME = readFileSync(new URL('../../views/customer/home.ejs', import.meta.u
 const CSS = readFileSync(new URL('../../public/css/portal.css', import.meta.url), 'utf8');
 const ROUTES = readFileSync(new URL('../../src/routes/onlineProducts.js', import.meta.url), 'utf8');
 const APP = readFileSync(new URL('../../src/app.js', import.meta.url), 'utf8');
+const SETTINGS_ROUTES = readFileSync(new URL('../../src/routes/settings.js', import.meta.url), 'utf8');
+const SETTINGS_CONTROLLER = readFileSync(new URL('../../src/controllers/settingsController.js', import.meta.url), 'utf8');
+const PANEL = readFileSync(new URL('../../views/settings/_panel_banner.ejs', import.meta.url), 'utf8');
 const th = JSON.parse(readFileSync(new URL('../../src/i18n/th.json', import.meta.url)));
 const lo = JSON.parse(readFileSync(new URL('../../src/i18n/lo.json', import.meta.url)));
 
@@ -74,4 +77,67 @@ test('banner wording exists in both languages', () => {
     assert.ok(th.portal?.[key], `th.portal.${key} missing`);
     assert.ok(lo.portal?.[key], `lo.portal.${key} missing`);
   }
+});
+
+// ── Horoscope banner — same admin-managed pattern, second target ──────────
+
+test('the horoscope banner links to the login-gated member page', () => {
+  const html = renderHome({ horoscope_banner_path: '/uploads/banner/h.jpg' });
+  assert.match(html, /class="home-banner" href="\/member\/horoscope"/);
+});
+
+test('no horoscope banner uploaded means no empty frame, independent of the shopping banner', () => {
+  assert.ok(!renderHome({}).includes('/member/horoscope'));
+  // Uploading only the shopping banner must not accidentally render the
+  // horoscope one too (they are two independent settings, not one toggle).
+  const shoppingOnly = renderHome({ home_banner_path: '/uploads/banner/b.jpg' });
+  assert.ok(!shoppingOnly.includes('/member/horoscope'));
+});
+
+test('an emptied horoscope banner setting counts as no banner', () => {
+  assert.ok(!renderHome({ horoscope_banner_path: '' }).includes('/member/horoscope'));
+});
+
+test('both banners can be uploaded and render together, each with its own target', () => {
+  const html = renderHome({
+    home_banner_path: '/uploads/banner/b.jpg',
+    horoscope_banner_path: '/uploads/banner/h.jpg',
+  });
+  assert.match(html, /class="home-banner" href="\/online"/);
+  assert.match(html, /class="home-banner" href="\/member\/horoscope"/);
+  assert.match(html, /<img src="\/uploads\/banner\/b\.jpg"/);
+  assert.match(html, /<img src="\/uploads\/banner\/h\.jpg"/);
+});
+
+test('horoscope banner wording exists in both languages', () => {
+  for (const key of ['horoscopeBannerAlt', 'horoscopeBannerCta']) {
+    assert.ok(th.portal?.[key], `th.portal.${key} missing`);
+    assert.ok(lo.portal?.[key], `lo.portal.${key} missing`);
+  }
+});
+
+test('the horoscope banner upload/remove routes reuse the existing bannerUpload middleware and admin/manager role gate', () => {
+  assert.match(
+    SETTINGS_ROUTES,
+    /router\.post\('\/settings\/horoscope-banner', requireLogin, requireRole\(\['admin','manager'\]\), bannerUpload\.single\('banner_file'\), settings\.uploadHoroscopeBanner\)/
+  );
+  assert.match(
+    SETTINGS_ROUTES,
+    /router\.post\('\/settings\/horoscope-banner\/remove', requireLogin, requireRole\(\['admin','manager'\]\), settings\.removeHoroscopeBanner\)/
+  );
+  // No second multer config — reuses the exact same upload used for the home banner.
+  assert.equal((SETTINGS_ROUTES.match(/const bannerUpload = multer\(/g) || []).length, 1);
+});
+
+test('uploadHoroscopeBanner/removeHoroscopeBanner mirror the home-banner pair: same setting-store pattern, own key', () => {
+  assert.match(SETTINGS_CONTROLLER, /export async function uploadHoroscopeBanner\(req, res\) \{/);
+  assert.match(SETTINGS_CONTROLLER, /VALUES \('horoscope_banner_path', \?, \?\)/);
+  assert.match(SETTINGS_CONTROLLER, /export async function removeHoroscopeBanner\(req, res\) \{/);
+  assert.match(SETTINGS_CONTROLLER, /WHERE setting_key = 'horoscope_banner_path'/);
+});
+
+test('the admin panel exposes an upload + remove control for the horoscope banner', () => {
+  assert.match(PANEL, /action="\/settings\/horoscope-banner\?_csrf=/);
+  assert.match(PANEL, /action="\/settings\/horoscope-banner\/remove"/);
+  assert.match(PANEL, /company\.horoscope_banner_path/);
 });

@@ -88,6 +88,8 @@ router.post('/settings/testimonials/:id/delete', requireLogin, requireRole(['adm
 
 router.post('/settings/home-banner', requireLogin, requireRole(['admin','manager']), bannerUpload.single('banner_file'), settings.uploadHomeBanner);
 router.post('/settings/home-banner/remove', requireLogin, requireRole(['admin','manager']), settings.removeHomeBanner);
+router.post('/settings/horoscope-banner', requireLogin, requireRole(['admin','manager']), bannerUpload.single('banner_file'), settings.uploadHoroscopeBanner);
+router.post('/settings/horoscope-banner/remove', requireLogin, requireRole(['admin','manager']), settings.removeHoroscopeBanner);
 
 router.post('/settings/popup', requireLogin, requireRole(['admin','manager']), uploadPopupImage.single('popup_file'), settings.savePopup);
 router.post('/settings/popup/remove', requireLogin, requireRole(['admin','manager']), settings.removePopup);

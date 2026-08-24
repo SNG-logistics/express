@@ -665,6 +665,39 @@ export async function removeHomeBanner(req, res) {
     res.redirect('/settings/member#banner');
 }
 
+// ─── Horoscope banner (same pattern as the home banner, linking to
+// /member/horoscope instead of /online) ────────────────────────────────────
+
+export async function uploadHoroscopeBanner(req, res) {
+    try {
+        if (!req.file) throw new Error('กรุณาเลือกไฟล์รูปแบนเนอร์');
+        await pool.query(
+            `INSERT INTO company_settings (setting_key, setting_value, updated_by)
+             VALUES ('horoscope_banner_path', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)`,
+            ['/uploads/banner/' + req.file.filename, req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'อัปเดตแบนเนอร์ดูดวงแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/member#banner');
+}
+
+export async function removeHoroscopeBanner(req, res) {
+    try {
+        await pool.query(
+            `UPDATE company_settings SET setting_value = '', updated_by = ?
+              WHERE setting_key = 'horoscope_banner_path'`,
+            [req.session.user?.id ?? null]
+        );
+        req.session.flash = { type: 'success', message: 'เอาแบนเนอร์ดูดวงออกแล้ว' };
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+    }
+    res.redirect('/settings/member#banner');
+}
+
 // ─── Corner popup (floating bottom-right image on every customer page) ───────
 
 export async function savePopup(req, res) {
