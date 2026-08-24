@@ -63,3 +63,54 @@
         </div>
     </div>
 </div>
+
+<%# Horoscope feature promo banner — same pattern as the home banner above,
+    just linking to /member/horoscope instead of /online. %>
+<div class="glass-panel-dark rounded-2xl p-5 border border-white/5 mt-4">
+    <h3 class="text-sm font-bold text-white mb-1">แบนเนอร์ดูดวง</h3>
+    <p class="text-slate-500 text-xs mb-4 leading-relaxed">
+        รูปสัดส่วน <strong class="text-slate-300">16:9</strong> (แนวนอน) เช่น 1600×900 px ·
+        กดแล้วพาไปหน้าดูดวง (ต้องเข้าสู่ระบบก่อน) · ถ้าไม่ใส่รูป หน้าแรกจะไม่แสดงส่วนนี้เลย
+    </p>
+
+    <div class="flex flex-wrap items-start gap-5">
+        <div class="shrink-0">
+            <% if (company.horoscope_banner_path) { %>
+            <img src="<%= company.horoscope_banner_path %>" alt="แบนเนอร์ดูดวงปัจจุบัน"
+                 class="w-44 rounded-xl border border-white/10" style="aspect-ratio: 16/9; object-fit: cover;">
+            <% } else { %>
+            <div class="w-44 rounded-xl border border-dashed border-white/15 grid place-items-center text-slate-600"
+                 style="aspect-ratio: 16/9;">
+                <span class="text-[10px]">ยังไม่มีรูป</span>
+            </div>
+            <% } %>
+        </div>
+
+        <div class="flex-1 min-w-[14rem] space-y-3">
+            <form action="/settings/horoscope-banner?_csrf=<%= encodeURIComponent(csrfToken) %>" method="post" enctype="multipart/form-data"
+                  class="flex flex-wrap items-end gap-2">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <label class="flex flex-col gap-1 flex-1 min-w-[10rem]">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">เลือกรูป (สูงสุด 5MB)</span>
+                    <input type="file" name="banner_file" accept="image/*" required
+                           class="text-slate-400 text-xs">
+                </label>
+                <button type="submit"
+                        class="bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl px-4 py-2 text-xs font-bold">
+                    <i class="fa-solid fa-upload"></i> อัปโหลด
+                </button>
+            </form>
+
+            <% if (company.horoscope_banner_path) { %>
+            <form action="/settings/horoscope-banner/remove" method="post"
+                  onsubmit="return confirm('เอาแบนเนอร์ดูดวงออกจากหน้าแรก?');">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit"
+                        class="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-xl px-3 py-1.5 text-xs font-bold">
+                    <i class="fa-solid fa-trash"></i> เอาแบนเนอร์ออก
+                </button>
+            </form>
+            <% } %>
+        </div>
+    </div>
+</div>
