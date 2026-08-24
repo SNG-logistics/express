@@ -166,10 +166,13 @@ test('pricing migration adds the three columns idempotently, backfills the colou
   assert.match(pricingMigration, /ADD COLUMN original_price DECIMAL\(10,2\) NULL/);
   assert.match(pricingMigration, /ADD COLUMN price_color VARCHAR\(7\) NOT NULL DEFAULT ''#E53935''/);
   assert.match(pricingMigration, /UPDATE online_products\s*SET price_color = '#E53935'\s*WHERE price_color IS NULL OR price_color = ''/);
-  assert.match(
-    migrationRunner,
-    /'migrate_044_testimonials\.sql',\s*'migrate_045_online_products_pricing\.sql',\s*\/\/ Keep LAST/
-  );
+  // Registered, and before the "Keep LAST" role-enum reassertion — not
+  // necessarily immediately adjacent to it, since later migrations may be
+  // inserted between the two.
+  const idx045 = migrationRunner.indexOf("'migrate_045_online_products_pricing.sql'");
+  const idxTail = migrationRunner.indexOf("'migrate_021_role_enum_canonical.sql'");
+  assert.ok(idx045 > -1, 'migrate_045 should be registered');
+  assert.ok(idxTail > idx045, 'the tail role-enum migration must stay last');
 });
 
 test('controller create/update persist price, original_price, and price_color from request body', () => {
