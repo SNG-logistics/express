@@ -26,10 +26,39 @@
         </span>
       </div>
 
-      <p style="margin: 0 0 0.75rem; color: var(--portal-text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;"><%= t('horoscope.todayNote') %></p>
-      <p style="margin: 0; color: var(--portal-text); line-height: 1.6;"><%= t('horoscope.fortune.' + fortune.fortuneIndex) %></p>
+      <p style="margin: 0 0 0.35rem; color: var(--portal-text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;"><%= t('horoscope.caution') %></p>
+      <p style="margin: 0; color: var(--portal-text); line-height: 1.6;"><%= fortune.today.caution %></p>
 
       <p style="margin: 1rem 0 0; color: var(--portal-text-faint); font-size: 0.72rem;"><%= t('horoscope.disclaimer') %></p>
+    </div>
+
+    <div class="card" style="padding: 1.25rem; margin-top: 1rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
+        <div>
+          <p style="margin: 0 0 0.5rem; color: var(--portal-gold); font-size: 0.8rem; font-weight: 800;"><%= t('horoscope.strengths') %></p>
+          <ul style="margin: 0; padding-left: 1.1rem; color: var(--portal-text); font-size: 0.85rem; line-height: 1.6;">
+            <% fortune.traits.strengths.forEach(line => { %><li><%= line %></li><% }); %>
+          </ul>
+        </div>
+        <div>
+          <p style="margin: 0 0 0.5rem; color: var(--portal-text-dim); font-size: 0.8rem; font-weight: 800;"><%= t('horoscope.weaknesses') %></p>
+          <ul style="margin: 0; padding-left: 1.1rem; color: var(--portal-text); font-size: 0.85rem; line-height: 1.6;">
+            <% fortune.traits.weaknesses.forEach(line => { %><li><%= line %></li><% }); %>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 1rem;">
+      <% const categoryIcons = { love: 'fa-heart', work: 'fa-briefcase', money: 'fa-coins', health: 'fa-heart-pulse' }; %>
+      <% ['love', 'work', 'money', 'health'].forEach(category => { %>
+      <div class="card" style="padding: 1rem;">
+        <p style="margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.4rem; color: var(--portal-gold); font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid <%= categoryIcons[category] %>"></i> <%= t('horoscope.category.' + category) %>
+        </p>
+        <p style="margin: 0; color: var(--portal-text); font-size: 0.85rem; line-height: 1.5;"><%= fortune.today[category] %></p>
+      </div>
+      <% }); %>
     </div>
 
     <div class="member-section-heading" style="margin-top: 1.5rem;">

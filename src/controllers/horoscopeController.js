@@ -14,7 +14,7 @@ export async function showHoroscope(req, res) {
       [req.session.customer.id]
     );
 
-    const fortune = account?.birth_date ? await getDailyFortune(account.birth_date) : null;
+    const fortune = account?.birth_date ? await getDailyFortune(account.birth_date, res.locals.lang) : null;
 
     res.render('customer/member/horoscope', {
       layout: 'customer/layout',
