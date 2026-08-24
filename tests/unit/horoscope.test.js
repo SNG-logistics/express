@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import ejs from 'ejs';
 import { getWesternZodiac, getThaiDayZodiac } from '../../src/utils/zodiac.js';
-import { pickFortuneIndex, FORTUNE_POOL_SIZE } from '../../src/data/horoscopeContent.js';
+import { pickIndex, ZODIAC_KEYS, CATEGORY_KEYS } from '../../src/data/horoscopeContent.js';
 import { pickDailyProducts } from '../../src/services/horoscopeService.js';
 import { isPastCalendarDate } from '../../src/utils/dateValidation.js';
+import * as copyTh from '../../src/data/horoscopeCopy.th.js';
+import * as copyLo from '../../src/data/horoscopeCopy.lo.js';
 
 const [
-  app, route, controller, memberController, accountView, profileView, migration, migrateDb, thDict, loDict,
+  app, route, controller, memberController, accountView, profileView, service, view, migration, migrateDb, thDict, loDict,
 ] = await Promise.all([
   readFile(new URL('../../src/app.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/routes/horoscope.js', import.meta.url), 'utf8'),
@@ -15,6 +18,8 @@ const [
   readFile(new URL('../../src/controllers/memberController.js', import.meta.url), 'utf8'),
   readFile(new URL('../../views/customer/member/account.ejs', import.meta.url), 'utf8'),
   readFile(new URL('../../views/customer/member/profile.ejs', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/services/horoscopeService.js', import.meta.url), 'utf8'),
+  readFile(new URL('../../views/customer/member/horoscope.ejs', import.meta.url), 'utf8'),
   readFile(new URL('../../database/migrate_046_customer_birthdate.sql', import.meta.url), 'utf8'),
   readFile(new URL('../../scripts/migrate_db.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/i18n/th.json', import.meta.url), 'utf8'),
@@ -77,19 +82,29 @@ test('getThaiDayZodiac accepts a Date object the same as an equivalent string', 
   assert.equal(getThaiDayZodiac('2000-01-02')?.key, getThaiDayZodiac(new Date(2000, 0, 2))?.key);
 });
 
-// ── horoscopeContent.js — deterministic index picker ────────────────────────
+// ── horoscopeContent.js — deterministic, per-context index picker ─────────
 
-test('pickFortuneIndex is deterministic and always in range', () => {
-  const a = pickFortuneIndex('2026-08-24', 'aries');
-  const b = pickFortuneIndex('2026-08-24', 'aries');
+test('pickIndex is deterministic and always in range', () => {
+  const a = pickIndex('2026-08-24', 'aries', 'love', 2);
+  const b = pickIndex('2026-08-24', 'aries', 'love', 2);
   assert.equal(a, b);
-  assert.ok(a >= 0 && a < FORTUNE_POOL_SIZE);
+  assert.ok(a >= 0 && a < 2);
 });
 
-test('pickFortuneIndex varies with the sign, not just the date', () => {
-  const signs = ['capricorn', 'aquarius', 'pisces', 'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius'];
-  const indices = new Set(signs.map(key => pickFortuneIndex('2026-08-24', key)));
-  assert.ok(indices.size > 1, 'expected fortune index to vary across different signs on the same day');
+test('pickIndex varies with the sign, not just the date', () => {
+  const indices = new Set(ZODIAC_KEYS.map(key => pickIndex('2026-08-24', key, 'love', 2)));
+  assert.ok(indices.size > 1, 'expected the index to vary across different signs on the same day');
+});
+
+test('pickIndex varies by context so categories do not all rotate in lockstep', () => {
+  const contexts = ['caution', ...CATEGORY_KEYS];
+  const indices = new Set(contexts.map(ctx => pickIndex('2026-08-24', 'aries', ctx, 2)));
+  assert.ok(indices.size > 1, 'expected different categories to pick different indices on the same day for the same sign');
+});
+
+test('ZODIAC_KEYS lists exactly the 12 signs, CATEGORY_KEYS the 4 life categories', () => {
+  assert.equal(ZODIAC_KEYS.length, 12);
+  assert.deepEqual(CATEGORY_KEYS, ['love', 'work', 'money', 'health']);
 });
 
 // ── horoscopeService.js — deterministic daily product rotation, pure ───────
@@ -122,9 +137,9 @@ test('app.js mounts the horoscope route and restores /member on the bare bounce 
   assert.match(app, /'\/quote-request', '\/quote-requests', '\/horoscope',/);
 });
 
-test('showHoroscope reads birth_date and degrades to a null fortune on any error, never a 500', () => {
+test('showHoroscope reads birth_date, passes the viewer\'s language, and degrades to a null fortune on any error, never a 500', () => {
   assert.match(controller, /SELECT birth_date FROM customer_accounts WHERE id = \?/);
-  assert.match(controller, /account\?\.birth_date \? await getDailyFortune\(account\.birth_date\) : null/);
+  assert.match(controller, /account\?\.birth_date \? await getDailyFortune\(account\.birth_date, res\.locals\.lang\) : null/);
   assert.match(controller, /catch \(err\) \{/);
 });
 
@@ -210,14 +225,19 @@ test('member.horoscope/member.horoscopeHint exist in both dictionaries', () => {
   }
 });
 
-test('th.json and lo.json both carry a complete horoscope dictionary', () => {
+test('th.json and lo.json both carry a complete horoscope UI dictionary (chrome only — bulk copy lives elsewhere)', () => {
   const th = JSON.parse(thDict);
   const lo = JSON.parse(loDict);
   for (const dict of [th, lo]) {
     assert.ok(dict.horoscope, 'horoscope namespace missing');
-    assert.equal(Array.isArray(dict.horoscope.fortune), true);
-    assert.equal(dict.horoscope.fortune.length, FORTUNE_POOL_SIZE);
-    for (const key of ['capricorn', 'aquarius', 'pisces', 'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius']) {
+    assert.equal(dict.horoscope.fortune, undefined, 'Phase 1\'s shared fortune pool should be retired, not left dangling');
+    assert.ok(dict.horoscope.strengths);
+    assert.ok(dict.horoscope.weaknesses);
+    assert.ok(dict.horoscope.caution);
+    for (const key of ['love', 'work', 'money', 'health']) {
+      assert.ok(dict.horoscope.category[key], `missing category.${key}`);
+    }
+    for (const key of ZODIAC_KEYS) {
       assert.ok(dict.horoscope.zodiac[key], `missing zodiac.${key}`);
     }
     for (const key of ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']) {
@@ -226,12 +246,110 @@ test('th.json and lo.json both carry a complete horoscope dictionary', () => {
   }
 });
 
-test('the fortune copy makes no money/health/luck-outcome promises', () => {
-  const th = JSON.parse(thDict);
-  const bannedWords = ['รวย', 'หาย', 'โชคดีมาก', 'รับรอง'];
-  for (const line of th.horoscope.fortune) {
-    for (const word of bannedWords) {
-      assert.ok(!line.includes(word), `fortune copy should not read as a guarantee: "${line}"`);
+test('Phase 1\'s retired horoscope.fortune key is not referenced anywhere it would need it', () => {
+  for (const [label, src] of [['app.js', app], ['route', route], ['controller', controller], ['service', service], ['view', view]]) {
+    assert.doesNotMatch(src, /horoscope\.fortune|pickFortuneIndex|FORTUNE_POOL_SIZE/, `${label} should not reference the retired Phase 1 API`);
+  }
+});
+
+// ── horoscopeCopy.{th,lo}.js — Phase 2 per-sign content, completeness + tone ─
+
+test('every sign has 3 strengths and 3 weaknesses, in both languages', () => {
+  for (const [label, copy] of [['th', copyTh], ['lo', copyLo]]) {
+    for (const sign of ZODIAC_KEYS) {
+      const traits = copy.TRAITS[sign];
+      assert.ok(traits, `${label}: missing TRAITS.${sign}`);
+      assert.equal(traits.strengths.length, 3, `${label}: TRAITS.${sign}.strengths should have 3 entries`);
+      assert.equal(traits.weaknesses.length, 3, `${label}: TRAITS.${sign}.weaknesses should have 3 entries`);
     }
   }
+});
+
+test('every sign has a 2-entry caution pool and 2-entry love/work/money/health pools, in both languages', () => {
+  for (const [label, copy] of [['th', copyTh], ['lo', copyLo]]) {
+    for (const sign of ZODIAC_KEYS) {
+      const notes = copy.CATEGORY_NOTES[sign];
+      assert.ok(notes, `${label}: missing CATEGORY_NOTES.${sign}`);
+      assert.equal(notes.caution.length, 2, `${label}: CATEGORY_NOTES.${sign}.caution should have 2 entries`);
+      for (const category of CATEGORY_KEYS) {
+        assert.equal(notes[category]?.length, 2, `${label}: CATEGORY_NOTES.${sign}.${category} should have 2 entries`);
+      }
+    }
+  }
+});
+
+test('the Phase 2 content makes no money/health/luck-outcome promises (TH)', () => {
+  const bannedWords = ['รวย', 'โชคดีมาก', 'รับรอง', 'จะได้เงิน', 'จะหาย'];
+  for (const sign of ZODIAC_KEYS) {
+    const allLines = [
+      ...copyTh.TRAITS[sign].strengths,
+      ...copyTh.TRAITS[sign].weaknesses,
+      ...copyTh.CATEGORY_NOTES[sign].caution,
+      ...CATEGORY_KEYS.flatMap(category => copyTh.CATEGORY_NOTES[sign][category]),
+    ];
+    for (const line of allLines) {
+      for (const word of bannedWords) {
+        assert.ok(!line.includes(word), `${sign}: copy should not read as a guarantee: "${line}"`);
+      }
+    }
+  }
+});
+
+test('the Phase 2 content makes no money/health/luck-outcome promises (LO)', () => {
+  const bannedWords = ['ຮັ່ງມີ', 'ຮັບປະກັນ', 'ຈະໄດ້ເງິນ', 'ຈະຫາຍ'];
+  for (const sign of ZODIAC_KEYS) {
+    const allLines = [
+      ...copyLo.TRAITS[sign].strengths,
+      ...copyLo.TRAITS[sign].weaknesses,
+      ...copyLo.CATEGORY_NOTES[sign].caution,
+      ...CATEGORY_KEYS.flatMap(category => copyLo.CATEGORY_NOTES[sign][category]),
+    ];
+    for (const line of allLines) {
+      for (const word of bannedWords) {
+        assert.ok(!line.includes(word), `${sign}: copy should not read as a guarantee: "${line}"`);
+      }
+    }
+  }
+});
+
+test('horoscopeService wires the Phase 2 content through pickIndex, not the retired shared pool', () => {
+  assert.match(service, /import \{ pickIndex, CATEGORY_KEYS \} from '\.\.\/data\/horoscopeContent\.js';/);
+  assert.match(service, /import \* as copyTh from '\.\.\/data\/horoscopeCopy\.th\.js';/);
+  assert.match(service, /import \* as copyLo from '\.\.\/data\/horoscopeCopy\.lo\.js';/);
+  assert.match(service, /traits = copy\.TRAITS\[westernSign\.key\]/);
+});
+
+test('the horoscope view renders traits and all 4 category cards, not the retired single fortune paragraph', () => {
+  assert.match(view, /fortune\.traits\.strengths\.forEach/);
+  assert.match(view, /fortune\.traits\.weaknesses\.forEach/);
+  assert.match(view, /fortune\.today\[category\]/);
+  assert.match(view, /fortune\.today\.caution/);
+});
+
+test('the horoscope view actually renders with real Phase 2 data, no-birth-date state, and empty products, without throwing', () => {
+  const t = (key) => key;
+  const noBirthDateHtml = ejs.render(view, { t, fortune: null });
+  assert.match(noBirthDateHtml, /horoscope\.needBirthDate/);
+
+  const mockFortune = {
+    westernSign: { key: 'aries' },
+    dayZodiac: { key: 'mon', luckyColorHex: '#FDD835' },
+    traits: copyTh.TRAITS.aries,
+    today: {
+      caution: copyTh.CATEGORY_NOTES.aries.caution[0],
+      love: copyTh.CATEGORY_NOTES.aries.love[0],
+      work: copyTh.CATEGORY_NOTES.aries.work[0],
+      money: copyTh.CATEGORY_NOTES.aries.money[0],
+      health: copyTh.CATEGORY_NOTES.aries.health[0],
+    },
+    products: [],
+  };
+  const emptyProductsHtml = ejs.render(view, { t, fortune: mockFortune });
+  assert.match(emptyProductsHtml, new RegExp(copyTh.TRAITS.aries.strengths[0]));
+  assert.match(emptyProductsHtml, new RegExp(copyTh.CATEGORY_NOTES.aries.caution[0]));
+  assert.match(emptyProductsHtml, /horoscope\.noProductsFound/);
+
+  const withProducts = { ...mockFortune, products: [{ id: 1, name: 'Test Product', product_url: 'https://example.com', status: 'published' }] };
+  const productsHtml = ejs.render(view, { t, fortune: withProducts });
+  assert.match(productsHtml, /Test Product/);
 });

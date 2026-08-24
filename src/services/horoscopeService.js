@@ -1,18 +1,24 @@
 /**
  * src/services/horoscopeService.js
  *
- * Combines the pure zodiac lookups with a deterministic daily product
- * cross-sell for the member portal's horoscope page. The product picks are
- * NOT filtered by sign — see src/utils/zodiac.js and
- * src/data/horoscopeContent.js's module comments for why a generic,
- * honestly-framed pick beats faking per-sign precision this app has no data
- * to back up.
+ * Combines the pure zodiac lookups with per-sign personality content
+ * (Phase 2: traits + love/work/money/health, see src/data/horoscopeCopy.*)
+ * and a deterministic daily product cross-sell for the member portal's
+ * horoscope page. The product picks are NOT filtered by sign — see
+ * src/utils/zodiac.js's module comment for why a generic, honestly-framed
+ * pick beats faking per-sign product precision this app has no data to
+ * back up. The personality/category *text*, unlike product matching, is
+ * genuinely per-sign — see src/data/horoscopeCopy.th.js's module comment.
  */
 import pool from '../config/db.js';
 import { getWesternZodiac, getThaiDayZodiac } from '../utils/zodiac.js';
-import { pickFortuneIndex } from '../data/horoscopeContent.js';
+import { pickIndex, CATEGORY_KEYS } from '../data/horoscopeContent.js';
+import * as copyTh from '../data/horoscopeCopy.th.js';
+import * as copyLo from '../data/horoscopeCopy.lo.js';
 
 const PRODUCT_PICK_COUNT = 6;
+
+const COPY_BY_LANG = { th: copyTh, lo: copyLo };
 
 /** Local (not UTC) calendar day, so the daily rotation changes at server midnight. */
 function todayKey(date = new Date()) {
@@ -45,17 +51,34 @@ export function pickDailyProducts(products, dateKey) {
 
 /**
  * @param {Date|string|null} birthDate
- * @returns {Promise<null | { westernSign: {key}, dayZodiac: {key, luckyColorHex}, fortuneIndex: number, products: object[] }>}
+ * @param {'th'|'lo'} lang — which language's copy to resolve; defaults to 'th'
+ *   for any unrecognized value (matches i18nMiddleware's own fallback).
+ * @returns {Promise<null | {
+ *   westernSign: {key}, dayZodiac: {key, luckyColorHex},
+ *   traits: {strengths: string[], weaknesses: string[]},
+ *   today: {caution: string, love: string, work: string, money: string, health: string},
+ *   products: object[]
+ * }>}
  *   null when birthDate is missing/invalid — caller shows the "set your
  *   birth date" prompt instead.
  */
-export async function getDailyFortune(birthDate) {
+export async function getDailyFortune(birthDate, lang = 'th') {
   const westernSign = getWesternZodiac(birthDate);
   const dayZodiac = getThaiDayZodiac(birthDate);
   if (!westernSign || !dayZodiac) return null;
 
+  const copy = COPY_BY_LANG[lang] || COPY_BY_LANG.th;
+  const traits = copy.TRAITS[westernSign.key];
+  const notes = copy.CATEGORY_NOTES[westernSign.key];
+
   const dateKey = todayKey();
-  const fortuneIndex = pickFortuneIndex(dateKey, westernSign.key);
+  const today = {
+    caution: notes.caution[pickIndex(dateKey, westernSign.key, 'caution', notes.caution.length)],
+  };
+  for (const category of CATEGORY_KEYS) {
+    const pool_ = notes[category];
+    today[category] = pool_[pickIndex(dateKey, westernSign.key, category, pool_.length)];
+  }
 
   const [products] = await pool.query(
     `SELECT * FROM online_products WHERE status = 'published' ORDER BY sort_order ASC, id DESC`
@@ -64,7 +87,8 @@ export async function getDailyFortune(birthDate) {
   return {
     westernSign,
     dayZodiac,
-    fortuneIndex,
+    traits,
+    today,
     products: pickDailyProducts(products, dateKey),
   };
 }
