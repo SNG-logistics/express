@@ -71,6 +71,7 @@ const SQL_FILES = [
   'migrate_043_prohibited_items.sql',
   'migrate_044_testimonials.sql',
   'migrate_045_online_products_pricing.sql',
+  'migrate_046_customer_birthdate.sql',
   // Keep LAST: canonical role enum re-asserted after any migration (incl. CRM)
   // that redeclares users.role, so owner/accounting are never dropped.
   'migrate_021_role_enum_canonical.sql',

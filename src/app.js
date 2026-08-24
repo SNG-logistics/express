@@ -44,6 +44,7 @@ import memberRoutes from './routes/member.js';
 import { memberRoot } from './controllers/memberController.js';
 import shopsDirectoryRoutes from './routes/shopsDirectory.js';
 import onlineProductsRoutes from './routes/onlineProducts.js';
+import horoscopeRoutes from './routes/horoscope.js';
 
 import { i18nMiddleware } from './middleware/i18n.js';
 import { themeMiddleware } from './middleware/theme.js';
@@ -244,7 +245,7 @@ const CUSTOMER_DIRECT_PATHS = ['/', '/home', '/track', '/calculate', '/buy', '/o
 const MAIN_HOST_BOUNCE_PATHS = CUSTOMER_DIRECT_PATHS.filter(p => p !== '/');
 const MEMBER_BARE_PATHS = [
   '/register', '/verify', '/verify/resend', '/login', '/logout', '/forgot-password', '/reset-password',
-  '/profile', '/orders', '/account', '/quote-request', '/quote-requests',
+  '/profile', '/orders', '/account', '/quote-request', '/quote-requests', '/horoscope',
 ];
 
 function isCustomerDirectPath(path) {
@@ -524,6 +525,7 @@ app.use(crmRoutes);          // ─ Omnichannel CRM
 
 app.use(shopsDirectoryRoutes);
 app.use(onlineProductsRoutes);
+app.use(horoscopeRoutes);
 app.use(memberRoutes);
 app.use(publicRoutes);
 

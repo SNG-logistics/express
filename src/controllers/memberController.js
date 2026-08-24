@@ -734,7 +734,7 @@ export async function myOrderSticker(req, res) {
 export async function accountEdit(req, res) {
   const customer = req.session.customer;
   const [[account]] = await pool.query(
-    `SELECT id, phone, phone_display, first_name, last_name, gender FROM customer_accounts WHERE id = ?`,
+    `SELECT id, phone, phone_display, first_name, last_name, gender, birth_date FROM customer_accounts WHERE id = ?`,
     [customer.id]
   );
   res.render('customer/member/account', {
@@ -751,27 +751,43 @@ export async function accountEdit(req, res) {
  */
 export async function processAccountEdit(req, res) {
   const customer = req.session.customer;
-  const { first_name, last_name, gender } = req.body;
+  const { first_name, last_name, gender, birth_date } = req.body;
 
   if (!first_name || !first_name.trim()) {
     return res.render('customer/member/account', {
       layout: 'customer/layout',
       title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
-      account: { ...customer, first_name, last_name, gender },
+      account: { ...customer, first_name, last_name, gender, birth_date },
       error: 'กรุณากรอกชื่อ',
+      success: null,
+    });
+  }
+
+  // Optional, opt-in — only powers the horoscope page's zodiac lookup, never
+  // required to use the rest of the portal.
+  const birthDateRaw = birth_date && birth_date.trim() ? birth_date.trim() : null;
+  const isValidBirthDate = !birthDateRaw
+    || (/^\d{4}-\d{2}-\d{2}$/.test(birthDateRaw) && birthDateRaw <= new Date().toISOString().slice(0, 10));
+  if (!isValidBirthDate) {
+    return res.render('customer/member/account', {
+      layout: 'customer/layout',
+      title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
+      account: { ...customer, first_name, last_name, gender, birth_date },
+      error: 'วันเกิดไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง',
       success: null,
     });
   }
 
   try {
     await pool.query(
-      `UPDATE customer_accounts SET first_name = ?, last_name = ?, gender = ? WHERE id = ?`,
-      [first_name.trim(), (last_name || '').trim(), gender || null, customer.id]
+      `UPDATE customer_accounts SET first_name = ?, last_name = ?, gender = ?, birth_date = ? WHERE id = ?`,
+      [first_name.trim(), (last_name || '').trim(), gender || null, birthDateRaw, customer.id]
     );
 
     req.session.customer.first_name = first_name.trim();
     req.session.customer.last_name = (last_name || '').trim();
     req.session.customer.gender = gender || null;
+    req.session.customer.birth_date = birthDateRaw;
 
     res.render('customer/member/account', {
       layout: 'customer/layout',
@@ -785,7 +801,7 @@ export async function processAccountEdit(req, res) {
     res.render('customer/member/account', {
       layout: 'customer/layout',
       title: 'แก้ไขข้อมูลส่วนตัว | SNG Express',
-      account: { ...customer, first_name, last_name, gender },
+      account: { ...customer, first_name, last_name, gender, birth_date },
       error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล',
       success: null,
     });

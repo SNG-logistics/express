@@ -45,6 +45,25 @@
       </select>
     </label>
 
+    <%
+      // account.birth_date is either a Date (fresh SELECT — mysql2 builds it
+      // from local Y/M/D, so local getters here avoid the UTC-shift bug) or
+      // already a 'YYYY-MM-DD' string (echoed back after a validation error).
+      let birthDateValue = '';
+      if (account.birth_date instanceof Date) {
+        const y = account.birth_date.getFullYear();
+        const m = String(account.birth_date.getMonth() + 1).padStart(2, '0');
+        const d = String(account.birth_date.getDate()).padStart(2, '0');
+        birthDateValue = `${y}-${m}-${d}`;
+      } else if (typeof account.birth_date === 'string') {
+        birthDateValue = account.birth_date.slice(0, 10);
+      }
+    %>
+    <label>
+      <span>วันเกิด (สำหรับดูดวง — ไม่บังคับ)</span>
+      <input class="input-portal" name="birth_date" type="date" value="<%= birthDateValue %>" max="<%= new Date().toISOString().slice(0, 10) %>">
+    </label>
+
     <button class="btn-gold" type="submit" style="width: 100%; margin-top: 0.5rem;">
       <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
     </button>

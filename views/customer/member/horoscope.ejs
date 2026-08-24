@@ -1,0 +1,101 @@
+<section class="portal-shell">
+  <div class="page-heading">
+    <p class="eyebrow">HOROSCOPE</p>
+    <h1><%= t('horoscope.title') %></h1>
+    <p><%= t('horoscope.subtitle') %></p>
+  </div>
+
+  <% if (!fortune) { %>
+    <div class="card" style="padding: 1.25rem; text-align: center;">
+      <i class="fa-solid fa-cake-candles" style="font-size: 1.6rem; color: var(--portal-gold);"></i>
+      <p style="margin: 0.75rem 0 1rem; color: var(--portal-text);"><%= t('horoscope.needBirthDate') %></p>
+      <a class="btn-gold" href="/member/account" style="display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;">
+        <i class="fa-solid fa-calendar-days"></i> <%= t('horoscope.setBirthDateCta') %>
+      </a>
+    </div>
+  <% } else { %>
+    <div class="card" style="padding: 1.25rem;">
+      <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem;">
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border: 1px solid var(--portal-border); border-radius: 999px; font-size: 0.82rem; color: var(--portal-text);">
+          <i class="fa-solid fa-star" style="color: var(--portal-gold);"></i>
+          <%= t('horoscope.westernSign') %>: <%= t('horoscope.zodiac.' + fortune.westernSign.key) %>
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border: 1px solid var(--portal-border); border-radius: 999px; font-size: 0.82rem; color: var(--portal-text);">
+          <i class="fa-solid fa-circle" style="color: <%- fortune.dayZodiac.luckyColorHex %>;"></i>
+          <%= t('horoscope.day.' + fortune.dayZodiac.key) %> · <%= t('horoscope.luckyColor') %>
+        </span>
+      </div>
+
+      <p style="margin: 0 0 0.75rem; color: var(--portal-text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;"><%= t('horoscope.todayNote') %></p>
+      <p style="margin: 0; color: var(--portal-text); line-height: 1.6;"><%= t('horoscope.fortune.' + fortune.fortuneIndex) %></p>
+
+      <p style="margin: 1rem 0 0; color: var(--portal-text-faint); font-size: 0.72rem;"><%= t('horoscope.disclaimer') %></p>
+    </div>
+
+    <div class="member-section-heading" style="margin-top: 1.5rem;">
+      <h2><%= t('horoscope.recommendedProducts') %></h2>
+    </div>
+
+    <% if (fortune.products && fortune.products.length > 0) { %>
+      <div class="product-grid">
+        <% fortune.products.forEach(product => {
+          const badgeText = product.discount_pct
+            ? `${t('online.discountPrefix')} ${Number(product.discount_pct)}%`
+            : (product.badge_label || null);
+          let photos = [];
+          if (product.photos) {
+            try {
+              const parsedPhotos = typeof product.photos === 'string'
+                ? JSON.parse(product.photos)
+                : product.photos;
+              photos = Array.isArray(parsedPhotos)
+                ? parsedPhotos.filter(photo => typeof photo === 'string' && photo)
+                : [];
+            } catch (_err) {
+              photos = [];
+            }
+          }
+          const fmtPrice = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '';
+            return n % 1 === 0
+              ? n.toLocaleString('en-US')
+              : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          };
+          const hasPrice = product.price !== null && product.price !== undefined && String(product.price).trim() !== '';
+          const cardPriceColor = product.price_color || '#E53935';
+        %>
+        <a href="<%= product.product_url %>" target="_blank" rel="noopener" class="card product-card">
+          <div class="product-media">
+            <% if (photos.length > 0) { %>
+              <img src="<%= photos[0] %>" alt="<%= product.name %>">
+            <% } else { %>
+              <i class="fa-solid fa-bag-shopping product-media-empty"></i>
+            <% } %>
+            <% if (badgeText) { %>
+            <span class="product-badge" title="<%= badgeText %>">
+              <i class="fa-solid fa-tag"></i> <%= badgeText %>
+            </span>
+            <% } %>
+          </div>
+          <div class="product-body">
+            <div>
+              <strong class="product-name"><%= product.name %></strong>
+              <% if (hasPrice) { %>
+              <div class="product-prices">
+                <span class="product-price" style="color: <%- cardPriceColor %>;">฿<%= fmtPrice(product.price) %></span>
+              </div>
+              <% } %>
+            </div>
+          </div>
+        </a>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="empty-state">
+        <i class="fa-solid fa-bag-shopping"></i>
+        <p style="font-size: 1.1rem; font-weight: 700; color: var(--portal-text); margin-top: 0.75rem;"><%= t('horoscope.noProductsFound') %></p>
+      </div>
+    <% } %>
+  <% } %>
+</section>
