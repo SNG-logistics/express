@@ -58,10 +58,14 @@
       } else if (typeof account.birth_date === 'string') {
         birthDateValue = account.birth_date.slice(0, 10);
       }
+      // Local, not UTC — same reasoning as above; a UTC-based "today" can
+      // read as tomorrow or yesterday depending on the server's timezone.
+      const now = new Date();
+      const todayValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     %>
     <label>
       <span>วันเกิด (สำหรับดูดวง — ไม่บังคับ)</span>
-      <input class="input-portal" name="birth_date" type="date" value="<%= birthDateValue %>" max="<%= new Date().toISOString().slice(0, 10) %>">
+      <input class="input-portal" name="birth_date" type="date" value="<%= birthDateValue %>" max="<%= todayValue %>">
     </label>
 
     <button class="btn-gold" type="submit" style="width: 100%; margin-top: 0.5rem;">

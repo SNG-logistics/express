@@ -14,6 +14,7 @@ import { getUnredeemedRewards } from '../services/referralRewardService.js';
 import { resolveStatus } from '../constants/transitions.js';
 import { getProhibitedItems } from '../services/prohibitedItemsService.js';
 import { getCompanySettings } from '../services/companySettingsService.js';
+import { isPastCalendarDate } from '../utils/dateValidation.js';
 
 // Constant-time login even when the phone isn't registered (resist enumeration).
 const DUMMY_PASSWORD_HASH = '$2b$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -766,8 +767,7 @@ export async function processAccountEdit(req, res) {
   // Optional, opt-in — only powers the horoscope page's zodiac lookup, never
   // required to use the rest of the portal.
   const birthDateRaw = birth_date && birth_date.trim() ? birth_date.trim() : null;
-  const isValidBirthDate = !birthDateRaw
-    || (/^\d{4}-\d{2}-\d{2}$/.test(birthDateRaw) && birthDateRaw <= new Date().toISOString().slice(0, 10));
+  const isValidBirthDate = !birthDateRaw || isPastCalendarDate(birthDateRaw);
   if (!isValidBirthDate) {
     return res.render('customer/member/account', {
       layout: 'customer/layout',

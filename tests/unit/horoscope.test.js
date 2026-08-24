@@ -4,15 +4,17 @@ import { readFile } from 'node:fs/promises';
 import { getWesternZodiac, getThaiDayZodiac } from '../../src/utils/zodiac.js';
 import { pickFortuneIndex, FORTUNE_POOL_SIZE } from '../../src/data/horoscopeContent.js';
 import { pickDailyProducts } from '../../src/services/horoscopeService.js';
+import { isPastCalendarDate } from '../../src/utils/dateValidation.js';
 
 const [
-  app, route, controller, memberController, accountView, migration, migrateDb, thDict, loDict,
+  app, route, controller, memberController, accountView, profileView, migration, migrateDb, thDict, loDict,
 ] = await Promise.all([
   readFile(new URL('../../src/app.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/routes/horoscope.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/controllers/horoscopeController.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/controllers/memberController.js', import.meta.url), 'utf8'),
   readFile(new URL('../../views/customer/member/account.ejs', import.meta.url), 'utf8'),
+  readFile(new URL('../../views/customer/member/profile.ejs', import.meta.url), 'utf8'),
   readFile(new URL('../../database/migrate_046_customer_birthdate.sql', import.meta.url), 'utf8'),
   readFile(new URL('../../scripts/migrate_db.js', import.meta.url), 'utf8'),
   readFile(new URL('../../src/i18n/th.json', import.meta.url), 'utf8'),
@@ -136,9 +138,46 @@ test('accountEdit/processAccountEdit round-trip birth_date alongside the existin
   assert.match(memberController, /const isValidBirthDate = !birthDateRaw/);
 });
 
-test('the account-edit view has an optional, past-only date input for birth_date', () => {
+test('the account-edit view has an optional, past-only date input for birth_date, computed from local time', () => {
   assert.match(accountView, /name="birth_date" type="date"/);
-  assert.match(accountView, /max="<%= new Date\(\)\.toISOString\(\)\.slice\(0, 10\) %>"/);
+  assert.match(accountView, /max="<%= todayValue %>"/);
+  assert.doesNotMatch(accountView, /toISOString\(\)\.slice\(0, 10\)/, 'today\'s date must come from local getters, not UTC');
+});
+
+test('processAccountEdit validates birth_date through the shared, testable helper', () => {
+  assert.match(memberController, /import \{ isPastCalendarDate \} from '\.\.\/utils\/dateValidation\.js';/);
+  assert.match(memberController, /isPastCalendarDate\(birthDateRaw\)/);
+  assert.doesNotMatch(memberController, /toISOString\(\)\.slice\(0, 10\)/, 'the future-date check must use local time, not UTC');
+});
+
+test('isPastCalendarDate rejects calendar-invalid dates, not just malformed strings', () => {
+  assert.equal(isPastCalendarDate('2026-02-30'), false, "Feb 30 doesn't exist");
+  assert.equal(isPastCalendarDate('2026-13-01'), false, 'month 13 is invalid');
+  assert.equal(isPastCalendarDate('2026-00-10'), false, 'month 0 is invalid');
+  assert.equal(isPastCalendarDate('2026-04-31'), false, "April has 30 days, no 31st");
+  assert.equal(isPastCalendarDate('not-a-date'), false);
+  assert.equal(isPastCalendarDate(''), false);
+});
+
+test('isPastCalendarDate accepts a real past date and rejects a future one', () => {
+  assert.equal(isPastCalendarDate('2000-02-29'), true, '2000 was a leap year, Feb 29 is real');
+  assert.equal(isPastCalendarDate('1995-06-15'), true);
+
+  const future = new Date();
+  future.setFullYear(future.getFullYear() + 1);
+  const futureStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+  assert.equal(isPastCalendarDate(futureStr), false);
+});
+
+test('isPastCalendarDate treats today itself as valid (not exclusively past)', () => {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  assert.equal(isPastCalendarDate(todayStr), true);
+});
+
+test('dateValidation.js has no imports — safe to import directly in any test', async () => {
+  const src = await readFile(new URL('../../src/utils/dateValidation.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /^import /m);
 });
 
 // ── Migration + i18n content ────────────────────────────────────────────
@@ -153,6 +192,22 @@ test('migrate_db.js runs migration 046 before the canonical-role-enum tail migra
   const idxTail = migrateDb.indexOf("'migrate_021_role_enum_canonical.sql'", idx046);
   assert.ok(idx046 > -1, 'migrate_046 should be listed');
   assert.ok(idxTail > idx046, 'the tail role-enum migration must stay last');
+});
+
+test('the profile-page nav tile uses its own short hint, not the destination page\'s full subtitle', () => {
+  assert.match(profileView, /href="\/member\/horoscope"/);
+  assert.match(profileView, /t\('member\.horoscope'\)/);
+  assert.match(profileView, /t\('member\.horoscopeHint'\)/);
+  assert.doesNotMatch(profileView, /t\('horoscope\.title'\)|t\('horoscope\.subtitle'\)/);
+});
+
+test('member.horoscope/member.horoscopeHint exist in both dictionaries', () => {
+  const th = JSON.parse(thDict);
+  const lo = JSON.parse(loDict);
+  for (const dict of [th, lo]) {
+    assert.ok(dict.member.horoscope);
+    assert.ok(dict.member.horoscopeHint);
+  }
 });
 
 test('th.json and lo.json both carry a complete horoscope dictionary', () => {
