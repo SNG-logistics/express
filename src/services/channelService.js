@@ -287,7 +287,7 @@ export async function ingestInboundMessage({
  * Send a reply back through the correct channel.
  * Called by crmController.sendMessage after inserting the crm_message.
  */
-export async function sendOutbound({ conversationId, text, imagePath }) {
+export async function sendOutbound({ conversationId, text, imagePath, imageUrl }) {
   const [[conv]] = await pool.query(`
     SELECT c.*, ci.external_user_id, ch.channel_type AS ch_type
     FROM crm_conversations c
@@ -304,11 +304,7 @@ export async function sendOutbound({ conversationId, text, imagePath }) {
     case 'WHATSAPP':
       return sendWhatsApp(conv.external_user_id, text, imagePath);
     case 'FACEBOOK':
-      // No image upload path for FB yet (no access token configured in this
-      // deployment) — fail fast so the message is marked FAILED instead of
-      // silently dropping the attachment.
-      if (imagePath) return { sent: false, reason: 'image_unsupported_channel' };
-      return sendFacebook(conv.external_user_id, text, conv.channel_id);
+      return sendFacebook(conv.external_user_id, text, conv.channel_id, imageUrl);
     case 'LINE_OA':
       if (imagePath) return { sent: false, reason: 'image_unsupported_channel' };
       return sendLine(conv.external_user_id, text, conv.channel_id);
@@ -346,18 +342,35 @@ async function sendWhatsApp(externalUserId, text, imagePath) {
   }
 }
 
-async function sendFacebook(psid, text, channelDbId) {
+async function sendFacebook(psid, text, channelDbId, imageUrl) {
   try {
     const [[ch]] = await pool.query(`SELECT access_token_encrypted FROM crm_channels WHERE id = ?`, [channelDbId]);
     if (!ch?.access_token_encrypted) return { sent: false, reason: 'no_fb_token' };
 
     const token = ch.access_token_encrypted; // stored plaintext for now
-    const res = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipient: { id: psid }, message: { text } }),
-    });
-    const data = await res.json();
+
+    async function post(message) {
+      const res = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: { id: psid }, message }),
+      });
+      return res.json();
+    }
+
+    if (imageUrl) {
+      const imgData = await post({ attachment: { type: 'image', payload: { url: imageUrl, is_reusable: true } } });
+      if (imgData.error) return { sent: false, reason: imgData.error.message };
+      // A Messenger attachment message carries no caption field — any
+      // accompanying text goes out as its own follow-up message.
+      if (text) {
+        const textData = await post({ text });
+        if (textData.error) return { sent: false, reason: textData.error.message };
+      }
+      return { sent: true, messageId: imgData.message_id };
+    }
+
+    const data = await post({ text });
     if (data.error) return { sent: false, reason: data.error.message };
     return { sent: true, messageId: data.message_id };
   } catch (err) {

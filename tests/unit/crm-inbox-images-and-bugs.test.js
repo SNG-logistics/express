@@ -69,7 +69,7 @@ test('channelService.sendOutbound forwards imagePath; sendWhatsApp sends {image,
     'the image branch must come before the plain-text fallback');
 });
 
-test('Facebook/LINE with an imagePath fail fast as image_unsupported_channel without throwing', () => {
+test('Facebook sends imageUrl through to the Graph API attachment call; LINE still fails fast', () => {
   const switchBody = CHANNEL.slice(
     CHANNEL.indexOf('switch (conv.channel_type)'),
     CHANNEL.indexOf('async function sendWhatsApp')
@@ -77,8 +77,15 @@ test('Facebook/LINE with an imagePath fail fast as image_unsupported_channel wit
   const fbAt = switchBody.indexOf("case 'FACEBOOK':");
   const lineAt = switchBody.indexOf("case 'LINE_OA':");
   assert.ok(fbAt > -1 && lineAt > -1);
-  assert.match(switchBody.slice(fbAt, lineAt), /image_unsupported_channel/, 'FB must reject images explicitly');
-  assert.match(switchBody.slice(lineAt), /image_unsupported_channel/, 'LINE must reject images explicitly');
+  assert.match(switchBody.slice(fbAt, lineAt), /sendFacebook\(conv\.external_user_id,\s*text,\s*conv\.channel_id,\s*imageUrl\)/,
+    'FB must pass imageUrl through to sendFacebook');
+  assert.match(switchBody.slice(lineAt), /image_unsupported_channel/, 'LINE must still reject images explicitly (no image-send implementation yet)');
+
+  const fbFn = CHANNEL.slice(CHANNEL.indexOf('async function sendFacebook'));
+  const fbEnd = fbFn.indexOf('\nasync function sendLine');
+  const fbBody = fbFn.slice(0, fbEnd > -1 ? fbEnd : undefined);
+  assert.match(fbBody, /type:\s*'image'/, 'sendFacebook must build an image attachment payload');
+  assert.match(fbBody, /payload:\s*\{\s*url:\s*imageUrl/, 'the attachment payload must carry the public image URL');
 });
 
 test('reply route wires the multer upload middleware for field "attachment"', () => {
