@@ -135,11 +135,17 @@ export async function sendMessage(req, res) {
       attachmentName,
     });
 
-    // Send the outbound message via integrated channel
+    // Send the outbound message via integrated channel.
+    // Channels that fetch the image themselves (Facebook Graph API) need a
+    // real internet-reachable URL, not the relative path stored in the DB —
+    // built from the request rather than an APP_URL env var, which isn't
+    // guaranteed to be set.
+    const imageUrl = hasFile ? `${req.protocol}://${req.get('host')}${attachmentUrl}` : null;
     const sendResult = await sendOutbound({
       conversationId: convId,
       text: contentText,
       imagePath: attachmentUrl,
+      imageUrl,
     });
     if (sendResult && !sendResult.sent) {
       console.warn(`[CRM] sendOutbound failed for conversation ${convId}: ${sendResult.reason}`);
