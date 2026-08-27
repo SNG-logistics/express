@@ -124,7 +124,10 @@ export async function facebookInbound(req, res) {
       if (message) {
         if (message.is_echo) continue;
         if (message.text) {
-          contentText = message.text;
+          // Leading/trailing blank lines are real bytes Messenger sends as-is —
+          // the inbox bubble uses white-space:pre-wrap, so an untrimmed string
+          // renders as empty vertical space above/below the actual text.
+          contentText = message.text.trim() || null;
         } else if (message.attachments?.length) {
           const att   = message.attachments[0];
           const aType = (att.type || 'file').toUpperCase();
@@ -225,7 +228,10 @@ export async function lineInbound(req, res) {
       const m = event.message;
       switch (m.type) {
         case 'text':
-          contentText = m.text;
+          // Leading/trailing blank lines are real bytes LINE sends as-is —
+          // the inbox bubble uses white-space:pre-wrap, so an untrimmed string
+          // renders as empty vertical space above/below the actual text.
+          contentText = m.text.trim() || null;
           break;
         case 'image':
           messageType = 'IMAGE';

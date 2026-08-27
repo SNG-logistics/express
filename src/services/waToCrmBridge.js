@@ -55,9 +55,13 @@ export function attachCrmBridge(sock) {
         let attachmentUrl = null;
 
         if (msgContent?.conversation) {
-          contentText = msgContent.conversation;
+          // Leading/trailing blank lines are real bytes WhatsApp sends as-is
+          // (e.g. someone hits Enter a few times before typing) — the inbox
+          // bubble uses white-space:pre-wrap, so an untrimmed string renders
+          // as empty vertical space above/below the actual text.
+          contentText = msgContent.conversation.trim() || null;
         } else if (msgContent?.extendedTextMessage?.text) {
-          contentText = msgContent.extendedTextMessage.text;
+          contentText = msgContent.extendedTextMessage.text.trim() || null;
         } else if (msgContent?.imageMessage) {
           messageType = 'IMAGE';
           contentText = msgContent.imageMessage.caption || null;

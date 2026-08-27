@@ -11,6 +11,7 @@ const INBOX_VIEW = readFileSync(new URL('../../views/crm/inbox.ejs', import.meta
 const CSS        = readFileSync(new URL('../../public/css/crm.css', import.meta.url), 'utf8');
 const RT         = readFileSync(new URL('../../public/js/crm-realtime.js', import.meta.url), 'utf8');
 const SCHEMA     = readFileSync(new URL('../../database/migrate_crm_001.sql', import.meta.url), 'utf8');
+const WEBHOOK    = readFileSync(new URL('../../src/controllers/webhookController.js', import.meta.url), 'utf8');
 
 // ── Part 1 — inbound WhatsApp images ─────────────────────────────────────────
 
@@ -35,6 +36,25 @@ test('waToCrmBridge falls back to the [WhatsApp Image] placeholder when the down
   const fallbackAt = body.indexOf("'[WhatsApp Image]'");
   assert.ok(tryAt > -1 && catchAt > -1 && fallbackAt > -1, 'missing try/catch/fallback');
   assert.ok(tryAt < catchAt && catchAt < fallbackAt, 'fallback must live inside the catch block');
+});
+
+test('inbound text from every channel is trimmed before it reaches the pre-wrap message bubble', () => {
+  // .crm-msg-bubble renders with white-space:pre-wrap, so an untrimmed string
+  // with leading/trailing blank lines shows up as empty vertical space above
+  // and below the real text instead of a tight bubble.
+  const waConvAt = BRIDGE.indexOf('msgContent?.conversation)');
+  const waExtAt  = BRIDGE.indexOf('extendedTextMessage?.text)');
+  assert.ok(waConvAt > -1 && waExtAt > -1);
+  assert.match(BRIDGE.slice(waConvAt, waConvAt + 400), /msgContent\.conversation\.trim\(\) \|\| null/);
+  assert.match(BRIDGE.slice(waExtAt, waExtAt + 400), /extendedTextMessage\.text\.trim\(\) \|\| null/);
+
+  const fbAt = WEBHOOK.indexOf('if (message.text)');
+  assert.ok(fbAt > -1);
+  assert.match(WEBHOOK.slice(fbAt, fbAt + 400), /message\.text\.trim\(\) \|\| null/);
+
+  const lineAt = WEBHOOK.indexOf("case 'text':");
+  assert.ok(lineAt > -1);
+  assert.match(WEBHOOK.slice(lineAt, lineAt + 400), /m\.text\.trim\(\) \|\| null/);
 });
 
 // ── Part 2 — outbound agent images ───────────────────────────────────────────
