@@ -155,21 +155,26 @@ function classifyIntentKeyword(text) {
 // ── 2. Smart Reply Generation ─────────────────────────────────────────────────
 // Returns: [{ title, content }] — 3 contextual replies in Thai/Lao
 
-export async function generateSmartReplies({ customerMessage, conversationHistory = [], intent = 'GENERAL', customerName = '', lang = 'TH' }) {
+export async function generateSmartReplies({ customerMessage, conversationHistory = [], intent = 'GENERAL', customerName = '', lang = 'TH', groundingFacts = null }) {
   const historyText = conversationHistory.slice(-6).map(m =>
     `${m.sender_type === 'CUSTOMER' ? 'ลูกค้า' : 'เจ้าหน้าที่'}: ${m.content_text}`
   ).join('\n');
 
   const replyLangName = lang === 'LA' ? 'ภาษาลาว (Lao language)' : 'ภาษาไทย (Thai language)';
+  const groundingBlock = formatGroundingFacts(groundingFacts);
 
   const prompt = `คุณเป็นเจ้าหน้าที่ CRM ของ SNG Logistics บริษัทขนส่ง
 ลูกค้าชื่อ: ${customerName || 'ลูกค้า'}
 ประเภทปัญหา: ${intent}
 
+${groundingBlock}
+
 ประวัติการสนทนา:
 ${historyText}
 
 ข้อความล่าสุดจากลูกค้า: "${customerMessage}"
+
+กฎสำคัญที่ต้องปฏิบัติตามอย่างเคร่งครัด: ห้ามสร้างหรือเดาตัวเลขราคา สถานะพัสดุ หรือข้อมูลอื่นใดที่ไม่มีอยู่ในบล็อก "ข้อมูลจริง" ด้านบน หากลูกค้าถามเรื่องที่ต้องใช้ข้อมูลจริง (เช่น ราคาค่าส่ง สถานะพัสดุ หรือค่าประมาณฝากซื้อ) แต่ไม่มีข้อมูลจริงให้ใช้ ให้ตอบกลับด้วยคำถามขอข้อมูลเพิ่มเติมจากลูกค้าแทนเท่านั้น ห้ามระบุตัวเลขหรือสถานะที่ไม่ได้มาจาก "ข้อมูลจริง" เด็ดขาด
 
 จงสร้างคำตอบที่เหมาะสม 3 แบบ ในรูปแบบ JSON:
 [
@@ -189,6 +194,40 @@ ${historyText}
     console.error('[AI] generateSmartReplies error:', err.message);
     return getDefaultReplies(intent, lang);
   }
+}
+
+/**
+ * Renders whatever real facts replyGroundingService.buildGroundingContext()
+ * found into a labelled block the model is told to treat as ground truth —
+ * this is what stops it from inventing a price or a delivery status.
+ */
+function formatGroundingFacts(facts) {
+  if (!facts) return 'ข้อมูลจริง: ไม่มี';
+
+  const lines = [`วิธีสั่งซื้อ (ข้อมูลจริง): ${facts.howToOrder}`];
+
+  if (facts.tracking) {
+    lines.push(facts.tracking.found
+      ? `ผลติดตามพัสดุเลข ${facts.tracking.ref} (ข้อมูลจริง): สถานะ "${facts.tracking.statusLabel || 'ไม่ระบุ'}" ปลายทาง ${facts.tracking.receiverProvince || '-'}`
+      : `ไม่พบพัสดุหมายเลข ${facts.tracking.ref} ในระบบ (ข้อมูลจริง)`);
+  }
+
+  if (facts.shippingQuote) {
+    lines.push(facts.shippingQuote.found
+      ? `ราคาค่าส่งโดยประมาณ (ข้อมูลจริง): ${facts.shippingQuote.price} บาท`
+      : 'ไม่พบเรทราคาที่ตรงกับน้ำหนัก/ขนาดที่ลูกค้าระบุ (ข้อมูลจริง)');
+  }
+
+  if (facts.purchaseAgentEstimate) {
+    const e = facts.purchaseAgentEstimate;
+    lines.push(e.missingPriceQty
+      ? 'ลูกค้าแปะลิงก์สินค้ามาแต่ไม่ได้ระบุราคา/จำนวน (ข้อมูลจริง): ต้องถามราคาและจำนวนก่อนจะประเมินได้'
+      : e.error
+        ? 'ไม่สามารถคำนวณค่าประมาณฝากซื้อได้ในขณะนี้ (ข้อมูลจริง)'
+        : `ค่าประมาณฝากซื้อ (ข้อมูลจริง): ชำระตอนสั่ง ~${e.payNowLak} กีบ, ชำระปลายทาง ~${e.payOnDeliveryLak} กีบ, รวม ~${e.totalLak} กีบ`);
+  }
+
+  return `ข้อมูลจริง (ใช้อ้างอิงเท่านั้น ห้ามเดานอกเหนือจากนี้):\n- ${lines.join('\n- ')}`;
 }
 
 function getDefaultReplies(intent, lang = 'TH') {

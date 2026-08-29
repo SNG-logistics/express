@@ -5,6 +5,7 @@
 
 import * as svc from '../services/crmService.js';
 import { generateSmartReplies, classifyIntent } from '../services/aiService.js';
+import { buildGroundingContext } from '../services/replyGroundingService.js';
 import pool from '../config/db.js';
 import { sendOutbound } from '../services/channelService.js';
 import { bulkSyncAllLegacy, getSyncStats } from '../services/customerSyncService.js';
@@ -579,6 +580,16 @@ export async function smartReplySuggestions(req, res) {
       intent = aiIntent.intent;
     } catch { /* ignore */ }
 
+    // Ground the draft in real business data (tracking status, shipping
+    // price, purchase-agent estimate) so the AI can't invent numbers it
+    // has no way to actually know.
+    let groundingFacts = null;
+    try {
+      groundingFacts = await buildGroundingContext(lastCustomerMsg.content_text, { lang });
+    } catch (err) {
+      console.error('[CRM] buildGroundingContext error:', err.message);
+    }
+
     // Generate AI smart replies
     const aiReplies = await generateSmartReplies({
       customerMessage: lastCustomerMsg.content_text,
@@ -586,6 +597,7 @@ export async function smartReplySuggestions(req, res) {
       intent,
       customerName: conv?.customer_name || '',
       lang,
+      groundingFacts,
     });
 
     if (aiReplies && aiReplies.length > 0) {

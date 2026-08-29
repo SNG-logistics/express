@@ -17,6 +17,7 @@ import pool from '../config/db.js';
 import { ORDER_STATUS_LABELS } from '../constants/statuses.js';
 import { buildTrackingTimeline, buildSupplierTimeline } from '../constants/trackingSteps.js';
 import { parcelProgress } from '../services/quotationParcelService.js';
+import { resolveTrackingRef } from '../services/trackingLookupService.js';
 
 /** Everything the view needs when nothing was found, so no branch renders undefined. */
 function emptyView(res, { error = null, title = null } = {}) {
@@ -32,23 +33,6 @@ function emptyView(res, { error = null, title = null } = {}) {
     error,
     title: title || `${res.locals.t('tracking.title')} | SNG Express`,
   };
-}
-
-async function loadOrder(jobNo) {
-  const [[order]] = await pool.query(
-    `SELECT o.id, o.job_no, o.direction, o.status, o.service_type,
-            o.declared_weight, o.cod_amount, o.created_at, o.updated_at,
-            o.delivered_at, o.screening_status, o.quotation_id,
-            s.name AS sender_name, s.province AS sender_province,
-            r.name AS receiver_name, r.province AS receiver_province,
-            r.city AS receiver_city
-     FROM orders o
-     LEFT JOIN customers s ON s.id = o.sender_id
-     LEFT JOIN customers r ON r.id = o.receiver_id
-     WHERE o.job_no = ?`,
-    [jobNo]
-  );
-  return order || null;
 }
 
 /**
@@ -91,24 +75,7 @@ export async function trackOrder(req, res) {
   if (!ref) return res.render('customer/track', emptyView(res));
 
   try {
-    let order = await loadOrder(ref);
-    let quotationId = order?.quotation_id || null;
-
-    // Not a job number — try it as a quote number, and pick up the shipment it
-    // later became so one search shows the whole journey either way.
-    if (!order) {
-      const [[quote]] = await pool.query(
-        'SELECT id FROM partner_quotations WHERE quote_no = ?', [ref]
-      );
-      if (quote) {
-        quotationId = quote.id;
-        const [[linked]] = await pool.query(
-          'SELECT job_no FROM orders WHERE quotation_id = ? ORDER BY id DESC LIMIT 1',
-          [quote.id]
-        );
-        if (linked) order = await loadOrder(linked.job_no);
-      }
-    }
+    const { order, quotationId } = await resolveTrackingRef(ref);
 
     const supplier = quotationId ? await loadSupplierLeg(quotationId) : null;
 
